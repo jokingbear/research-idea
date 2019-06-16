@@ -1,3 +1,5 @@
 .idea/
 
 __py_cache__/
+
+tf_logs
