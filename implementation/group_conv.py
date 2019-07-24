@@ -14,7 +14,7 @@ class GroupConv2D(layers.Layer):
         self.n_filters = n_filters
         self.kernel_sizes = self._standardize_kernel_stride_dilation("kernel_size", kernel_size)
         self.strides = self._standardize_kernel_stride_dilation("strides", strides)
-        self.padding = padding.upper()
+        self.padding = padding
         self.dilation_rate = self._standardize_kernel_stride_dilation("dilation_rate",
                                                                       dilation_rate if dilation_rate else 1)
         self.activation = activations.get(activation)
@@ -50,7 +50,8 @@ class GroupConv2D(layers.Layer):
     def call(self, inputs, **kwargs):
         strides = (1,) + self.strides + (1,)
         dilations = (1,) + self.dilation_rate + (1,)
-        conv = tf.nn.conv2d(inputs, self.w, strides, self.padding, dilations=dilations)
+        padding = self.padding.upper()
+        conv = tf.nn.conv2d(inputs, self.w, strides, padding, dilations=dilations)
         conv = conv + self.b
         conv = self.activation(conv)
 
