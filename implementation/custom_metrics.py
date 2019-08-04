@@ -1,28 +1,49 @@
-from keras import backend as K
+import tensorflow as tf
 
 
-def dice_coefficient(y_true, y_pred):
-    smooth = K.epsilon()
-    
-    p = K.sum(y_true * y_pred, axis=(1, 2)) + smooth
-    s = K.sum(y_true + y_pred, axis=(1, 2)) + smooth
+def binary_dice_coefficient_metrics(axis=(1, 2), smooth=1, cast=True, threshold=0.5):
 
-    dice = K.mean(2 * p / s, axis=-1)
+    def dice_coefficient(y_true, y_pred):
+        if cast:
+            y_pred = tf.cast(y_pred >= threshold, tf.float32)
 
-    return K.mean(dice)
+        p = tf.reduce_sum(y_true * y_pred, axis=axis)
+        s = tf.reduce_sum(y_true + y_pred, axis=axis)
+
+        dice = (2 * p + smooth) / (s + smooth)
+
+        return tf.reduce_mean(dice)
+
+    return dice_coefficient
 
 
-def dice_coefficient_int(y_true, y_pred):
-    smooth = K.epsilon()
-    n_class = int(y_pred.shape[-1])
-    axis = K.int_shape(y_pred)[1:-1]
+def cat_dice_coefficient_metrics(axis=(1, 2), smooth=1, cast=True):
 
-    y_pred = K.argmax(y_pred)
-    y_pred = K.one_hot(y_pred, num_classes=n_class)
+    def dice_coefficient(y_true, y_pred):
+        if cast:
+            y_pred = tf.argmax(y_pred, axis=-1)
+            y_pred = tf.one_hot(y_pred, axis=-1, dtype=tf.float32)
 
-    p = K.sum(y_true * y_pred, axis=axis)
-    s = K.sum(y_true + y_pred, axis=axis)
+        y_pred = y_pred[..., 1:]
+        y_true = y_true[..., 1:]
 
-    dice = (2 * p + smooth) / (s + smooth)
+        p = tf.reduce_sum(y_true * y_pred, axis=axis)
+        s = tf.reduce_sum(y_true + y_pred, axis=axis)
 
-    return K.mean(dice)
+        dice = (2 * p + smooth) / (s + smooth)
+
+        return tf.reduce_mean(dice)
+
+    return dice_coefficient
+
+
+def f1_score(y_true, y_pred, smooth=1):
+    y_true = tf.reshape(y_true, [-1])
+    y_pred = tf.reshape(y_pred, [-1])
+
+    p = tf.reduce_sum(y_true * y_pred)
+    s = tf.reduce_sum(y_true + y_pred)
+
+    f1 = (2 * p + smooth) / (s + smooth)
+
+    return f1
