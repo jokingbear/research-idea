@@ -3,14 +3,15 @@ import tensorflow as tf
 from keras import layers, backend as K, activations, initializers as inits, regularizers as regs
 from keras.utils import conv_utils as utils
 
+tf_native = False
+
 
 class GroupConv2D(layers.Layer):
 
     def __init__(self, n_group, n_filter, kernel_sizes, strides=(1, 1), padding="same",
                  dilation_rate=None,
                  activation=None,
-                 kernel_initializer="glorot_uniform",
-                 native_group_conv=True, **kwargs):
+                 kernel_initializer="glorot_uniform", **kwargs):
         self.n_group = n_group
         self.n_filter = n_filter
         self.kernel_sizes = self._standardize_kernel_stride_dilation("kernel_size", kernel_sizes)
@@ -20,12 +21,11 @@ class GroupConv2D(layers.Layer):
                                                                       dilation_rate if dilation_rate else 1)
         self.activation = activations.get(activation)
         self.kernel_initializer = inits.get(kernel_initializer)
-        self.is_native = native_group_conv
 
         super().__init__(**kwargs)
 
     def build(self, input_shape):
-        if self.is_native:
+        if tf_native:
             self._build_native(input_shape)
         else:
             self._build_non_native(input_shape)

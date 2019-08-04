@@ -21,21 +21,18 @@ class GroupNorm(layers.Layer):
         super().build(input_shape)
 
     def call(self, inputs, **kwargs):
-        # inputs (?, h, w, cp)
-        h, w, gp = K.int_shape(inputs)[1:]
+        shape = inputs.shape.as_list()[1:]
+        spatial_shape = shape[:-1]
+        gp = shape[-1]
         g = self.n_groups
 
-        # (?, h, w, c, p)
-        x = K.reshape(inputs, [-1, h, w, g, gp // g])
+        x = K.reshape(inputs, (-1,) + spatial_shape + (g, gp // g))
 
-        # (?, 1, 1, c, 1)
-        mean, var = tf.nn.moments(x, [1, 2, 4], keep_dims=True)
+        mean, var = tf.nn.moments(x, spatial_shape + (-1, ), keep_dims=True)
 
-        # (?, 1, 1, c, 1)
-        x = (x - mean) / (K.sqrt(var) + K.epsilon())
+        x = (x - mean) / (tf.sqrt(var) + 1E-7)
 
-        # (?, 1, 1, c, 1)
-        x = K.reshape(x, [-1, h, w, gp])
+        x = tf.reshape(x, shape)
 
         return x * self.gamma + self.beta
 
