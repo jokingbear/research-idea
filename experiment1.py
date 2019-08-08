@@ -8,3 +8,5 @@ y = cr.GroupRouting(32, 18, 3)(x)
 model = Model(x, y)
 
 w = model.get_weights()
+
+a = 8
