@@ -1,12 +1,19 @@
-from keras import layers, Model
-from implementations import conv_routing as cr, group_conv as gc
+from implementations import blocks
 
-x = layers.Input([512, 512, 128])
+from keras import layers, Model, utils
 
-y = cr.GroupRouting(32, 18, 3)(x)
+x = layers.Input([256, 256, 1])
 
-model = Model(x, y)
+con0 = blocks.con_block("con0", 64, normalization=layers.BatchNormalization())(x)
 
-w = model.get_weights()
+con1 = blocks.res_block("down_res1", 32, 64, 4, down_sample=True, normalizations=[layers.BatchNormalization(),
+                                                                                  layers.BatchNormalization(),
+                                                                                  layers.BatchNormalization()])(con0)
+con1 = blocks.con_block("con1", 128, normalization=layers.BatchNormalization())(con1)
+con1 = blocks.res_block("res1", 32, 128, 4, normalizations=[layers.BatchNormalization(),
+                                                            layers.BatchNormalization(),
+                                                            layers.BatchNormalization()])(con1)
 
-a = 8
+model = Model(x, con1)
+
+utils.plot_model(model, show_shapes=True)
