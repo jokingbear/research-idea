@@ -33,7 +33,7 @@ def res_block(x, n_group, bottleneck, down_sample=False, normalizations=(None, N
 
     con = con_block(x, n_group * bottleneck, kernel=1, normalization=normalizations[0])
     con = group_block(con, n_group, bottleneck, stride=2 if down_sample else 1, normalization=normalizations[1])
-    con = con_block(con, f, relu=down_sample, normalization=normalizations[-1])
+    con = con_block(con, f, kernel=1, relu=down_sample, normalization=normalizations[-1])
 
     x = layers.MaxPool2D()(x) if down_sample else x
 
