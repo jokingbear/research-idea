@@ -145,4 +145,4 @@ def _route(inputs, n_group, n_iter, bias):
         if i == n_iter - 1:
             return v + bias
 
-        beta = beta + tf.reduce_sum(inputs * v, axis=spatial+[-1], keepdims=True)
+        beta = beta + tf.reduce_sum(inputs * v, axis=-1, keepdims=True)
