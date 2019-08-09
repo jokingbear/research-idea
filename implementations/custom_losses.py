@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from keras import losses
+losses = tf.keras.losses
 
 
 def focal_loss(gamma=2):

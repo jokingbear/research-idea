@@ -1,11 +1,14 @@
 import tensorflow as tf
 
 
-def binary_dice_coefficient_metrics(axis=(1, 2), smooth=1, cast=True, threshold=0.5):
+def binary_dice_coefficient_metrics(smooth=1, cast=True, threshold=0.5):
 
     def dice_coefficient(y_true, y_pred):
         if cast:
             y_pred = tf.cast(y_pred >= threshold, tf.float32)
+
+        spatial_shape = y_pred.shape.as_list()[1:-1]
+        axis = [i + 1 for i in range(spatial_shape)]
 
         p = tf.reduce_sum(y_true * y_pred, axis=axis)
         s = tf.reduce_sum(y_true + y_pred, axis=axis)
@@ -17,7 +20,7 @@ def binary_dice_coefficient_metrics(axis=(1, 2), smooth=1, cast=True, threshold=
     return dice_coefficient
 
 
-def cat_dice_coefficient_metrics(axis=(1, 2), smooth=1, cast=True):
+def cat_dice_coefficient_metrics(smooth=1, cast=True):
 
     def dice_coefficient(y_true, y_pred):
         if cast:
@@ -26,6 +29,9 @@ def cat_dice_coefficient_metrics(axis=(1, 2), smooth=1, cast=True):
 
         y_pred = y_pred[..., 1:]
         y_true = y_true[..., 1:]
+
+        spatial_shape = y_pred.shape.as_list()[1:-1]
+        axis = [i + 1 for i in range(len(spatial_shape))]
 
         p = tf.reduce_sum(y_true * y_pred, axis=axis)
         s = tf.reduce_sum(y_true + y_pred, axis=axis)
