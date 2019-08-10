@@ -39,10 +39,10 @@ class GroupConv2D(layers.Layer):
     def compute_output_shape(self, input_shape):
         h, w, _ = input_shape[1:]
         kh, kw = self.kernel_sizes
-        
+
         h = utils.conv_output_length(h, kh, self.padding, self.strides[0])
         w = utils.conv_output_length(w, kw, self.padding, self.strides[1])
-        
+
         return None, h, w, self.n_group * self.n_filter
 
     def call(self, inputs, **kwargs):
@@ -92,13 +92,13 @@ class GroupRouting2D(layers.Layer):
 
 
 def _build_native(layer, input_shape):
-    kh, kw = layer.kernel_sizes
+    ks = list(layer.kernel_sizes)
     gp = input_shape[-1]
     g = layer.n_group
     p = gp // g
     f = layer.n_filter
 
-    ws = [layer.add_weight(f"weights_{i}", [kh, kw, p, f],
+    ws = [layer.add_weight(f"weights_{i}", ks + [p, f],
                            initializer=layer.kernel_initializer) for i in range(g)]
 
     # (k, k, p, gf)
@@ -106,23 +106,23 @@ def _build_native(layer, input_shape):
 
 
 def _build_non_native(layer, input_shape):
-        kh, kw = layer.kernel_sizes
-        gp = input_shape[-1]
-        g = layer.n_group
-        p = gp // g
-        f = layer.n_filter
+    ks = list(layer.kernel_sizes)
+    gp = input_shape[-1]
+    g = layer.n_group
+    p = gp // g
+    f = layer.n_filter
 
-        ws = []
-        for i in range(g):
-            w = layer.add_weight(f"weights_{i}", [kh, kw, p, f], initializer=layer.kernel_initializer)
+    ws = []
+    for i in range(g):
+        w = layer.add_weight(f"weights_{i}", ks + [p, f], initializer=layer.kernel_initializer)
 
-            # (kh, kw, gp, f)
-            w = tf.pad(w, [[0, 0], [0, 0], [i * p, (g - 1 - i) * p], [0, 0]])
+        # (kh, kw, gp, f)
+        w = tf.pad(w, [[0, 0], [0, 0], [i * p, (g - 1 - i) * p], [0, 0]])
 
-            ws.append(w)
+        ws.append(w)
 
-        # (k, k, gp, gf)
-        layer.w = K.concatenate(ws)
+    # (k, k, gp, gf)
+    layer.w = K.concatenate(ws)
 
 
 def _route(inputs, n_group, n_iter, bias):
