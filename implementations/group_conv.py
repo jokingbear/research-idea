@@ -28,11 +28,7 @@ class GroupConv2D(layers.Layer):
         super().__init__(**kwargs)
 
     def build(self, input_shape):
-        if tf_native:
-            _build_native(self, input_shape)
-        else:
-            _build_non_native(self, input_shape)
-
+        _build_native(self, input_shape) if tf_native else _build_non_native(self, input_shape)
         g = self.n_group
         f = self.n_filter
 
@@ -143,6 +139,6 @@ def _route(inputs, n_group, n_iter, bias):
         v = tf.reduce_sum(inputs * alpha, axis=-2, keepdims=True)
 
         if i == n_iter - 1:
-            return v + bias
+            return v[..., 0, :] + bias
 
         beta = beta + tf.reduce_sum(inputs * v, axis=-1, keepdims=True)
