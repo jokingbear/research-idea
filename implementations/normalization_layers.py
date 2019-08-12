@@ -5,12 +5,14 @@ from keras import backend as K, layers, initializers
 
 class GroupNorm(layers.Layer):
 
-    def __init__(self, n_groups,
-                 gamma_initializer="ones", **kwargs):
-        self.n_groups = n_groups
+    def __init__(self, n_group, gamma_initializer="ones", **kwargs):
+        self.n_group = n_group
         self.gamma_initializer = initializers.get(gamma_initializer)
 
         super().__init__(**kwargs)
+
+        self.gamma = None
+        self.beta = None
 
     def build(self, input_shape):
         gp = input_shape[-1]
@@ -24,7 +26,7 @@ class GroupNorm(layers.Layer):
         shape = inputs.shape.as_list()
         spatial_shape = shape[1:-1]
         gp = shape[-1]
-        g = self.n_groups
+        g = self.n_group
         spatial_axis = [i + 1 for i in range(len(spatial_shape))]
         x = K.reshape(inputs, [-1] + spatial_shape + [g, gp // g])
 
@@ -35,4 +37,3 @@ class GroupNorm(layers.Layer):
         x = tf.reshape(x, [-1] + shape[1:])
 
         return x * self.gamma + self.beta
-

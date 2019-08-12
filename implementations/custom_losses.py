@@ -54,4 +54,3 @@ def bce_dice(y_true, y_pred):
 
 def ce_dice(y_true, y_pred):
     return losses.categorical_crossentropy(y_true, y_pred) + dice_loss()(y_true, y_pred)
-

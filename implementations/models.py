@@ -11,15 +11,16 @@ def routing_encoder(input_shape=(512, 512, 1), f=32, n_block=3, n_group=32, retu
     con0 = blocks.con_block(x, f, normalization=GroupNorm(n_norm))
 
     con = con0
-    cons = []
+    cons = [con0]
     for i in range(n_block):
-        con = blocks.res_block_routing(con, n_group, bottleneck, down_sample=True,
-                                       normalizations=[GroupNorm(n_norm * n_group), GroupNorm(n_norm * n_group),
-                                                       GroupNorm(n_norm)])
+        normalizations = [GroupNorm(n_norm * n_group), GroupNorm(n_norm * n_group), GroupNorm(n_norm)]
+        con = blocks.res_block_routing(con, n_group, bottleneck, down_sample=True, normalizations=normalizations)
+
         con = blocks.con_block(con, 2 * f, normalization=GroupNorm(n_norm))
-        con = blocks.res_block_routing(con, n_group, bottleneck,
-                                       normalizations=[GroupNorm(n_norm * n_group), GroupNorm(n_norm * n_group),
-                                                       GroupNorm(n_norm)])
+
+        normalizations = [GroupNorm(n_norm * n_group), GroupNorm(n_norm * n_group), GroupNorm(n_norm)]
+        con = blocks.res_block_routing(con, n_group, bottleneck, normalizations=normalizations)
+
         f = 2 * f
         bottleneck = 2 * bottleneck
         cons.append(con)
