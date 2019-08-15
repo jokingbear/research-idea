@@ -101,7 +101,6 @@ def _build_native(layer, input_shape):
     ws = [layer.add_weight(f"weights_{i}", ks + [p, f],
                            initializer=layer.kernel_initializer) for i in range(g)]
 
-    # (k, k, p, gf)
     layer.w = K.concatenate(ws)
 
 
@@ -121,7 +120,6 @@ def _build_non_native(layer, input_shape):
 
         ws.append(w)
 
-    # (k, k, gp, gf)
     layer.w = K.concatenate(ws)
 
 

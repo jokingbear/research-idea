@@ -1,8 +1,9 @@
-from implementations import blocks, GroupNorm
+from implementations import blocks
 from keras import layers, Model
+from implementations.normalization_layers import GroupNorm
 
 
-def routing_encoder(input_shape=(512, 512, 1), f=32, n_block=3, n_group=32, return_block=False):
+def routing_encoder(input_shape=(512, 512, 1), f=32, n_block=3, n_group=32, return_block=False, name="res_encoder"):
     x = layers.Input(input_shape)
 
     n_norm = 4
@@ -25,4 +26,4 @@ def routing_encoder(input_shape=(512, 512, 1), f=32, n_block=3, n_group=32, retu
         bottleneck = 2 * bottleneck
         cons.append(con)
 
-    return Model(x, cons, name="res_encoder") if return_block else Model(x, con, name="res_encoder")
+    return Model(x, cons if return_block else con, name=name)
