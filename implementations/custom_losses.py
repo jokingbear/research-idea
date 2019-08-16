@@ -8,7 +8,7 @@ def focal_loss(gamma=2):
         prob = tf.reduce_sum(y_true * y_pred, axis=-1)
         prob = tf.clip_by_value(prob, 1E-7, 1 - 1E-7)
 
-        ln = (1 - prob) ** gamma * tf.log(prob)
+        ln = (1 - prob) ** gamma * tf.math.log(prob)
 
         return tf.reduce_mean(-ln)
 
@@ -23,7 +23,7 @@ def binary_focal_loss(gamma=2):
         prob = tf.reduce_sum(y_true * y_pred + (1 - y_true) * (1 - y_pred))
         prob = tf.clip_by_value(prob, 1E-7, 1 - 1E-7)
 
-        ln = (1 - prob) ** gamma * tf.log(prob)
+        ln = (1 - prob) ** gamma * tf.math.log(prob)
 
         return tf.reduce_mean(-ln)
 

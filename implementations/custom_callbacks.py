@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 
-from keras.callbacks import *
+from tensorflow.python.keras.callbacks import *
 
 
 class LRFinder(Callback):

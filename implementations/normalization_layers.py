@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from keras import backend as K, layers, initializers
+from tensorflow.python.keras import layers, initializers
 
 
 class GroupNorm(layers.Layer):
@@ -28,12 +28,15 @@ class GroupNorm(layers.Layer):
         gp = shape[-1]
         g = self.n_group
         spatial_axis = [i + 1 for i in range(len(spatial_shape))]
-        x = K.reshape(inputs, [-1] + spatial_shape + [g, gp // g])
+        x = tf.reshape(inputs, [-1] + spatial_shape + [g, gp // g])
 
-        mean, var = tf.nn.moments(x, spatial_axis + [-1], keep_dims=True)
+        mean, var = tf.nn.moments(x, spatial_axis + [-1], keepdims=True)
 
         x = (x - mean) / (tf.sqrt(var) + 1E-7)
 
         x = tf.reshape(x, [-1] + shape[1:])
 
         return x * self.gamma + self.beta
+
+    def compute_output_signature(self, input_signature):
+        return input_signature

@@ -1,10 +1,10 @@
 import tensorflow as tf
 
-from keras import layers, backend as K, activations, initializers as inits
-from keras.utils import conv_utils as utils
+from tensorflow.python.keras import layers, activations, initializers as inits
+from tensorflow.python.keras.utils import conv_utils as utils
 from implementations.utils import standardize_kernel_stride_dilation
 
-tf_native = False
+tf_native = True
 
 
 class GroupConv2D(layers.Layer):
@@ -36,7 +36,7 @@ class GroupConv2D(layers.Layer):
 
         super().build(input_shape)
 
-    def compute_output_shape(self, input_shape):
+    def compute_output_signature(self, input_shape):
         h, w, _ = input_shape[1:]
         kh, kw = self.kernel_sizes
 
@@ -81,11 +81,12 @@ class GroupRouting2D(layers.Layer):
         super().build(input_shape)
 
     def call(self, inputs, **kwargs):
-        conv = K.conv2d(inputs, self.w, self.strides, padding=self.padding)
+        padding = self.padding.upper()
+        conv = tf.nn.conv2d(inputs, self.w, self.strides, padding=padding)
 
         return _route(conv, self.n_group, self.n_iter, self.b)
 
-    def compute_output_shape(self, input_shape):
+    def compute_output_signature(self, input_shape):
         _, h, w, gp = input_shape
 
         return None, h, w, self.n_filter
@@ -101,7 +102,7 @@ def _build_native(layer, input_shape):
     ws = [layer.add_weight(f"weights_{i}", ks + [p, f],
                            initializer=layer.kernel_initializer) for i in range(g)]
 
-    layer.w = K.concatenate(ws)
+    layer.w = tf.concat(ws, -1)
 
 
 def _build_non_native(layer, input_shape):
@@ -120,7 +121,7 @@ def _build_non_native(layer, input_shape):
 
         ws.append(w)
 
-    layer.w = K.concatenate(ws)
+    layer.w = tf.concat(ws, -1)
 
 
 def _route(inputs, n_group, n_iter, bias):
