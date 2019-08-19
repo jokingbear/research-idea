@@ -168,7 +168,7 @@ class SGDRScheduler(Callback):
         self.model.set_weights(self.best_weights)
 
 
-class FLRScheduler(Callback):
+class FunctionalLRScheduler(Callback):
 
     def __init__(self, schedule_fn, verbose=1, monitor="val_loss"):
         self.schedule_fn = schedule_fn
@@ -180,9 +180,10 @@ class FLRScheduler(Callback):
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
 
+        lr = K.get_value(self.model.optimizer.lr)
         monitor_val = logs[self.monitor]
 
-        new_lr = self.schedule_fn(epoch, monitor_val)
+        new_lr = self.schedule_fn(epoch, lr, monitor_val)
 
         if self.verbose:
             print("Update learning rate to ", new_lr)
