@@ -191,3 +191,27 @@ class FunctionalLRScheduler(Callback):
         K.set_value(self.model.optimizer.lr, new_lr)
 
         logs["lr"] = new_lr
+
+
+class Lookahead(Callback):
+
+    def __init__(self, alpha=0.5, inner_step=5):
+        super().__init__()
+
+        self.alpha = alpha
+        self.inner_step = inner_step
+        self.weights = None
+
+    def on_train_begin(self, logs=None):
+        self.weights = self.model.get_weights()
+
+    def on_batch_end(self, batch, logs=None):
+        self._look_ahead() if batch % self.inner_step == 0 and batch != 0 else None
+
+    def _look_ahead(self):
+        w0s = self.weights
+        w1s = self.model.get_weights()
+        alpha = self.alpha
+
+        self.weights = [w0 + alpha * (w1 - w0) for w0, w1 in zip(w0s, w1s)]
+        self.model.set_weights(self.weights)

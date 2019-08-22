@@ -100,3 +100,20 @@ def scale_res_block(x, n_group, bottleneck, n_iter=3, down_sample=False, normali
     res = layers.concatenate([x, grp])
 
     return res
+
+
+def cse_block(x):
+    c = int(x.shape[-1])
+
+    d = layers.GlobalAvgPool2D()(x)
+    d = layers.Dense(c // 2, kernel_initializer="he_normal")(d)
+    d = activation_layer(d)
+    d = layers.Dense(c, activation="sigmoid")(d)
+
+    return d * x
+
+
+def sse_block(x):
+    con = layers.Conv2D(1, 1, activation="sigmoid")(x)
+
+    return con * x

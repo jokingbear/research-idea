@@ -40,3 +40,11 @@ class GroupNorm(layers.Layer):
 
     def compute_output_signature(self, input_signature):
         return input_signature
+
+    def get_config(self):
+        config = super().get_config()
+
+        config["n_group"] = self.n_group
+        config["gamma_initializer"] = initializers.serialize(self.gamma_initializer)
+
+        return config

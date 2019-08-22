@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from tensorflow.python.keras import layers, activations, initializers as inits
+from tensorflow.python.keras import layers, initializers as inits
 from tensorflow.python.keras.utils import conv_utils as utils
 from implementations.utils import standardize_kernel_stride_dilation
 
@@ -11,7 +11,6 @@ class GroupConv2D(layers.Layer):
 
     def __init__(self, n_group, n_filter, kernel_sizes, strides=(1, 1), padding="same",
                  dilation_rate=None,
-                 activation=None,
                  kernel_initializer="glorot_uniform", **kwargs):
         self.n_group = n_group
         self.n_filter = n_filter
@@ -19,7 +18,6 @@ class GroupConv2D(layers.Layer):
         self.strides = standardize_kernel_stride_dilation(2, "strides", strides)
         self.padding = padding
         self.dilation_rate = standardize_kernel_stride_dilation(2, "dilation_rate", dilation_rate or 1)
-        self.activation = activations.get(activation)
         self.kernel_initializer = inits.get(kernel_initializer)
 
         self.w = None
@@ -51,18 +49,30 @@ class GroupConv2D(layers.Layer):
         padding = self.padding.upper()
         conv = tf.nn.conv2d(inputs, self.w, strides, padding, dilations=dilations)
         conv = conv + self.b
-        conv = self.activation(conv)
 
         return conv
+
+    def get_config(self):
+        config = super().get_config()
+
+        config["n_group"] = self.n_group
+        config["n_filter"] = self.n_filter
+        config["kernel_sizes"] = self.kernel_sizes
+        config["strides"] = self.strides
+        config["padding"] = self.padding
+        config["dilation_rate"] = self.dilation_rate
+        config["kernel_intializer"] = inits.serialize(self.kernel_initializer)
+
+        return config
 
 
 class GroupRouting2D(layers.Layer):
 
-    def __init__(self, n_group, n_filter, kernel_size, strides=1, padding="same", n_iter=3,
+    def __init__(self, n_group, n_filter, kernel_sizes, strides=1, padding="same", n_iter=3,
                  kernel_initializer="he_normal", **kwargs):
         self.n_group = n_group
         self.n_filter = n_filter
-        self.kernel_sizes = standardize_kernel_stride_dilation(2, "kernel", kernel_size)
+        self.kernel_sizes = standardize_kernel_stride_dilation(2, "kernel", kernel_sizes)
         self.strides = standardize_kernel_stride_dilation(2, "stride", strides)
         self.padding = padding
         self.n_iter = n_iter
@@ -90,6 +100,19 @@ class GroupRouting2D(layers.Layer):
         _, h, w, gp = input_shape
 
         return None, h, w, self.n_filter
+
+    def get_config(self):
+        config = super().get_config()
+
+        config["n_group"] = self.n_group
+        config["n_filter"] = self.n_filter
+        config["kernel_sizes"] = self.kernel_sizes
+        config["strides"] = self.strides
+        config["padding"] = self.padding
+        config["n_iter"] = self.n_iter
+        config["kernel_intializer"] = inits.serialize(self.kernel_initializer)
+
+        return config
 
 
 def _build_native(layer, input_shape):
