@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 
-from keras.callbacks import *
+from tensorflow.python.keras.callbacks import *
 
 
 class LRFinder(Callback):
@@ -168,7 +168,7 @@ class SGDRScheduler(Callback):
         self.model.set_weights(self.best_weights)
 
 
-class FLRScheduler(Callback):
+class FunctionalLRScheduler(Callback):
 
     def __init__(self, schedule_fn, verbose=1, monitor="val_loss"):
         self.schedule_fn = schedule_fn
@@ -180,9 +180,10 @@ class FLRScheduler(Callback):
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
 
+        lr = K.get_value(self.model.optimizer.lr)
         monitor_val = logs[self.monitor]
 
-        new_lr = self.schedule_fn(epoch, monitor_val)
+        new_lr = self.schedule_fn(epoch, lr, monitor_val)
 
         if self.verbose:
             print("Update learning rate to ", new_lr)
@@ -190,3 +191,27 @@ class FLRScheduler(Callback):
         K.set_value(self.model.optimizer.lr, new_lr)
 
         logs["lr"] = new_lr
+
+
+class Lookahead(Callback):
+
+    def __init__(self, alpha=0.5, inner_step=5):
+        super().__init__()
+
+        self.alpha = alpha
+        self.inner_step = inner_step
+        self.weights = None
+
+    def on_train_begin(self, logs=None):
+        self.weights = self.model.get_weights()
+
+    def on_batch_end(self, batch, logs=None):
+        self._look_ahead() if batch % self.inner_step == 0 and batch != 0 else None
+
+    def _look_ahead(self):
+        w0s = self.weights
+        w1s = self.model.get_weights()
+        alpha = self.alpha
+
+        self.weights = [w0 + alpha * (w1 - w0) for w0, w1 in zip(w0s, w1s)]
+        self.model.set_weights(self.weights)

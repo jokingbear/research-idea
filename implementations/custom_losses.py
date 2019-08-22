@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-losses = tf.keras.losses
+from tensorflow.python.keras import losses
 
 
 def focal_loss(gamma=2):
@@ -8,7 +8,7 @@ def focal_loss(gamma=2):
         prob = tf.reduce_sum(y_true * y_pred, axis=-1)
         prob = tf.clip_by_value(prob, 1E-7, 1 - 1E-7)
 
-        ln = (1 - prob) ** gamma * tf.log(prob)
+        ln = tf.pow(1 - prob, gamma) * tf.math.log(prob)
 
         return tf.reduce_mean(-ln)
 
@@ -23,23 +23,24 @@ def binary_focal_loss(gamma=2):
         prob = tf.reduce_sum(y_true * y_pred + (1 - y_true) * (1 - y_pred))
         prob = tf.clip_by_value(prob, 1E-7, 1 - 1E-7)
 
-        ln = (1 - prob) ** gamma * tf.log(prob)
+        ln = (1 - prob) ** gamma * tf.math.log(prob)
 
         return tf.reduce_mean(-ln)
 
     return focal
 
 
-def dice_loss(smooth=1, categorical=True):
+def dice_loss(categorical=True, smooth=1, include_batch=False):
     def dice_coeff(y_true, y_pred):
-        shape = y_pred.shape.as_list()[1:-1]
-
         if categorical:
             y_true = y_true[..., 1:]
             y_pred = y_pred[..., 1:]
 
-        p = tf.reduce_sum(y_true * y_pred, axis=shape)
-        s = tf.reduce_sum(y_true + y_pred, axis=shape)
+        spatial_axes = list(range(len(y_pred.shape)))[1:-1]
+        axes = [0] + spatial_axes if include_batch else spatial_axes
+
+        p = tf.reduce_sum(y_true * y_pred, axis=axes)
+        s = tf.reduce_sum(y_true + y_pred, axis=axes)
 
         dice = (2 * p + smooth) / (s + smooth)
 
