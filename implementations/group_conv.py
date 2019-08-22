@@ -11,7 +11,8 @@ class GroupConv2D(layers.Layer):
 
     def __init__(self, n_group, n_filter, kernel_sizes, strides=(1, 1), padding="same",
                  dilation_rate=None,
-                 kernel_initializer="glorot_uniform", **kwargs):
+                 kernel_initializer="glorot_uniform",
+                 use_bias=False, **kwargs):
         self.n_group = n_group
         self.n_filter = n_filter
         self.kernel_sizes = standardize_kernel_stride_dilation(2, "kernel_size", kernel_sizes)
@@ -19,6 +20,7 @@ class GroupConv2D(layers.Layer):
         self.padding = padding
         self.dilation_rate = standardize_kernel_stride_dilation(2, "dilation_rate", dilation_rate or 1)
         self.kernel_initializer = inits.get(kernel_initializer)
+        self.use_bias = use_bias
 
         self.w = None
         self.b = None
@@ -30,7 +32,7 @@ class GroupConv2D(layers.Layer):
         g = self.n_group
         f = self.n_filter
 
-        self.b = self.add_weight("bias", [g * f], initializer="zeros")
+        self.b = self.add_weight("bias", [g * f], initializer="zeros") if self.use_bias else 0
 
         super().build(input_shape)
 
@@ -44,8 +46,8 @@ class GroupConv2D(layers.Layer):
         return None, h, w, self.n_group * self.n_filter
 
     def call(self, inputs, **kwargs):
-        strides = (1,) + self.strides + (1,)
-        dilations = (1,) + self.dilation_rate + (1,)
+        strides = self.strides
+        dilations = self.dilation_rate
         padding = self.padding.upper()
         conv = tf.nn.conv2d(inputs, self.w, strides, padding, dilations=dilations)
         conv = conv + self.b
@@ -62,6 +64,7 @@ class GroupConv2D(layers.Layer):
         config["padding"] = self.padding
         config["dilation_rate"] = self.dilation_rate
         config["kernel_intializer"] = inits.serialize(self.kernel_initializer)
+        config["use_bias"] = self.use_bias
 
         return config
 
@@ -90,6 +93,7 @@ class GroupRouting2D(layers.Layer):
 
         super().build(input_shape)
 
+    @tf.function
     def call(self, inputs, **kwargs):
         padding = self.padding.upper()
         conv = tf.nn.conv2d(inputs, self.w, self.strides, padding=padding)
