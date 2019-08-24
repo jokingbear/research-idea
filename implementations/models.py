@@ -3,7 +3,7 @@ from tensorflow.keras import layers, Model
 from implementations.normalization_layers import GroupNorm
 
 
-def routing_encoder(input_shape=(512, 512, 1), f=32, n_block=3, n_group=32, n_iter=3, with_se=True,
+def routing_encoder(input_shape=(512, 512, 1), f=32, n_block=3, n_group=32, n_iter=3, with_se=False,
                     return_block=False, name="res_encoder"):
     x = layers.Input(input_shape)
 
