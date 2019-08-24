@@ -49,9 +49,15 @@ def dice_loss(categorical=True, smooth=1, include_batch=False):
     return dice_coeff
 
 
-def bce_dice(y_true, y_pred):
-    return losses.binary_crossentropy(y_true, y_pred) + dice_loss(categorical=False)(y_true, y_pred)
+def combine_loss(losses, weights=None):
+    weights = weights if weights else [1] * len(losses)
 
+    def loss(y_true, y_pred):
+        final = losses[0](y_true, y_pred) * weights[0]
 
-def ce_dice(y_true, y_pred):
-    return losses.categorical_crossentropy(y_true, y_pred) + dice_loss()(y_true, y_pred)
+        for l, w in zip(losses[1:], weights[1:]):
+            final = final + l(y_true, y_pred) * w
+
+        return final
+
+    return loss

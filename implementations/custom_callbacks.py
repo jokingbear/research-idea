@@ -78,31 +78,6 @@ class LRFinder(Callback):
         plt.show()
 
 
-class FunctionalLRScheduler(Callback):
-
-    def __init__(self, schedule_fn, verbose=1, monitor="val_loss"):
-        self.schedule_fn = schedule_fn
-        self.verbose = verbose
-        self.monitor = monitor
-
-        super().__init__()
-
-    def on_epoch_end(self, epoch, logs=None):
-        logs = logs or {}
-
-        lr = K.get_value(self.model.optimizer.lr)
-        monitor_val = logs[self.monitor]
-
-        new_lr = self.schedule_fn(epoch, lr, monitor_val)
-
-        if self.verbose:
-            print("Update learning rate to ", new_lr)
-
-        K.set_value(self.model.optimizer.lr, new_lr)
-
-        logs["lr"] = new_lr
-
-
 class Lookahead(Callback):
 
     def __init__(self, alpha=0.5, inner_step=5):
@@ -125,3 +100,24 @@ class Lookahead(Callback):
 
         self.weights = [w0 + alpha * (w1 - w0) for w0, w1 in zip(w0s, w1s)]
         self.model.set_weights(self.weights)
+
+
+class RandomSearchLR(Callback):
+
+    def __init__(self, min_lr=1E-5, max_lr=1E-2, n_epoch=3):
+        super().__init__()
+
+        self.min_lr = min_lr
+        self.max_lr = max_lr
+        self.n_epoch = n_epoch
+        self.init_weights = None
+
+    def on_train_begin(self, logs=None):
+        self.init_weights = self.model.get_weights()
+
+    def on_epoch_begin(self, epoch, logs=None):
+        lr = np.random.uniform(self.min_lr, self.max_lr)
+        K.set_value(self.model.optimizer.lr, lr)
+        print("set lr to ", lr)
+        print("resetting model's weight")
+        self.model.set_weights(self.init_weights)
