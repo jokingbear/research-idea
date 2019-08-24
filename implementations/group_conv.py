@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from tensorflow.python.keras import layers, initializers as inits
+from tensorflow.keras import layers, initializers as inits
 from tensorflow.python.keras.utils import conv_utils as utils
 from implementations.utils import standardize_kernel_stride_dilation
 

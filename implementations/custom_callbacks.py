@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
+import numpy as np
 
-from tensorflow.python.keras.callbacks import *
+from tensorflow.keras.callbacks import Callback
+from tensorflow.keras import backend as K
 
 
 class LRFinder(Callback):
@@ -44,8 +46,7 @@ class LRFinder(Callback):
         return self.min_lr + (self.max_lr - self.min_lr) * x
 
     def on_train_begin(self, logs=None):
-        '''Initialize the learning rate to the minimum value at the start of training.'''
-        logs = logs or {}
+        """Initialize the learning rate to the minimum value at the start of training."""
         K.set_value(self.model.optimizer.lr, self.min_lr)
 
     def on_batch_end(self, epoch, logs=None):

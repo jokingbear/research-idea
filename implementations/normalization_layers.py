@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from tensorflow.python.keras import layers, initializers
+from tensorflow.keras import layers, initializers
 
 
 class GroupNorm(layers.Layer):

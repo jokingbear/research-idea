@@ -1,7 +1,5 @@
 import tensorflow as tf
 
-from tensorflow.python.keras import losses
-
 
 def focal_loss(gamma=2):
     def focal(y_true, y_pred):

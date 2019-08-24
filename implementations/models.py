@@ -1,5 +1,5 @@
 from implementations import blocks
-from tensorflow.python.keras import layers, Model
+from tensorflow.keras import layers, Model
 from implementations.normalization_layers import GroupNorm
 
 

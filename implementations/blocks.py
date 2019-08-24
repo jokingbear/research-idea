@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from tensorflow.python.keras import layers
+from tensorflow.keras import layers
 from implementations import group_conv as gc
 
 

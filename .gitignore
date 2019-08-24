@@ -6,3 +6,6 @@ tf_logs
 
 .ipynb_checkpoints/
 .project
+
+experiment*
+test*
