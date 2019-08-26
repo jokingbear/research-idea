@@ -37,8 +37,10 @@ def group_block(x, n_group, f, kernel=3, stride=1, dilation=1, relu=True, normal
 
 
 def routing_block(x, n_group, f, relu=True, normalization=None, n_iter=3):
-    con = group_layer(n_group, f, 1, kernel_initializer="he_normal", use_bias=False)(x)
-    con = routing_layer(n_group, n_iter=n_iter)(con)
+    if n_iter == 1:
+        return con_block(x, f, kernel=1, relu=relu, normalization=normalization)
+
+    con = routing_layer(n_group, f, n_iter=n_iter)(x)
     con = normalization(con) if normalization else con
     con = activation_layer(con) if relu else con
 
@@ -50,11 +52,7 @@ def res_block(x, n_group, bottleneck, n_iter=3, down_sample=False, normalization
 
     con = con_block(x, n_group * bottleneck, kernel=1, normalization=normalizations[0])
     con = group_block(con, n_group, bottleneck, stride=2 if down_sample else 1, normalization=normalizations[1])
-
-    if n_iter == 1:
-        con = con_block(con, f, kernel=1, relu=down_sample, normalization=normalizations[-1])
-    else:
-        con = routing_block(con, n_group, f, relu=down_sample, normalization=normalizations[-1], n_iter=n_iter)
+    con = routing_block(con, n_group, f, relu=down_sample, normalization=normalizations[-1], n_iter=n_iter)
 
     x = pooling_layer()(x) if down_sample else x
     res = layers.concatenate([x, con]) if down_sample else layers.add([x, con])
@@ -63,18 +61,16 @@ def res_block(x, n_group, bottleneck, n_iter=3, down_sample=False, normalization
     return res
 
 
-def cse_block(x):
-    c = int(x.shape[-1])
+def res_scale_block(x, n_group, bottleneck, n_iter=3, normalizations=(None, None, None)):
+    f = x.shape[-1]
+    sg = n_group // 4
+    b = bottleneck
 
-    d = layers.GlobalAvgPool2D()(x)
-    d = layers.Dense(c // 2, kernel_initializer="he_normal")(d)
-    d = activation_layer(d)
-    d = layers.Dense(c, activation="sigmoid")(d)
+    cons = [con_block(x, sg * b, kernel=1, normalization=normalizations[0]()) for i in range(4)]
+    cons = [group_block(c, sg, b, stride=2, normalization=normalizations[1](), dilation=6*i + 1)
+            for i, c in zip(range(4), cons)]
+    cons = [routing_block(c, sg, f // 4, normalization=normalizations[-1](), n_iter=n_iter) for c in cons]
 
-    return d * x
+    x = pooling_layer()(x)
 
-
-def sse_block(x):
-    con = layers.Conv2D(1, 1, activation="sigmoid")(x)
-
-    return con * x
+    return layers.concatenate([x, *cons])
