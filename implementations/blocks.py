@@ -1,5 +1,3 @@
-import tensorflow as tf
-
 from tensorflow.keras import layers
 from implementations import group_conv as gc
 
@@ -8,7 +6,7 @@ con_layer = layers.Conv2D
 decon_layer = layers.Conv2DTranspose
 group_layer = gc.GroupConv2D
 routing_layer = gc.DynamicRouting
-pooling_layer = layers.MaxPool2D
+pooling_layer = layers.AveragePooling2D
 
 
 def activation_layer(x): return layers.ReLU(negative_slope=0.2)(x)
@@ -56,8 +54,7 @@ def res_block(x, n_group, bottleneck, n_iter=3, down_sample=False, normalization
     if n_iter == 1:
         con = con_block(con, f, kernel=1, relu=down_sample, normalization=normalizations[-1])
     else:
-        con = routing_block(con, n_group, f, relu=down_sample, normalization=normalizations[-1],
-                            n_iter=n_iter)
+        con = routing_block(con, n_group, f, relu=down_sample, normalization=normalizations[-1], n_iter=n_iter)
 
     x = pooling_layer()(x) if down_sample else x
     res = layers.concatenate([x, con]) if down_sample else layers.add([x, con])
