@@ -13,7 +13,7 @@ def activation_layer(x): return layers.ReLU(negative_slope=0.2)(x)
 
 
 def con_block(x, f, kernel=3, stride=1, relu=True, normalization=None):
-    con = con_layer(f, kernel, strides=stride, padding="same", kernel_initializer="he_normal")(x)
+    con = con_layer(f, kernel, strides=stride, padding="same", kernel_initializer="he_normal", use_bias=False)(x)
     con = normalization(con) if normalization else con
     con = activation_layer(con) if relu else con
 
@@ -21,7 +21,7 @@ def con_block(x, f, kernel=3, stride=1, relu=True, normalization=None):
 
 
 def decon_block(x, f, kernel=3, stride=2, relu=True, normalization=None):
-    decon = decon_layer(f, kernel, strides=stride, padding="same", kernel_initializer="he_normal")(x)
+    decon = decon_layer(f, kernel, strides=stride, padding="same", kernel_initializer="he_normal", use_bias=False)(x)
     decon = normalization(decon) if normalization else decon
     decon = activation_layer(decon) if relu else decon
 
@@ -29,7 +29,8 @@ def decon_block(x, f, kernel=3, stride=2, relu=True, normalization=None):
 
 
 def group_block(x, n_group, f, kernel=3, stride=1, dilation=1, relu=True, normalization=None):
-    con = group_layer(n_group, f, kernel, strides=stride, dilations=dilation, kernel_initializer="he_normal")(x)
+    con = group_layer(n_group, f, kernel, strides=stride, dilations=dilation, kernel_initializer="he_normal",
+                      use_bias=False)(x)
     con = normalization(con) if normalization else con
     con = activation_layer(con) if relu else con
 
@@ -40,7 +41,7 @@ def routing_block(x, n_group, f, relu=True, normalization=None, n_iter=3):
     if n_iter == 1:
         return con_block(x, f, kernel=1, relu=relu, normalization=normalization)
 
-    con = routing_layer(n_group, f, n_iter=n_iter)(x)
+    con = routing_layer(n_group, f, n_iter=n_iter, use_bias=False)(x)
     con = normalization(con) if normalization else con
     con = activation_layer(con) if relu else con
 
