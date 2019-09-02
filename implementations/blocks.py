@@ -70,7 +70,7 @@ def res_scale_block(x, n_group, bottleneck, n_iter=3, normalizations=(None, None
     cons = [con_block(x, sg * b, kernel=1, normalization=normalizations[0]()) for i in range(4)]
     cons = [group_block(c, sg, b, stride=2, normalization=normalizations[1](), dilation=6*i + 1)
             for i, c in zip(range(4), cons)]
-    cons = [routing_block(c, sg, f // 4, normalization=normalizations[-1](), n_iter=n_iter) for c in cons]
+    cons = [routing_block(c, sg, f, normalization=normalizations[-1](), n_iter=n_iter) for c in cons]
 
     x = pooling_layer()(x)
 

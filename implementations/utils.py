@@ -17,13 +17,16 @@ def standardize_kernel_stride_dilation(dimensions, check_type, value):
 def up_sample(data, n_sample):
     n = len(data)
 
+    if n_sample == n:
+        return np.random.choice(data, size=n, replace=False)
+
     n_repeat = n_sample // n
     n_add = n_sample % n
 
     repeats = [np.random.choice(data, size=n, replace=False) for _ in range(n_repeat)]
     adds = [np.random.choice(data, size=n_add, replace=False)]
 
-    return np.concatenate(repeats + adds)
+    return np.concatenate(repeats + adds, axis=0)
 
 
 def normalize_img(img):
