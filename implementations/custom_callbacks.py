@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
+import numpy as np
 
-from tensorflow.python.keras.callbacks import *
+from tensorflow.keras.callbacks import Callback
+from tensorflow.keras import backend as K
 
 
 class LRFinder(Callback):
@@ -44,8 +46,7 @@ class LRFinder(Callback):
         return self.min_lr + (self.max_lr - self.min_lr) * x
 
     def on_train_begin(self, logs=None):
-        '''Initialize the learning rate to the minimum value at the start of training.'''
-        logs = logs or {}
+        """Initialize the learning rate to the minimum value at the start of training."""
         K.set_value(self.model.optimizer.lr, self.min_lr)
 
     def on_batch_end(self, epoch, logs=None):
@@ -78,121 +79,6 @@ class LRFinder(Callback):
         plt.show()
 
 
-class SGDRScheduler(Callback):
-    """Cosine annealing learning rate scheduler with periodic restarts.
-    # Usage
-        ```python
-            schedule = SGDRScheduler(min_lr=1e-5,
-                                     max_lr=1e-2,
-                                     steps_per_epoch=np.ceil(epoch_size/batch_size),
-                                     lr_decay=0.9,
-                                     cycle_length=5,
-                                     mult_factor=1.5)
-            model.fit(X_train, Y_train, epochs=100, callbacks=[schedule])
-        ```
-    # Arguments
-        min_lr: The lower bound of the learning rate range for the experiment.
-        max_lr: The upper bound of the learning rate range for the experiment.
-        steps_per_epoch: Number of mini-batches in the dataset. Calculated as `np.ceil(epoch_size/batch_size)`.
-        lr_decay: Reduce the max_lr after the completion of each cycle.
-                  Ex. To reduce the max_lr by 20% after each cycle, set this value to 0.8.
-        cycle_length: Initial number of epochs in a cycle.
-        mult_factor: Scale epochs_to_restart after each full cycle completion.
-    # References
-        Blog post: jeremyjordan.me/nn-learning-rate
-        Original paper: http://arxiv.org/abs/1608.03983
-    """
-    def __init__(self,
-                 min_lr,
-                 max_lr,
-                 steps_per_epoch,
-                 lr_decay=1,
-                 cycle_length=10,
-                 mult_factor=2,
-                 save_on_reset=False,
-                 prefix="Model"):
-
-        self.min_lr = min_lr
-        self.max_lr = max_lr
-        self.lr_decay = lr_decay
-
-        self.batch_since_restart = 0
-        self.next_restart = cycle_length
-
-        self.steps_per_epoch = steps_per_epoch
-
-        self.cycle_length = cycle_length
-        self.mult_factor = mult_factor
-
-        self.save_on_reset = save_on_reset
-        self.prefix = prefix
-
-        self.history = {}
-
-        super().__init__()
-
-    def clr(self):
-        """Calculate the learning rate."""
-        fraction_to_restart = self.batch_since_restart / (self.steps_per_epoch * self.cycle_length)
-        lr = self.min_lr + 0.5 * (self.max_lr - self.min_lr) * (1 + np.cos(fraction_to_restart * np.pi))
-        return lr
-
-    def on_train_begin(self, logs=None):
-        """Initialize the learning rate to the minimum value at the start of training."""
-        K.set_value(self.model.optimizer.lr, self.max_lr)
-
-    def on_batch_end(self, batch, logs=None):
-        """Record previous batch statistics and update the learning rate."""
-        logs = logs or {}
-        self.history.setdefault('lr', []).append(K.get_value(self.model.optimizer.lr))
-        for k, v in logs.items():
-            self.history.setdefault(k, []).append(v)
-
-        self.batch_since_restart += 1
-        K.set_value(self.model.optimizer.lr, self.clr())
-
-    def on_epoch_end(self, epoch, logs=None):
-        """Check for end of current cycle, apply restarts when necessary."""
-        if epoch + 1 == self.next_restart:
-            self.batch_since_restart = 0
-            self.cycle_length = np.ceil(self.cycle_length * self.mult_factor)
-            self.next_restart += self.cycle_length
-            self.max_lr *= self.lr_decay
-            self.best_weights = self.model.get_weights()
-
-            if self.save_on_reset:
-                self.model.save_weights(f"{self.prefix}-{epoch}")
-
-    def on_train_end(self, logs=None):
-        """Set weights to the values from the end of the most recent cycle for best performance."""
-        self.model.set_weights(self.best_weights)
-
-
-class FunctionalLRScheduler(Callback):
-
-    def __init__(self, schedule_fn, verbose=1, monitor="val_loss"):
-        self.schedule_fn = schedule_fn
-        self.verbose = verbose
-        self.monitor = monitor
-
-        super().__init__()
-
-    def on_epoch_end(self, epoch, logs=None):
-        logs = logs or {}
-
-        lr = K.get_value(self.model.optimizer.lr)
-        monitor_val = logs[self.monitor]
-
-        new_lr = self.schedule_fn(epoch, lr, monitor_val)
-
-        if self.verbose:
-            print("Update learning rate to ", new_lr)
-
-        K.set_value(self.model.optimizer.lr, new_lr)
-
-        logs["lr"] = new_lr
-
-
 class Lookahead(Callback):
 
     def __init__(self, alpha=0.5, inner_step=5):
@@ -215,3 +101,24 @@ class Lookahead(Callback):
 
         self.weights = [w0 + alpha * (w1 - w0) for w0, w1 in zip(w0s, w1s)]
         self.model.set_weights(self.weights)
+
+
+class RandomSearchLR(Callback):
+
+    def __init__(self, min_lr=1E-5, max_lr=1E-2, n_epoch=3):
+        super().__init__()
+
+        self.min_lr = min_lr
+        self.max_lr = max_lr
+        self.n_epoch = n_epoch
+        self.init_weights = None
+
+    def on_train_begin(self, logs=None):
+        self.init_weights = self.model.get_weights()
+
+    def on_epoch_begin(self, epoch, logs=None):
+        lr = np.random.uniform(self.min_lr, self.max_lr)
+        K.set_value(self.model.optimizer.lr, lr)
+        print("set lr to ", lr)
+        print("resetting model's weight")
+        self.model.set_weights(self.init_weights)
