@@ -98,7 +98,7 @@ class Trainer:
 
     def get_logs(self, running_metrics, prefix=None):
         prefix = prefix or "training"
-        names = ["loss"] + [m.name for m in self.metrics]
+        names = ["loss"] + [m.__name__ for m in self.metrics]
         logs = {f"{prefix}_{m}": m_val for m, m_val in zip(names, running_metrics)}
         msg = ", ".join([f"{name}: {logs[name]:.4f}" for name in logs.keys()])
 
