@@ -48,7 +48,7 @@ class Trainer:
                 loss.backward()
                 self.optimizer.step()
 
-                current_metrics = self.get_metrics(float(loss), y, y_pred)
+                current_metrics = self.get_metrics(loss, y, y_pred)
                 running_metrics = self.get_running_metrics(i, running_metrics, current_metrics)
 
                 logs, logs_msg = self.get_logs(running_metrics)

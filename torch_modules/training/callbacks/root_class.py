@@ -16,7 +16,7 @@ class Callback:
     def on_batch_end(self, batch, logs=None):
         pass
 
-    def on_epoch_end(self, batch, logs=None):
+    def on_epoch_end(self, epoch, logs=None):
         pass
 
     def on_train_end(self):

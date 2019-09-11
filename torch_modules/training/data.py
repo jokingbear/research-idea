@@ -13,12 +13,12 @@ class Sequence(dt.Dataset):
     def __getitem__(self, idx):
         xs, ys = self.get_item(idx)
 
-        if xs is list:
+        if type(xs) is list:
             xs = [torch.from_numpy(x).type(self.x_type) for x in xs]
         else:
             xs = torch.from_numpy(xs).type(self.x_type)
 
-        if ys is list:
+        if type(ys) is list:
             ys = [torch.from_numpy(y).type(self.y_type) for y in ys]
         else:
             ys = torch.from_numpy(ys).type(self.y_type)
