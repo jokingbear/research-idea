@@ -10,12 +10,13 @@ class Trainer:
         self.optimizer = optimizer
         self.loss = loss
         self.metrics = metrics or []
+        self.train_mode = True
 
     def fit(self, train, test=None, epochs=1, callbacks=None, pbar=None):
         callbacks = callbacks or []
         pbar = pbar or tqdm
 
-        [c.set_model_optimizer(self.model, self.optimizer) for c in callbacks]
+        [c.set_model_optimizer_trainer(self.model, self.optimizer, self) for c in callbacks]
         [c.on_train_begin() for c in callbacks]
 
         for e in range(epochs):
@@ -30,6 +31,9 @@ class Trainer:
             [c.on_epoch_end(e, logs) for c in callbacks]
             train.on_epoch_end()
             test.on_epoch_end() if test is not None else None
+
+            if not self.train_mode:
+                break
 
         [c.on_train_end() for c in callbacks]
 
@@ -81,8 +85,8 @@ class Trainer:
         return {**logs, **val_logs}
 
     def get_metrics(self, loss, y, y_pred):
-        metrics = [m(y, y_pred) for m in self.metrics]
-        metrics = [loss] + metrics
+        metrics = [float(m(y, y_pred)) for m in self.metrics]
+        metrics = [float(loss)] + metrics
 
         return np.array(metrics)
 

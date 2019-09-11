@@ -1,6 +1,7 @@
 class Callback:
 
     def __init__(self):
+        self.trainer = None
         self.model = None
         self.optimizer = None
 
@@ -22,6 +23,7 @@ class Callback:
     def on_train_end(self):
         pass
 
-    def set_model_optimizer(self, model, optimizer):
+    def set_model_optimizer_trainer(self, model, optimizer, trainer):
         self.model = model
         self.optimizer = optimizer
+        self.trainer = trainer
