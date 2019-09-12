@@ -40,6 +40,7 @@ class Trainer:
     def train_one_epoch(self, train, pbar, callbacks):
         n = len(train)
         running_metrics = np.zeros(shape=len(callbacks) + 1)
+        model = self.model.train()
 
         with pbar(total=n) as pbar:
             for i in range(n):
@@ -47,7 +48,7 @@ class Trainer:
                 [c.on_batch_begin(i) for c in callbacks]
 
                 self.optimizer.zero_grad()
-                y_pred = self.model(X)
+                y_pred = model(X)
                 loss = self.loss(y, y_pred)
                 loss.backward()
                 self.optimizer.step()
@@ -69,10 +70,11 @@ class Trainer:
 
         val_logs = {}
         logs_msg = None
+        model = self.model.eval()
 
         for i in range(n):
             X, y = test[i]
-            y_pred = self.model(X)
+            y_pred = model(X)
             loss = self.loss(y, y_pred)
 
             metrics = self.get_metrics(loss, y, y_pred)
