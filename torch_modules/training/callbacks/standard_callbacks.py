@@ -15,12 +15,12 @@ class ReduceLROnPlateau(Callback):
         self.patience = patience
         self.mode = mode
         self.factor = factor
-        self.verbose = verbose
+        self.verbose = verbose > 0
         self.scheduler = None
 
     def on_train_begin(self):
         self.scheduler = schedulers.ReduceLROnPlateau(self.optimizer, mode=self.mode, factor=self.factor,
-                                                      patience=self.patience, verbose=self.verbose > 0)
+                                                      patience=self.patience, verbose=self.verbose)
 
     def on_epoch_end(self, epoch, logs=None):
         self.scheduler.step(logs[self.monitor])
@@ -45,12 +45,16 @@ class EarlyStopping(Callback):
         self.monitor_val = np.inf if self.mode == "min" else -np.inf
 
     def on_epoch_end(self, epoch, logs=None):
-        monitor_val = float(logs[self.monitor_val])
+        monitor_val = float(logs[self.monitor])
 
-        if self.monitor_val < monitor_val and self.mode == "max":
+        is_max = self.monitor_val < monitor_val and self.mode == "max"
+        is_min = self.monitor_val > monitor_val and self.mode == "min"
+
+        reset_counter = is_max or is_min
+
+        if reset_counter:
             self.monitor_val = monitor_val
-        elif self.monitor_val > monitor_val and self.mode == "min":
-            self.monitor_val = monitor_val
+            self.patience_count = 0
         else:
             self.patience_count += 1
             print(f"model didn't improve from {self.monitor_val:.04f}") if self.verbose else None
@@ -91,7 +95,7 @@ class ModelCheckpoint(Callback):
         is_save = not self.save_best_only or is_min or is_max
 
         if is_save:
-            save_obj = self.model.state_dict if self.save_weights_only else self.model
+            save_obj = self.model.state_dict() if self.save_weights_only else self.model
 
             print("saving model to ", self.filepath) if self.verbose else None
             torch.save(save_obj, self.filepath)
@@ -111,13 +115,13 @@ class Lookahead(Callback):
     def on_train_begin(self):
         d = self.model.state_dict()
 
-        self.parameters = [d[k].numpy() for k in d]
+        self.parameters = [d[k].cpu().numpy() for k in d]
 
     def on_batch_end(self, batch, logs=None):
         if batch % self.inner_step == 0 and batch != 0:
             w0s = self.parameters
             p1 = self.model.state_dict()
-            w1s = [p1[k].numpy() for k in p1]
+            w1s = [p1[k].cpu().numpy() for k in p1]
             alpha = self.alpha
 
             ws = [w0 + alpha * (w1 - w0) for w0, w1 in zip(w0s, w1s)]

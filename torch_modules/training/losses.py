@@ -12,7 +12,7 @@ def focal_loss_fn(gamma=2):
 
         ln = torch.pow(1 - prob, gamma) * torch.log(prob)
 
-        return torch.mean(ln, dim=(0,))
+        return torch.mean(-ln)
 
     return focal_loss
 

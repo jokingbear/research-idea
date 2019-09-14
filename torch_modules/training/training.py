@@ -39,10 +39,10 @@ class Trainer:
 
     def train_one_epoch(self, train, pbar, callbacks):
         n = len(train)
-        running_metrics = np.zeros(shape=len(callbacks) + 1)
+        running_metrics = np.zeros(shape=len(self.metrics) + 1)
         model = self.model.train()
 
-        with pbar(total=n) as pbar:
+        with pbar(total=n, desc="training") as pbar:
             for i in range(n):
                 X, y = train[i]
                 [c.on_batch_begin(i) for c in callbacks]
@@ -72,17 +72,18 @@ class Trainer:
         logs_msg = None
         model = self.model.eval()
 
-        for i in range(n):
-            X, y = test[i]
-            y_pred = model(X)
-            loss = self.loss(y, y_pred)
+        with pbar(total=n, desc="evaluating") as pbar:
+            for i in range(n):
+                X, y = test[i]
+                y_pred = model(X)
+                loss = self.loss(y, y_pred)
 
-            metrics = self.get_metrics(loss, y, y_pred)
-            running_metrics = self.get_running_metrics(i, running_metrics, metrics)
-            val_logs, logs_msg = self.get_logs(running_metrics, prefix="val")
-            pbar.update(1)
+                metrics = self.get_metrics(loss, y, y_pred)
+                running_metrics = self.get_running_metrics(i, running_metrics, metrics)
+                val_logs, logs_msg = self.get_logs(running_metrics, prefix="val")
+                pbar.update(1)
 
-        pbar.set_postfix_str(logs_msg)
+            pbar.set_postfix_str(logs_msg)
 
         return {**logs, **val_logs}
 
