@@ -6,22 +6,24 @@ from abc import abstractmethod
 
 class Sequence(dt.Dataset):
 
-    def __init__(self, x_type=torch.FloatTensor, y_type=torch.LongTensor):
+    def __init__(self, x_type=torch.float, y_type=torch.long, x_gpu=None, y_gpu=None):
         self.x_type = x_type
         self.y_type = y_type
+        self.x_gpu = x_gpu
+        self.y_gpu = y_gpu
 
     def __getitem__(self, idx):
         xs, ys = self.get_item(idx)
 
         if type(xs) is list:
-            xs = [torch.from_numpy(x).type(self.x_type) for x in xs]
+            xs = [_init_tensor_from_numpy(x, self.x_type, self.x_gpu) for x in xs]
         else:
-            xs = torch.from_numpy(xs).type(self.x_type)
+            xs = _init_tensor_from_numpy(xs, self.x_type, self.x_gpu)
 
         if type(ys) is list:
-            ys = [torch.from_numpy(y).type(self.y_type) for y in ys]
+            ys = [_init_tensor_from_numpy(y, self.y_type, self.y_gpu) for y in ys]
         else:
-            ys = torch.from_numpy(ys).type(self.y_type)
+            ys = _init_tensor_from_numpy(ys, self.y_type, self.y_gpu)
 
         return xs, ys
 
@@ -39,3 +41,7 @@ class Sequence(dt.Dataset):
     @abstractmethod
     def on_epoch_end(self):
         pass
+
+
+def _init_tensor_from_numpy(numpy_val, dtype, gpu):
+    return torch.tensor(numpy_val, dtype=dtype, device=gpu)

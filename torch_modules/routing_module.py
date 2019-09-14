@@ -15,7 +15,7 @@ class DynamicRouting(nn.Module):
         self.kernels = ()
         self.bias = None
 
-        self.build_kernels(fi, fo, n_group)
+        self.build_kernels(fi, fo, n_group)  # TODO: test cuda compatibility
         self.build_bias(fo) if use_bias else None
 
     def forward(self, x):
@@ -46,15 +46,16 @@ class DynamicRouting(nn.Module):
 
     def build_kernels(self, fi, fo, n_group):
         self.kernels = []
+        shape = (fo, fi) + (1,) * rank
 
         for i in range(n_group):
-            val = torch.zeros((fo, fi) + (1,) * rank)
+            val = nn.Parameter(torch.Tensor(*shape))
             val = nn.init.orthogonal_(val)
-            val = nn.Parameter(val)
             self.register_parameter(f"weights_{i}", val)
-            self.kernels.append(nn.Parameter(val))
+            self.kernels.append(val)
 
     def build_bias(self, fo):
         bias = nn.Parameter(torch.zeros(fo))
 
         self.bias = bias
+
