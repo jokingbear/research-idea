@@ -25,7 +25,7 @@ def get_normalization_layer(normalization):
 
 class ConvModule(nn.Module):
 
-    def __init__(self, fi, fo, n_group=1, kernel=3, strides=1, padding=0, dilations=1,
+    def __init__(self, fi, fo, n_group=1, kernel=3, strides=1, padding=1, dilations=1,
                  activation=True, normalization=None):
         super().__init__()
 
@@ -46,10 +46,10 @@ class ConvModule(nn.Module):
 
 class DeConvModule(nn.Module):
 
-    def __init__(self, fi, fo, kernel=3, strides=2, activation=True, normalization=None):
+    def __init__(self, fi, fo, kernel=3, strides=2, padding=0, activation=True, normalization=None):
         super().__init__()
 
-        self.con = convt_layer(fi, fo, kernel, stride=strides, bias=normalization is None)
+        self.con = convt_layer(fi, fo, kernel, stride=strides, padding=padding, bias=normalization is None)
 
         self.normalization = get_normalization_layer(normalization)
         self.activation = get_activation_layer(activation)
@@ -103,15 +103,17 @@ class ResidualModule(nn.Module):
     def __init__(self, n_group, fi, bottleneck, n_iter=3, down_sample=False, normalizations=(None, None, None)):
         super().__init__()
 
-        self.con1 = ConvModule(fi, bottleneck * n_group, kernel=1, normalization=normalizations[0])
+        self.con1 = ConvModule(fi, bottleneck * n_group, kernel=1, padding=0, normalization=normalizations[0])
         self.con2 = ConvModule(bottleneck, bottleneck, n_group=n_group,
-                               strides=2 if down_sample else 1, padding=1, normalization=normalizations[1])
+                               strides=2 if down_sample else 1, normalization=normalizations[1])
         self.con3 = RoutingModule(n_group, bottleneck, fi, n_iter=n_iter, activation=down_sample,
                                   normalization=normalizations[-1])
 
         self.res_transform = pooling_layer(kernel_size=2, stride=2) if down_sample else lambda x: x
         self.res_combine = MergeModule(mode="concat" if down_sample else "add")
         self.activation = get_activation_layer(not down_sample)
+
+        self.down_sample = down_sample
 
     def forward(self, x):
         con1 = self.con1(x)
