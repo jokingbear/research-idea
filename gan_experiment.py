@@ -38,7 +38,7 @@ def generator(z_shape=128):
         layers.Dense(7*7*256, kernel_initializer="he_normal", input_shape=(z_shape,)),
         layers.BatchNormalization(),
         layers.ReLU(),
-        layers.Reshape([7, 7, 256], input_shape=(z_shape,)),
+        layers.Reshape([7, 7, 256]),
         layers.Conv2DTranspose(128, 3, strides=2, padding="same", kernel_initializer="he_normal"),
         layers.BatchNormalization(),
         layers.ReLU(),
@@ -113,7 +113,6 @@ for i in range(epochs):
         real_img = train[idc]
         fake_img = g.predict(z)
 
-        img = np.concatenate([real_img, fake_img], axis=0)
         diff.train_on_batch([real_img, fake_img], real)
         diff.train_on_batch([fake_img, real_img], fake)
 

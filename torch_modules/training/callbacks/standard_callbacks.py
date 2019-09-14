@@ -109,18 +109,21 @@ class Lookahead(Callback):
         self.parameters = None
 
     def on_train_begin(self):
-        self.parameters = self.model.state_dict()
+        d = self.model.state_dict()
+
+        self.parameters = [d[k].numpy() for k in d]
 
     def on_batch_end(self, batch, logs=None):
-        if batch % self.inner_step == 0:
-            p0 = self.parameters
-            w0s = p0.values()
+        if batch % self.inner_step == 0 and batch != 0:
+            w0s = self.parameters
             p1 = self.model.state_dict()
-            w1s = p1.values()
+            w1s = [p1[k].numpy() for k in p1]
             alpha = self.alpha
 
-            ws = [w0 + alpha * (w1s - w0s) for w0, w1 in zip(w0s, w1s)]
-            keys = p0.keys()
+            ws = [w0 + alpha * (w1 - w0) for w0, w1 in zip(w0s, w1s)]
+            keys = p1.keys()
 
-            self.parameters = OrderedDict(zip(keys, ws))
-            self.model.load_state_dict(self.parameters)
+            self.parameters = ws
+            ws = [torch.tensor(w) for w in ws]
+            parameters = OrderedDict(zip(keys, ws))
+            self.model.load_state_dict(parameters)
