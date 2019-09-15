@@ -66,3 +66,17 @@ def make_df_from_folder(path, class_label):
         df["class"] = class_label
 
     return df
+
+
+def shuffle_data(x, y=None):
+    n = x.shape[0]
+
+    idc = np.random.choice(n, size=n, replace=False)
+
+    x = x[idc]
+    y = y[idc] if y else None
+
+    if y:
+        return x, y
+
+    return x
