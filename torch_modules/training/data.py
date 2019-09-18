@@ -1,10 +1,9 @@
 import torch
-import torch.utils.data as dt
 
 from abc import abstractmethod
 
 
-class Sequence(dt.Dataset):
+class Sequence:
 
     def __init__(self, x_type=torch.float, y_type=torch.long, x_gpu=None, y_gpu=None):
         self.x_type = x_type
@@ -16,14 +15,14 @@ class Sequence(dt.Dataset):
         xs, ys = self.get_item(idx)
 
         if type(xs) is list:
-            xs = [_init_tensor_from_numpy(x, self.x_type, self.x_gpu) for x in xs]
+            xs = [torch.tensor(x, dtype=self.x_type, device=self.x_gpu) for x in xs]
         else:
-            xs = _init_tensor_from_numpy(xs, self.x_type, self.x_gpu)
+            xs = torch.tensor(xs, dtype=self.x_type, device=self.x_gpu)
 
         if type(ys) is list:
-            ys = [_init_tensor_from_numpy(y, self.y_type, self.y_gpu) for y in ys]
+            ys = [torch.tensor(y, dtype=self.y_type, device=self.y_gpu) for y in ys]
         else:
-            ys = _init_tensor_from_numpy(ys, self.y_type, self.y_gpu)
+            ys = torch.tensor(ys, dtype=self.y_type, device=self.y_gpu)
 
         return xs, ys
 
@@ -42,6 +41,3 @@ class Sequence(dt.Dataset):
     def on_epoch_end(self):
         pass
 
-
-def _init_tensor_from_numpy(numpy_val, dtype, gpu):
-    return torch.tensor(numpy_val, dtype=dtype, device=gpu)
