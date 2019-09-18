@@ -57,7 +57,7 @@ class Trainer:
                 x, y = train[i]
                 [c.on_batch_begin(i) for c in callbacks]
 
-                self.optimizer.zero_grad()
+                model.zero_grad()
                 y_pred = model(x)
                 loss = self.loss(y, y_pred)
                 loss.backward()
