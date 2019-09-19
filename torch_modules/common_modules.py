@@ -9,3 +9,14 @@ class GlobalAverage(nn.Module):
         axes = tuple([2 + i for i in range(rank)])
 
         return torch.mean(x, dim=axes)
+
+
+class Reshape(nn.Module):
+
+    def __init__(self, *shape):
+        super().__init__()
+
+        self.shape = shape
+
+    def forward(self, x):
+        return x.reshape([-1, *self.shape])
