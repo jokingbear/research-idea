@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 
 from tqdm import tqdm
 
@@ -82,10 +83,10 @@ class Trainer:
 
         pbar = pbar or tqdm
 
-        with pbar(total=n, desc="evaluate") as pbar:
+        with pbar(total=n, desc="evaluate") as pbar, torch.no_grad():
             for i in range(n):
-                X, y = test[i]
-                y_pred = model(X)
+                x, y = test[i]
+                y_pred = model(x)
                 loss = self.loss(y, y_pred)
 
                 metrics = self.get_metrics(loss, y, y_pred)
