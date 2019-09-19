@@ -38,6 +38,6 @@ class Sequence:
         pass
 
     @abstractmethod
-    def on_epoch_end(self):
+    def shuffle(self):
         pass
 
