@@ -4,11 +4,16 @@ import torch.nn as nn
 
 class GlobalAverage(nn.Module):
 
-    def forward(self, x):
-        rank = len(x.shape[2:])
-        axes = tuple([2 + i for i in range(rank)])
+    def __init__(self, rank=2):
+        super().__init__()
 
-        return torch.mean(x, dim=axes)
+        self.axes = list(range(2, 2 + rank))
+
+    def forward(self, x):
+        return torch.mean(x, dim=self.axes)
+
+    def extra_repr(self):
+        return f"axes={self.axes}"
 
 
 class Reshape(nn.Module):
@@ -21,6 +26,9 @@ class Reshape(nn.Module):
     def forward(self, x):
         return x.reshape([-1, *self.shape])
 
+    def extra_repr(self):
+        return f"shape={self.shape}"
+
 
 class MergeModule(nn.Module):
 
@@ -30,7 +38,7 @@ class MergeModule(nn.Module):
 
     def forward(self, *xs):
         if self.mode == "concat":
-            return torch.cat(tuple(xs), dim=1)
+            return torch.cat(xs, dim=1)
         else:
             final = xs[0]
 
@@ -38,3 +46,6 @@ class MergeModule(nn.Module):
                 final += x
 
             return final
+
+    def extra_repr(self):
+        return f"mode={self.mode}"
