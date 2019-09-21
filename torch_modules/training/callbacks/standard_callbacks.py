@@ -115,21 +115,19 @@ class Lookahead(Callback):
     def on_train_begin(self):
         d = self.model.state_dict()
 
-        self.parameters = [d[k].clone() for k in d]
+        self.parameters = {k: d[k].clone() for k in d}
 
     def on_batch_end(self, batch, logs=None):
         if batch % self.inner_step == 0 and batch != 0:
-            w0s = self.parameters
-            p1 = self.model.state_dict()
-            w1s = [p1[k] for k in p1]
+            kws0 = self.parameters
+            kws1 = self.model.state_dict()
             alpha = self.alpha
 
-            ws = [w0 + alpha * (w1 - w0) for w0, w1 in zip(w0s, w1s)]
-            keys = p1.keys()
+            kws = [(k, kws0[k] + alpha * (kws1[k] - kws0[k])) for k in kws1]
+            kws = OrderedDict(kws)
 
-            self.parameters = ws
-            parameters = OrderedDict(zip(keys, ws))
-            self.model.load_state_dict(parameters)
+            self.parameters = kws
+            self.model.load_state_dict(kws)
 
     def on_train_end(self):
         self.parameters = None

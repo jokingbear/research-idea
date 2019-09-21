@@ -46,14 +46,15 @@ class Trainer:
         [c.on_train_end() for c in callbacks]
 
     def train_one_epoch(self, train, pbar=None, callbacks=None):
-        n = len(train)
-        running_metrics = np.zeros(shape=len(self.metrics) + 1)
         model = self.model.train()
 
         pbar = pbar or tqdm
+        n = len(train)
         callbacks = callbacks or []
+        metrics_names = ["loss"] + [m.__name__ for m in self.metrics]
+        running_metrics = np.zeros(shape=len(self.metrics) + 1)
 
-        with pbar(total=n, desc="training") as pbar:
+        with pbar(total=n, desc="train") as pbar:
             for i in range(n):
                 x, y = train[i]
                 [c.on_batch_begin(i) for c in callbacks]
@@ -64,24 +65,26 @@ class Trainer:
                 loss.backward()
                 self.optimizer.step()
 
-                current_metrics = self.get_metrics(loss, y, y_pred)
-                running_metrics = get_running_metrics(i, running_metrics, current_metrics)
+                with torch.no_grad():
+                    current_metrics = self.get_metrics(loss, y, y_pred)
+                    running_metrics = get_running_metrics(i, running_metrics, current_metrics)
 
-                logs, logs_msg = self.get_logs(running_metrics)
+                    logs = dict(zip(metrics_names, running_metrics))
 
-                [c.on_batch_end(i, logs) for c in callbacks]
-                pbar.set_postfix_str(logs_msg)
+                    [c.on_batch_end(i, logs) for c in callbacks]
+
+                pbar.set_postfix(logs, refresh=False)
                 pbar.update(1)
 
         return logs
 
     def evaluate_one_epoch(self, test, pbar=None):
-        running_metrics = np.zeros(len(self.metrics) + 1)
-        n = len(test)
-
         model = self.model.eval()
 
         pbar = pbar or tqdm
+        n = len(test)
+        metrics_names = ["val_loss"] + ["val_" + m.__name__ for m in self.metrics]
+        running_metrics = np.zeros(len(self.metrics) + 1)
 
         with pbar(total=n, desc="evaluate") as pbar, torch.no_grad():
             for i in range(n):
@@ -93,8 +96,8 @@ class Trainer:
                 running_metrics = get_running_metrics(i, running_metrics, metrics)
                 pbar.update(1)
 
-            val_logs, logs_msg = self.get_logs(running_metrics, prefix="val")
-            pbar.set_postfix_str(logs_msg)
+            val_logs = dict(zip(metrics_names, running_metrics))
+            pbar.set_postfix(val_logs)
 
         return val_logs
 
@@ -103,11 +106,3 @@ class Trainer:
         metrics = [float(loss)] + metrics
 
         return np.array(metrics)
-
-    def get_logs(self, running_metrics, prefix=None):
-        prefix = f"{prefix}_" if prefix else ""
-        names = ["loss"] + [m.__name__ for m in self.metrics]
-        logs = {prefix + m: m_val for m, m_val in zip(names, running_metrics)}
-        msg = ", ".join([f"{name}: {logs[name]:.4f}" for name in logs.keys()])
-
-        return logs, msg
