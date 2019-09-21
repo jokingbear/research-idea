@@ -1,5 +1,5 @@
 from tensorflow.keras import layers
-from implementations import group_conv as gc
+from tf_modules import group_conv as gc
 
 
 con_layer = layers.Conv2D

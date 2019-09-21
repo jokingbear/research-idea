@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 from tensorflow.keras import layers, initializers as inits
-from implementations.utils import standardize_kernel_stride_dilation
+from tf_modules.utils import standardize_kernel_stride_dilation
 
 
 use_native = False
