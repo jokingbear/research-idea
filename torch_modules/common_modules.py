@@ -37,15 +37,15 @@ class MergeModule(nn.Module):
         self.mode = mode
 
     def forward(self, *xs):
+        if len(xs) == 1:
+            return xs[0]
+
         if self.mode == "concat":
             return torch.cat(xs, dim=1)
+        elif len(xs) == 2:
+            return xs[0] + xs[1]
         else:
-            final = xs[0]
-
-            for x in xs[1:]:
-                final += x
-
-            return final
+            return torch.stack(xs, dim=0).sum(dim=0)
 
     def extra_repr(self):
         return f"mode={self.mode}"

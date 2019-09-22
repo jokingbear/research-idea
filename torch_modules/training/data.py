@@ -29,6 +29,10 @@ class Sequence:
     def __len__(self):
         return self.get_len()
 
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self[i]
+
     @abstractmethod
     def get_len(self):
         pass

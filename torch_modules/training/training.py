@@ -55,21 +55,20 @@ class Trainer:
         running_metrics = np.zeros(shape=len(self.metrics) + 1)
 
         with pbar(total=n, desc="train") as pbar:
-            for i in range(n):
-                x, y = train[i]
+            for i, (x, y) in enumerate(train):
                 [c.on_batch_begin(i) for c in callbacks]
 
-                model.zero_grad()
                 y_pred = model(x)
                 loss = self.loss(y, y_pred)
                 loss.backward()
                 self.optimizer.step()
+                model.zero_grad()
 
                 with torch.no_grad():
                     current_metrics = self.get_metrics(loss, y, y_pred)
-                    running_metrics = get_running_metrics(i, running_metrics, current_metrics)
+                    running_metrics += current_metrics
 
-                    logs = dict(zip(metrics_names, running_metrics))
+                    logs = dict(zip(metrics_names, running_metrics / (i + 1)))
 
                     [c.on_batch_end(i, logs) for c in callbacks]
 
@@ -87,16 +86,15 @@ class Trainer:
         running_metrics = np.zeros(len(self.metrics) + 1)
 
         with pbar(total=n, desc="evaluate") as pbar, torch.no_grad():
-            for i in range(n):
-                x, y = test[i]
+            for i, (x, y) in enumerate(test):
                 y_pred = model(x)
                 loss = self.loss(y, y_pred)
 
                 metrics = self.get_metrics(loss, y, y_pred)
-                running_metrics = get_running_metrics(i, running_metrics, metrics)
+                running_metrics += metrics
                 pbar.update(1)
 
-            val_logs = dict(zip(metrics_names, running_metrics))
+            val_logs = dict(zip(metrics_names, running_metrics / n))
             pbar.set_postfix(val_logs)
 
         return val_logs
