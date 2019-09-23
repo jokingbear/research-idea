@@ -73,12 +73,11 @@ def routing_block(x, n_group, f, n_iter, normalization=None, activation=default_
 
 def res_block(x, n_group, bottleneck, n_iter=3, down_sample=False, normalization=None, activation=default_activation):
     f = int(x.shape[-1])
-    g = n_group
     b = bottleneck
     merge_layer = layers.concatenate if down_sample else layers.add
 
-    con = con_block(x, g * b, kernel=1, normalization=normalization, activation=activation)
-    con = con_block(con, g, b, stride=2 if down_sample else 1, normalization=normalization, activation=activation)
+    con = con_block(x, n_group * b, kernel=1, normalization=normalization, activation=activation)
+    con = con_block(con, b, n_group, stride=2 if down_sample else 1, normalization=normalization, activation=activation)
     con = routing_block(con, n_group, f, n_iter, normalization=normalization,
                         activation=activation if down_sample else None)
 

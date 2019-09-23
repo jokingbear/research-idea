@@ -78,7 +78,8 @@ class GroupConv(layers.Layer):
         fi = int(w.shape[-2])
 
         w = tf.reshape(w, shape=[*ks, -1, g, fo])
-        w = tf.transpose(w, perm=[-2, *range(len(ks)), -3, -1])
+        axes = [*range(len(ks) + 3)]
+        w = tf.transpose(w, perm=[axes[-2], *axes[:-3], axes[-3], axes[-1]])
 
         ws = [tf.pad(w[i], [(0, 0)] * len(ks) + [(i * fi, (g - i - 1) * fi), (0, 0)]) for i in range(g)]
         ws = tf.concat(ws, axis=-1)
@@ -103,9 +104,9 @@ class DynamicRouting(GroupConv):
         kernel_shape = [*ks, g * fi, fo]
 
         self.kernel = self.add_weight("kernel", kernel_shape, initializer=self.kernel_initializer)
-        self.bias = self.add_weight("bias", [fo * g], initializer="zeros") if self.use_bias else None
+        self.bias = self.add_weight("bias", [fo], initializer="zeros") if self.use_bias else None
 
-        super().build(input_shape)
+        self.built = True
 
     def call(self, inputs, **kwargs):
         con = super().call(inputs)
@@ -115,21 +116,21 @@ class DynamicRouting(GroupConv):
         f = self.n_filter
 
         con = tf.reshape(con, [-1, *spatial_shape, g, f])
-        beta = 0
+        beta = 0.
 
         for i in range(self.n_iter):
             alpha = tf.sigmoid(beta)
             v = tf.reduce_sum(alpha * con, axis=-2, keepdims=True)
 
-            if i == self.n_iter:
-                return v
+            if i == self.n_iter - 1:
+                return v[..., 0, :]
 
             beta = beta + tf.reduce_sum(v * con, axis=-1, keepdims=True)
 
     def compute_output_shape(self, input_shape):
-        shape = super().compute_output_shape(input_shape)
+        shape = super().compute_output_shape(input_shape)[:-1]
 
-        shape = [*shape, self.n_filter]
+        shape = (*shape, self.n_filter)
 
         return shape
 
@@ -140,10 +141,11 @@ class DynamicRouting(GroupConv):
         ks = shape[:-2]
         g = self.n_group
         fo = self.n_filter
-        fi = int(w.shape[-2])
+        fi = int(w.shape[-2]) // g
 
         w = tf.reshape(w, shape=[*ks, g, -1, fo])
-        w = tf.transpose(w, perm=[-3, *range(len(ks)), -2, -1])
+        axes = [*range(len(ks) + 3)]
+        w = tf.transpose(w, perm=[axes[-3], *axes[:-3], axes[-2], axes[-1]])
 
         ws = [tf.pad(w[i], [(0, 0)] * len(ks) + [(i * fi, (g - i - 1) * fi), (0, 0)]) for i in range(g)]
         ws = tf.concat(ws, axis=-1)
