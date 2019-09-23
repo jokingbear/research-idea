@@ -18,15 +18,17 @@ def dice_coefficient_fn(n_class=2, rank=2, smooth=1E-7):
     spatial_axes = tuple(range(2, 2 + rank))
 
     def dice_coefficient(y_true, y_pred):
-        p = torch.sum(y_true * y_pred, dim=spatial_axes)
-        s = torch.sum(y_true + y_pred, dim=spatial_axes)
-
         if n_class > 2:
-            p = p[:, 1:, ...]
-            s = s[:, 1:, ...]
+            y_true = y_true[:, 1:, ...]
+            y_pred = y_pred[:, 1:, ...]
+        else:
+            y_pred = (y_pred >= 0.5).type(torch.float)
+
+        p = (y_true * y_pred).sum(dim=spatial_axes)
+        s = (y_true + y_pred).sum(dim=spatial_axes)
 
         dice = (2 * p + smooth) / (s + smooth)
 
-        return torch.mean(dice)
+        return dice.mean()
 
     return dice_coefficient
