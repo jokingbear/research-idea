@@ -4,13 +4,6 @@ import torch
 from tqdm import tqdm
 
 
-def get_running_metrics(i, running_metrics, metrics):
-    i1 = i + 1
-    new_running_metrics = metrics / i1 + i * running_metrics / i1
-
-    return new_running_metrics
-
-
 class Trainer:
 
     def __init__(self, model, optimizer, loss, metrics=None):
