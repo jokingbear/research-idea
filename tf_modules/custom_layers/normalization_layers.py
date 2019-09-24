@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from tensorflow.keras import layers, initializers as inits
+from keras import layers, initializers as inits
 
 
 class GroupNorm(layers.Layer):
@@ -23,23 +23,22 @@ class GroupNorm(layers.Layer):
         super().build(input_shape)
 
     def call(self, inputs, **kwargs):
-        shape = inputs.shape
+        shape = inputs.shape.to_list()
+        rank = len(shape[1:-1])
         spatial_shape = shape[1:-1]
-        gp = shape[-1]
+        gf = shape[-1]
         g = self.n_group
-        spatial_axis = [i + 1 for i in range(len(spatial_shape))]
-        x = tf.reshape(inputs, (-1, *spatial_shape, g, gp // g))
+        spatial_axes = list(range(1, 1 + rank))
 
-        mean, var = tf.nn.moments(x, spatial_axis + [-1], keepdims=True)
+        x = tf.reshape(inputs, (-1, *spatial_shape, g, gf // g))
+
+        mean, var = tf.nn.moments(x, spatial_axes + [-1], keepdims=True)
 
         x = (x - mean) / (tf.sqrt(var) + 1E-7)
 
-        x = tf.reshape(x, (-1, *shape[1:]))
+        x = tf.reshape(x, [-1, *shape[1:]])
 
         return x * self.gamma + self.beta
-
-    def compute_output_signature(self, input_signature):
-        return input_signature
 
     def get_config(self):
         config = super().get_config()
@@ -68,7 +67,9 @@ class InstanceNorm(layers.Layer):
 
     def call(self, inputs, **kwargs):
         spatial = inputs.shape[1:-1]
-        spatial_axes = [i + 1 for i in range(len(spatial))]
+        rank = len(spatial)
+        spatial_axes = list(range(1, 1 + rank))
+        
         mean, var = tf.nn.moments(inputs, spatial_axes, keepdims=True)
 
         std = tf.sqrt(var) + 1E-7
@@ -77,9 +78,6 @@ class InstanceNorm(layers.Layer):
         x = self.gamma * x + self.beta
 
         return x
-
-    def compute_output_signature(self, input_signature):
-        return input_signature
 
     def get_config(self):
         config = super().get_config()

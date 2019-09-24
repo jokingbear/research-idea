@@ -1,77 +1,89 @@
-from tensorflow.keras import layers
-from tf_modules import group_conv as gc
-
+from keras import layers
+from tf_modules import custom_layers as clayers
 
 con_layer = layers.Conv2D
 decon_layer = layers.Conv2DTranspose
-group_layer = gc.GroupConv2D
-routing_layer = gc.DynamicRouting
+group_layer = clayers.GroupConv2D
+routing_layer = clayers.DynamicRouting2D
 pooling_layer = layers.AveragePooling2D
 
 
-def activation_layer(x): return layers.ReLU(negative_slope=0.2)(x)
+def default_normalization(**kwargs):
+    return layers.BatchNormalization()
 
 
-def con_block(x, f, kernel=3, stride=1, relu=True, normalization=None):
-    con = con_layer(f, kernel, strides=stride, padding="same", kernel_initializer="he_normal", use_bias=False)(x)
-    con = normalization(con) if normalization else con
-    con = activation_layer(con) if relu else con
+def default_activation(**kwargs):
+    return layers.LeakyReLU(alpha=0.2)
+
+
+def dense_block(x, f, normalization=None, dropout=None, activation=default_activation):
+    normalization = normalization or default_normalization
+    dropout = layers.Dropout(dropout) if dropout is not None else (lambda arg: arg)
+    activation = activation or (lambda arg: arg)
+
+    d = layers.Dense(f, use_bias=False, kernel_initializer="he_normal")(x)
+    d = normalization()(d)
+    d = dropout(d)
+    d = activation()(d)
+
+    return d
+
+
+def con_block(x, f, n_group=1, kernel=3, stride=1, dilation=1, normalization=None, activation=default_activation):
+    normalization = normalization or default_normalization
+    activation = activation() if activation else (lambda arg: arg)
+
+    if n_group == 1:
+        con = con_layer(f, kernel, strides=stride, padding="same", dilation_rate=dilation,
+                        use_bias=False, kernel_initializer="he_normal")(x)
+    else:
+        con = group_layer(n_group, f, kernel, stride, dilation, use_bias=False)(x)
+
+    con = normalization(n_group=n_group)(con)
+    con = activation(con)
 
     return con
 
 
-def decon_block(x, f, kernel=3, stride=2, relu=True, normalization=None):
-    decon = decon_layer(f, kernel, strides=stride, padding="same", kernel_initializer="he_normal", use_bias=False)(x)
-    decon = normalization(decon) if normalization else decon
-    decon = activation_layer(decon) if relu else decon
+def decon_block(x, f, kernel=3, stride=2, dilation=1, normalization=None, activation=default_activation):
+    normalization = normalization or default_normalization
+    activation = activation() if activation else (lambda arg: arg)
 
-    return decon
-
-
-def group_block(x, n_group, f, kernel=3, stride=1, dilation=1, relu=True, normalization=None):
-    con = group_layer(n_group, f, kernel, strides=stride, dilations=dilation, kernel_initializer="he_normal",
-                      use_bias=False)(x)
-    con = normalization(con) if normalization else con
-    con = activation_layer(con) if relu else con
+    con = decon_layer(f, kernel, strides=stride, padding="same", dilation_rate=dilation,
+                      use_bias=False, kernel_initializer="he_normal")(x)
+    con = normalization()(con)
+    con = activation(con)
 
     return con
 
 
-def routing_block(x, n_group, f, relu=True, normalization=None, n_iter=3):
+def routing_block(x, n_group, f, n_iter, normalization=None, activation=default_activation):
     if n_iter == 1:
-        return con_block(x, f, kernel=1, relu=relu, normalization=normalization)
+        return con_block(x, f, kernel=1, normalization=normalization, activation=activation)
 
-    con = routing_layer(n_group, f, n_iter=n_iter, use_bias=False)(x)
-    con = normalization(con) if normalization else con
-    con = activation_layer(con) if relu else con
+    normalization = normalization or default_normalization
+    activation = activation() if activation else (lambda arg: arg)
+
+    con = routing_layer(n_group, f, n_iter, kernel_initializer="he_normal")(x)
+    con = normalization()(con)
+    con = activation(con)
 
     return con
 
 
-def res_block(x, n_group, bottleneck, n_iter=3, down_sample=False, normalizations=(None, None, None)):
+def res_block(x, n_group, bottleneck, n_iter=3, down_sample=False, normalization=None, activation=default_activation):
     f = int(x.shape[-1])
-
-    con = con_block(x, n_group * bottleneck, kernel=1, normalization=normalizations[0])
-    con = group_block(con, n_group, bottleneck, stride=2 if down_sample else 1, normalization=normalizations[1])
-    con = routing_block(con, n_group, f, relu=down_sample, normalization=normalizations[-1], n_iter=n_iter)
-
-    x = pooling_layer()(x) if down_sample else x
-    res = layers.concatenate([x, con]) if down_sample else layers.add([x, con])
-    res = res if down_sample else activation_layer(res)
-
-    return res
-
-
-def res_scale_block(x, n_group, bottleneck, n_iter=3, normalizations=(None, None, None)):
-    f = x.shape[-1]
-    sg = n_group // 4
     b = bottleneck
+    merge_layer = layers.concatenate if down_sample else layers.add
 
-    cons = [con_block(x, sg * b, kernel=1, normalization=normalizations[0]()) for i in range(4)]
-    cons = [group_block(c, sg, b, stride=2, normalization=normalizations[1](), dilation=6*i + 1)
-            for i, c in zip(range(4), cons)]
-    cons = [routing_block(c, sg, f, normalization=normalizations[-1](), n_iter=n_iter) for c in cons]
+    con = con_block(x, n_group * b, kernel=1, normalization=normalization, activation=activation)
+    con = con_block(con, b, n_group, stride=2 if down_sample else 1, normalization=normalization, activation=activation)
+    con = routing_block(con, n_group, f, n_iter, normalization=normalization,
+                        activation=activation if down_sample else None)
 
-    x = pooling_layer()(x)
+    activation = activation() if not down_sample and activation else (lambda arg: arg)
+    x = pooling_layer()(x) if down_sample else x
+    merge = merge_layer([x, con])
+    activate = activation(merge)
 
-    return layers.concatenate([x, *cons])
+    return activate
