@@ -39,8 +39,6 @@ class Trainer:
         [c.on_train_end() for c in callbacks]
 
     def train_one_epoch(self, train, pbar=None, callbacks=None):
-        model = self.model.train()
-
         pbar = pbar or tqdm
         n = len(train)
         callbacks = callbacks or []
@@ -51,11 +49,7 @@ class Trainer:
             for i, (x, y) in enumerate(train):
                 [c.on_batch_begin(i) for c in callbacks]
 
-                y_pred = model(x)
-                loss = self.loss(y, y_pred)
-                loss.backward()
-                self.optimizer.step()
-                model.zero_grad()
+                loss, y_pred = self.train_one_batch(x, y)
 
                 with torch.no_grad():
                     current_metrics = self.get_metrics(loss, y, y_pred)
@@ -69,6 +63,15 @@ class Trainer:
                 pbar.update(1)
 
         return logs
+
+    def train_one_batch(self, x, y):
+        self.model.zero_grad()
+        y_pred = self.model(x)
+        loss = self.loss(y, y_pred)
+        loss.backward()
+        self.optimizer.step()
+
+        return loss, y_pred
 
     def evaluate_one_epoch(self, test, pbar=None):
         model = self.model.eval()
