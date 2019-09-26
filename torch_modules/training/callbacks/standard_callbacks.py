@@ -3,7 +3,6 @@ import io
 import os
 
 import numpy as np
-import six
 import torch
 import torch.optim.lr_scheduler as schedulers
 import csv
@@ -26,7 +25,7 @@ class ReduceLROnPlateau(Callback):
 
     def on_train_begin(self):
         self.scheduler = schedulers.ReduceLROnPlateau(self.optimizer, mode=self.mode, factor=self.factor,
-                                                      patience=self.patience + 1, verbose=self.verbose > 1)
+                                                      patience=self.patience - 1, verbose=self.verbose > 1)
 
     def on_epoch_end(self, epoch, logs=None):
         self.scheduler.step(logs[self.monitor])
@@ -59,6 +58,7 @@ class EarlyStopping(Callback):
         reset_counter = is_max or is_min
 
         if reset_counter:
+            print(f"{self.monitor} improved from {self.monitor_val} to {monitor_val}") if self.verbose else None
             self.monitor_val = monitor_val
             self.patience_count = 0
         else:
@@ -92,11 +92,6 @@ class ModelCheckpoint(Callback):
 
         is_max = self.running_monitor_val < monitor_val and self.mode == "max"
         is_min = self.running_monitor_val > monitor_val and self.mode == "min"
-
-        inform = self.verbose and (is_min or is_max)
-
-        if inform:
-            print(f"{self.monitor} improved from {self.running_monitor_val} to {monitor_val}")
 
         is_save = not self.save_best_only or is_min or is_max
 
@@ -160,19 +155,17 @@ class CSVLogger(Callback):
   """
 
     def __init__(self, filename, separator=',', append=False):
+        super().__init__()
         self.sep = separator
         self.filename = filename
         self.append = append
         self.writer = None
         self.keys = None
         self.append_header = True
-        if six.PY2:
-            self.file_flags = 'b'
-            self._open_args = {}
-        else:
-            self.file_flags = ''
-            self._open_args = {'newline': '\n'}
-        super().__init__()
+
+        self.file_flags = ''
+        self._open_args = {'newline': '\n'}
+        self.csv_file = None
 
     def on_train_begin(self, logs=None):
         if self.append:
@@ -191,9 +184,7 @@ class CSVLogger(Callback):
 
         def handle_value(k):
             is_zero_dim_ndarray = isinstance(k, np.ndarray) and k.ndim == 0
-            if isinstance(k, six.string_types):
-                return k
-            elif isinstance(k, collections.Iterable) and not is_zero_dim_ndarray:
+            if isinstance(k, collections.Iterable) and not is_zero_dim_ndarray:
                 return '"[%s]"' % (', '.join(map(str, k)))
             else:
                 return k
@@ -201,7 +192,7 @@ class CSVLogger(Callback):
         if self.keys is None:
             self.keys = sorted(logs.keys())
 
-        if self.model.stop_training:
+        if not self.trainer.train_mode:
             # We set NA so that csv parsers do not fail for this last epoch.
             logs = dict([(k, logs[k]) if k in logs else (k, 'NA') for k in self.keys])
 

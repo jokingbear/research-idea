@@ -19,10 +19,6 @@ class DynamicRouting(nn.Module):
         self.reset_parameters()
 
     def forward(self, x):
-        fo, gfi = self.weight.shape[:2]
-        g = self.groups
-        fi = gfi // g
-        rank = self.rank
         con_op = self.con_op
 
         if self.iters == 1:
@@ -30,6 +26,11 @@ class DynamicRouting(nn.Module):
 
             return con
         else:
+            fo, gfi = self.weight.shape[:2]
+            g = self.groups
+            fi = gfi // g
+            rank = self.rank
+
             weight = self.weight.reshape([fo, g, fi] + [1] * rank).transpose(0, 1).reshape([g * fo, fi] + [1] * rank)
             con = con_op(x, weight, groups=self.groups)
             spatial_shape = con.shape[2:]
