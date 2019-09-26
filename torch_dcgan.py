@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from tensorflow.keras import datasets as dts
-from torch_modules import common_modules as commons
+from torch_modules import commons as commons
 
 (x_train, _), _ = dts.mnist.load_data()
 
