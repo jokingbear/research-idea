@@ -9,6 +9,8 @@ class DynamicRouting(nn.Module):
 
         spatial_shape = [1] * rank
         shape = [out_filters, in_filters * groups, *spatial_shape]
+        self.in_filters = in_filters
+        self.out_filters = out_filters
         self.groups = groups
         self.iters = iters
         self.rank = rank
@@ -26,9 +28,9 @@ class DynamicRouting(nn.Module):
 
             return con
         else:
-            fo, gfi = self.weight.shape[:2]
+            fo = self.out_filters
+            fi = self.in_filters
             g = self.groups
-            fi = gfi // g
             rank = self.rank
 
             weight = self.weight.reshape([fo, g, fi] + [1] * rank).transpose(0, 1).reshape([g * fo, fi] + [1] * rank)
@@ -52,8 +54,9 @@ class DynamicRouting(nn.Module):
         nn.init.kaiming_normal_(self.weight)
 
     def extra_repr(self):
-        fo = self.weight.shape[0]
-        fi = self.weight.shape[1] // self.groups
+        fo = self.out_filters
+        fi = self.in_filters
 
         return f"in_filters={fi}, out_filters={fo}, groups={self.groups}, iters={self.iters}, rank={self.rank}" \
                f", bias={self.bias is not None}"
+

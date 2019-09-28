@@ -63,9 +63,9 @@ class DeconBlock(Block):
 
 
 class RoutingBlock(Block):
-    def __init__(self, in_filters, out_filters, groups, n_iter=3,
+    def __init__(self, in_filters, out_filters, groups, iters=3,
                  normalizer=None, activator=nn.LeakyReLU(0.2)):
-        con = DynamicRouting(in_filters, out_filters, groups, n_iter, bias=False)
+        con = DynamicRouting(in_filters, out_filters, groups, iters, bias=False)
 
         super().__init__(out_filters, con, normalizer, activator)
 
