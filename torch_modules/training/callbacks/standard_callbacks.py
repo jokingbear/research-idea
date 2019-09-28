@@ -13,30 +13,25 @@ from collections import OrderedDict
 
 class ReduceLROnPlateau(Callback):
 
-    def __init__(self, monitor="val_loss", patience=5, mode="min", factor=0.1, verbose=1):
+    def __init__(self, monitor="val_loss", patience=5, mode="min", factor=0.1, verbose=True):
         super().__init__()
 
         self.monitor = monitor
         self.patience = patience
         self.mode = mode
         self.factor = factor
-        self.verbose = verbose > 0
+        self.verbose = verbose
         self.scheduler = None
 
     def on_train_begin(self):
         self.scheduler = schedulers.ReduceLROnPlateau(self.optimizer, mode=self.mode, factor=self.factor,
-                                                      patience=self.patience - 1, verbose=False)
+                                                      patience=self.patience - 1, verbose=self.verbose)
 
     def on_epoch_end(self, epoch, logs=None):
-        lr0 = self.optimizer.param_groups[0]["lr"]
+        for i, param_group in enumerate(self.optimizer.param_groups):
+            logs[f"group {i} lr"] = param_group["lr"]
 
-        self.scheduler.step(logs[self.monitor])
-        lr1 = self.optimizer.param_groups[0]["lr"]
-
-        if self.verbose and lr0 != lr1:
-            print(f"reduce learning rate from {lr0} to {lr1}")
-
-        logs["lr"] = lr1
+        self.scheduler.step(logs[self.monitor], epoch + 1)
 
 
 class EarlyStopping(Callback):
