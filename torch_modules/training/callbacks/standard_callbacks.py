@@ -25,13 +25,18 @@ class ReduceLROnPlateau(Callback):
 
     def on_train_begin(self):
         self.scheduler = schedulers.ReduceLROnPlateau(self.optimizer, mode=self.mode, factor=self.factor,
-                                                      patience=self.patience - 1, verbose=self.verbose > 1)
+                                                      patience=self.patience - 1, verbose=False)
 
     def on_epoch_end(self, epoch, logs=None):
-        self.scheduler.step(logs[self.monitor])
-        lr = self.optimizer.param_groups[0]["lr"]
+        lr0 = self.optimizer.param_groups[0]["lr"]
 
-        logs["lr"] = lr
+        self.scheduler.step(logs[self.monitor])
+        lr1 = self.optimizer.param_groups[0]["lr"]
+
+        if self.verbose and lr0 != lr1:
+            print(f"reduce learning rate from {lr0} to {lr1}")
+
+        logs["lr"] = lr1
 
 
 class EarlyStopping(Callback):

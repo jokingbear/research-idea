@@ -29,7 +29,9 @@ class Trainer:
 
             val_logs = self.evaluate_one_epoch(test, pbar) if test is not None else {}
 
-            [c.on_epoch_end(e, {**train_logs, **val_logs}) for c in callbacks]
+            logs = {**train_logs, **val_logs}
+
+            [c.on_epoch_end(e, logs) for c in callbacks]
             train.shuffle()
             test.shuffle() if test is not None else None
 
