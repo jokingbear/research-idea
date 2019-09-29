@@ -2,6 +2,8 @@ import torch.nn as nn
 
 from torch_modules.router import DynamicRouting
 from torch_modules.commons import MergeModule
+from torch_modules import commons
+from collections import OrderedDict
 
 conv_layer = nn.Conv2d
 decon_layer = nn.ConvTranspose2d
@@ -32,6 +34,21 @@ class Block(nn.Module):
         activate = self.activator(normalize)
 
         return activate
+
+
+class DenseBlock(Block):
+
+    def __init__(self, in_filters, out_filters, normalizer=None, dropout=None, activator=nn.LeakyReLU(0.2)):
+        d = nn.Linear(in_filters, out_filters, bias=False)
+
+        super().__init__(out_filters, d, normalizer, activator)
+
+        self.dropout = nn.Dropout(p=dropout) if dropout else (lambda arg: arg)
+
+    def forward(self, *xs):
+        x = super().forward(*xs)
+
+        return self.dropout(x)
 
 
 class ConvBlock(Block):
@@ -112,3 +129,18 @@ class MultiIOSequential(nn.Module):
             inputs = module(*inputs)
 
         return inputs
+
+
+class SEBlock(nn.Sequential):
+
+    def __init__(self, in_filters, in_shape, normalizers=None, activator=nn.LeakyReLU(0.2)):
+        normalizers = normalizers or [None] * 2
+
+        d = {
+            "squeeze": commons.GlobalAverage(rank=in_shape[0]),
+            "transform": DenseBlock(in_filters, in_filters // 2, normalizer=normalizers[0], activator=activator),
+            "excite": DenseBlock(in_filters // 2, in_filters, normalizer=normalizers[1], activator=nn.Sigmoid()),
+            "reshape": commons.Reshape(-1, *in_shape)
+        }
+
+        super().__init__(OrderedDict(d))
