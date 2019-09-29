@@ -20,10 +20,6 @@ def up_sample(data, n_sample):
     return np.concatenate(repeats + adds, axis=0)
 
 
-def normalize_img(img):
-    return img / 127.5 - 1
-
-
 def split_file(files, test_size=0.1, seed=7, skip=None):
     splitter = ShuffleSplit(test_size=test_size, random_state=seed)
     files = np.array(files)
@@ -55,17 +51,6 @@ def split_df(df, column="class", test_size=0.1, seed=7, skip=None):
             return train, test
 
         skip += 1
-
-
-def make_df_from_folder(path, class_label):
-    files = [f"{path}/{f}" for f in os.listdir(path)]
-
-    df = pd.DataFrame(files, columns=["path"])
-
-    if class_label is not None:
-        df["class"] = class_label
-
-    return df
 
 
 def shuffle_data(x, y=None):

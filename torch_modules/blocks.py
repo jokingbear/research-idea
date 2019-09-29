@@ -24,12 +24,12 @@ class Block(nn.Module):
     def __init__(self, out_filters, transformer, normalizer, activator):
         super().__init__()
 
-        self.transfomer = transformer
+        self.transformer = transformer
         self.normalizer = normalizer or default_normalization(out_filters)
         self.activator = activator or (lambda arg: arg)
 
     def forward(self, *xs):
-        transform = self.transfomer(xs[0])
+        transform = self.transformer(xs[0])
         normalize = self.normalizer(transform)
         activate = self.activator(normalize)
 
@@ -140,7 +140,7 @@ class SEBlock(nn.Sequential):
             "squeeze": commons.GlobalAverage(rank=in_shape[0]),
             "transform": DenseBlock(in_filters, in_filters // 2, normalizer=normalizers[0], activator=activator),
             "excite": DenseBlock(in_filters // 2, in_filters, normalizer=normalizers[1], activator=nn.Sigmoid()),
-            "reshape": commons.Reshape(-1, *in_shape)
+            "reshape": commons.Reshape(*in_shape)
         }
 
         super().__init__(OrderedDict(d))
