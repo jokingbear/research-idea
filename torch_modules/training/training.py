@@ -102,3 +102,11 @@ class Trainer:
         metrics = [float(loss)] + metrics
 
         return np.array(metrics)
+
+    def predict(self, x):
+        with torch.no_grad():
+            model = self.model.eval()
+
+            x = x if torch.is_tensor(x) else torch.tensor(x, dtype=torch.float, device=model.device)
+
+            return model(x)
