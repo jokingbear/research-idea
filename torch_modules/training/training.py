@@ -73,7 +73,7 @@ class Trainer:
         loss.backward()
         self.optimizer.step()
 
-        return loss, y_pred
+        return loss.detach(), y_pred.detach()
 
     def evaluate_one_epoch(self, test, pbar=None):
         model = self.model.eval()
