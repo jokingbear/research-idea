@@ -3,8 +3,8 @@ import torch.nn as nn
 from torch_modules.router import DynamicRouting
 from torch_modules.commons import MergeModule
 from torch_modules import commons
-from collections import OrderedDict
 
+rank = 2
 conv_layer = nn.Conv2d
 decon_layer = nn.ConvTranspose2d
 router_layer = DynamicRouting
@@ -128,17 +128,20 @@ class MultiIOSequential(nn.Module):
         return inputs
 
 
-class SEBlock(nn.Sequential):
+class SEBlock(nn.Module):
 
-    def __init__(self, in_filters, in_shape, normalizers=None):
-        normalizers = normalizers or [None] * 2
+    def __init__(self, in_filters, reduction_rate=16):
+        super().__init__()
 
-        d = {
-            "squeeze": commons.GlobalAverage(rank=in_shape[0]),
-            "transform": DenseBlock(in_filters, in_filters // 2, normalizer=normalizers[0]),
-            "excite": DenseBlock(in_filters // 2, in_filters, normalizer=normalizers[1], has_activator=False),
-            "activate": nn.Sigmoid(),
-            "reshape": commons.Reshape(*in_shape)
-        }
+        self.se = nn.Sequential(*[
+            commons.GlobalAverage(rank, keepdims=True),
+            conv_layer(in_filters, in_filters // reduction_rate, 1),
+            activation_layer,
+            conv_layer(in_filters // reduction_rate, in_filters, 1),
+            nn.Sigmoid()
+        ])
 
-        super().__init__(OrderedDict(d))
+    def forward(self, x):
+        se = self.se(x)
+
+        return x * se
