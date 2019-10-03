@@ -9,6 +9,7 @@ conv_layer = nn.Conv2d
 decon_layer = nn.ConvTranspose2d
 router_layer = DynamicRouting
 pooling_layer = nn.AvgPool2d
+activation_layer = nn.LeakyReLU(0.2)
 
 
 def normalize_deconvolution(x):
@@ -21,12 +22,12 @@ def default_normalization(f):
 
 class Block(nn.Module):
 
-    def __init__(self, out_filters, transformer, normalizer, activator):
+    def __init__(self, out_filters, transformer, normalizer, has_activator):
         super().__init__()
 
         self.transformer = transformer
         self.normalizer = normalizer or default_normalization(out_filters)
-        self.activator = activator or (lambda arg: arg)
+        self.activator = activation_layer if has_activator else (lambda arg: arg)
 
     def forward(self, *xs):
         transform = self.transformer(xs[0])
@@ -38,10 +39,10 @@ class Block(nn.Module):
 
 class DenseBlock(Block):
 
-    def __init__(self, in_filters, out_filters, normalizer=None, dropout=None, activator=nn.LeakyReLU(0.2)):
+    def __init__(self, in_filters, out_filters, normalizer=None, dropout=None, has_activator=True):
         d = nn.Linear(in_filters, out_filters, bias=False)
 
-        super().__init__(out_filters, d, normalizer, activator)
+        super().__init__(out_filters, d, normalizer, has_activator)
 
         self.dropout = nn.Dropout(p=dropout) if dropout else (lambda arg: arg)
 
@@ -55,20 +56,20 @@ class ConvBlock(Block):
 
     def __init__(self, in_filters, out_filters, kernel_size=3, stride=1, padding=1,
                  groups=1, dilation=1,
-                 normalizer=None, activator=nn.LeakyReLU(0.2)):
+                 normalizer=None, has_activator=True):
         con = conv_layer(in_filters * groups, out_filters * groups, kernel_size, stride, padding,
                          dilation, groups, bias=False)
 
-        super().__init__(out_filters, con, normalizer, activator)
+        super().__init__(out_filters, con, normalizer, has_activator)
 
 
 class DeconBlock(Block):
 
     def __init__(self, in_filters, out_filters, kernel_size=3, stride=2, padding=0,
-                 normalizer=None, activator=nn.LeakyReLU(0.2), has_shortcut=False):
+                 normalizer=None, has_activator=True, has_shortcut=False):
         decon = decon_layer(in_filters, out_filters, kernel_size, stride, padding)
 
-        super().__init__(out_filters, decon, normalizer, activator)
+        super().__init__(out_filters, decon, normalizer, has_activator)
 
         self.merge = MergeModule() if has_shortcut else (lambda *args: args[0])
 
@@ -81,30 +82,26 @@ class DeconBlock(Block):
 
 class RoutingBlock(Block):
     def __init__(self, in_filters, out_filters, groups, iters=3,
-                 normalizer=None, activator=nn.LeakyReLU(0.2)):
+                 normalizer=None, has_activator=True):
         con = DynamicRouting(in_filters, out_filters, groups, iters, bias=False)
 
-        super().__init__(out_filters, con, normalizer, activator)
+        super().__init__(out_filters, con, normalizer, has_activator)
 
 
 class ResidualBlock(nn.Module):
 
-    def __init__(self, in_filters, bottleneck, groups, iters=3, down_sample=False,
-                 normalizers=(None,) * 3, activators=(nn.LeakyReLU(0.2),) * 3):
+    def __init__(self, in_filters, bottleneck, groups, iters=3, down_sample=False, normalizers=(None,) * 3):
         super().__init__()
 
         self.res = nn.Sequential(*[
-            ConvBlock(in_filters, bottleneck * groups, kernel_size=1, padding=0,
-                      normalizer=normalizers[0], activator=activators[0]),
-            ConvBlock(bottleneck, bottleneck, stride=2 if down_sample else 1, groups=groups,
-                      normalizer=normalizers[1], activator=activators[1]),
-            RoutingBlock(bottleneck, in_filters, groups, iters,
-                         normalizer=normalizers[-1], activator=activators[-1] if down_sample else None)
+            ConvBlock(in_filters, bottleneck * groups, kernel_size=1, padding=0, normalizer=normalizers[0]),
+            ConvBlock(bottleneck, bottleneck, stride=2 if down_sample else 1, groups=groups, normalizer=normalizers[1]),
+            RoutingBlock(bottleneck, in_filters, groups, iters, normalizer=normalizers[-1], has_activator=down_sample)
         ])
 
         self.skipper = pooling_layer(kernel_size=2, stride=2) if down_sample else (lambda arg: arg)
         self.merger = MergeModule("concat" if down_sample else "add")
-        self.activator = activators[-1] if not down_sample else (lambda arg: arg)
+        self.activator = activation_layer if not down_sample else (lambda arg: arg)
 
     def forward(self, x):
         res = self.res(x)
@@ -133,13 +130,14 @@ class MultiIOSequential(nn.Module):
 
 class SEBlock(nn.Sequential):
 
-    def __init__(self, in_filters, in_shape, normalizers=None, activator=nn.LeakyReLU(0.2)):
+    def __init__(self, in_filters, in_shape, normalizers=None):
         normalizers = normalizers or [None] * 2
 
         d = {
             "squeeze": commons.GlobalAverage(rank=in_shape[0]),
-            "transform": DenseBlock(in_filters, in_filters // 2, normalizer=normalizers[0], activator=activator),
-            "excite": DenseBlock(in_filters // 2, in_filters, normalizer=normalizers[1], activator=nn.Sigmoid()),
+            "transform": DenseBlock(in_filters, in_filters // 2, normalizer=normalizers[0]),
+            "excite": DenseBlock(in_filters // 2, in_filters, normalizer=normalizers[1], has_activator=False),
+            "activate": nn.Sigmoid(),
             "reshape": commons.Reshape(*in_shape)
         }
 

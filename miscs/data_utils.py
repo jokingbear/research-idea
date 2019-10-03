@@ -5,11 +5,11 @@ import pandas as pd
 from sklearn.model_selection import ShuffleSplit, StratifiedShuffleSplit
 
 
-def up_sample(data, n_sample):
+def sample(data, n_sample):
     n = len(data)
 
-    if n_sample == n:
-        return np.random.choice(data, size=n, replace=False)
+    if n >= n_sample:
+        return np.random.choice(data, size=n_sample, replace=False)
 
     n_repeat = n_sample // n
     n_add = n_sample % n

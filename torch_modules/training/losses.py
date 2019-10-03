@@ -1,10 +1,10 @@
 import torch
 
 
-def focal_loss_fn(gamma=2):
+def focal_loss_fn(gamma=2, binary=False):
 
     def focal_loss(y_true, y_pred):
-        if y_pred.shape[1] == 1:
+        if binary:
             prob = y_true * y_pred + (1 - y_true) * (1 - y_pred)
         else:
             prob = torch.sum(y_true * y_pred, dim=(1,))

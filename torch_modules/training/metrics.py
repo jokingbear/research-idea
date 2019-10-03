@@ -1,5 +1,4 @@
 import torch
-import torch.nn.functional as fn
 
 
 def accuracy(y_true, y_pred):
