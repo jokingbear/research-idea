@@ -6,6 +6,7 @@ import numpy as np
 import torch
 import torch.optim.lr_scheduler as schedulers
 import csv
+import matplotlib.pyplot as plt
 
 from torch_modules.training.callbacks.root_class import Callback
 from collections import OrderedDict
@@ -218,3 +219,53 @@ class CSVLogger(Callback):
     def on_train_end(self, logs=None):
         self.csv_file.close()
         self.writer = None
+
+
+class LRFinder(Callback):
+
+    def __init__(self, min_lr=1e-5, max_lr=1e-2, steps_per_epoch=None, epochs=None):
+        super().__init__()
+
+        self.min_lr = min_lr
+        self.max_lr = max_lr
+        self.total_iterations = steps_per_epoch * epochs
+        self.iteration = 0
+        self.history = {}
+
+    def clr(self):
+        """Calculate the learning rate."""
+        x = self.iteration / self.total_iterations
+        return self.min_lr + (self.max_lr - self.min_lr) * x
+
+    def on_train_begin(self, logs=None):
+        """Initialize the learning rate to the minimum value at the start of training."""
+        self.optimizer.param_groups[0]["lr"] = self.min_lr
+
+    def on_batch_end(self, epoch, logs=None):
+        """Record previous batch statistics and update the learning rate."""
+        logs = logs or {}
+        self.iteration += 1
+
+        self.history.setdefault('lr', []).append(self.optimizer.param_groups[0]["lr"])
+        self.history.setdefault('iterations', []).append(self.iteration)
+
+        for k, v in logs.items():
+            self.history.setdefault(k, []).append(v)
+
+        self.optimizer.param_groups[0]["lr"] = self.clr()
+
+    def plot_lr(self):
+        """Helper function to quickly inspect the learning rate schedule."""
+        plt.plot(self.history['iterations'], self.history['lr'])
+        plt.yscale('log')
+        plt.xlabel('Iteration')
+        plt.ylabel('Learning rate')
+        plt.show()
+
+    def plot_loss(self):
+        """Helper function to quickly observe the learning rate experiment results."""
+        plt.plot(self.history['lr'], self.history['loss'])
+        plt.xscale('log')
+        plt.xlabel('Learning rate')
+        plt.ylabel('Loss')
+        plt.show()
