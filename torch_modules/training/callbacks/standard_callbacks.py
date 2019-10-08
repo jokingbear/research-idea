@@ -7,6 +7,7 @@ import torch
 import torch.optim.lr_scheduler as schedulers
 import csv
 import matplotlib.pyplot as plt
+import imageio as iio
 
 from torch_modules.training.callbacks.root_class import Callback
 from collections import OrderedDict
@@ -269,3 +270,47 @@ class LRFinder(Callback):
         plt.xlabel('Learning rate')
         plt.ylabel('Loss')
         plt.show()
+
+
+class GenImage(Callback):
+
+    def __init__(self, path="gen_data", samples=1, rows=2, render_steps=1):
+        super().__init__()
+
+        self.path = path
+        self.samples = samples
+        self.rows = rows
+        self.render_steps = render_steps
+
+    def on_batch_end(self, batch, logs=None):
+        if batch % self.render_steps == 0:
+            rows = self.rows
+            g = self.model[1].eval()
+
+            with torch.no_grad():
+                imgs = g().cpu().numpy().transpose([0, 2, 3, 1])
+                imgs = imgs.reshape([rows, -1, *imgs.shape[1:]]).transpose([0, 1, 2, 4, 5])
+                imgs = imgs.reshape([rows * imgs.shape[1], -1, imgs.shape[-1]])
+                imgs = imgs[..., 0] if imgs.shape[-1] == 1 else imgs
+
+                _, ax = plt.subplots(figsize=(15, 15))
+                ax.imshow(imgs)
+                plt.show()
+
+    def on_epoch_end(self, epoch, logs=None):
+        g = self.model[1].eval()
+        rows = self.rows
+
+        path = f"{self.path}/epoch {epoch}"
+
+        if not os.path.exists(path):
+            os.mkdir(path)
+
+        with torch.no_grad():
+            for i in range(self.samples):
+                imgs = g().cpu().numpy().tranpose([0, 2, 3, 1])
+                imgs = imgs.reshape([rows, -1, *imgs.shape[1:]]).transpose([0, 1, 2, 4, 5])
+                imgs = imgs.reshape([rows * imgs.shape[1], -1, imgs.shape[-1]])
+                imgs = imgs[..., 0] if imgs.shape[-1] == 1 else imgs
+
+                iio.imsave(f"{path}/{i}.png", imgs)

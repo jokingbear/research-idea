@@ -65,4 +65,3 @@ class DynamicRouting(nn.Module):
 
         return f"in_filters={fi}, out_filters={fo}, groups={self.groups}, iters={self.iters}, rank={self.rank}" \
                f", bias={self.bias is not None}"
-
