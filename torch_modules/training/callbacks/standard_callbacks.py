@@ -274,13 +274,14 @@ class LRFinder(Callback):
 
 class GenImage(Callback):
 
-    def __init__(self, path="gen_data", samples=1, rows=2, render_steps=1):
+    def __init__(self, path="gen_data", samples=1, rows=2, render_steps=50, render_size=(15, 15)):
         super().__init__()
 
         self.path = path
         self.samples = samples
         self.rows = rows
         self.render_steps = render_steps
+        self.render_size = render_size
 
     def on_batch_end(self, batch, logs=None):
         if batch % self.render_steps == 0:
@@ -289,12 +290,14 @@ class GenImage(Callback):
 
             with torch.no_grad():
                 imgs = g().cpu().numpy().transpose([0, 2, 3, 1])
-                imgs = imgs.reshape([rows, -1, *imgs.shape[1:]]).transpose([0, 1, 2, 4, 5])
-                imgs = imgs.reshape([rows * imgs.shape[1], -1, imgs.shape[-1]])
+                h, w, c = imgs.shape[1:]
+                imgs = imgs.reshape([rows, -1, *imgs.shape[1:]]).transpose([0, 2, 1, 3, 4])
+                imgs = imgs.reshape([rows * h, -1, c])
                 imgs = imgs[..., 0] if imgs.shape[-1] == 1 else imgs
 
-                _, ax = plt.subplots(figsize=(15, 15))
+                _, ax = plt.subplots(figsize=self.render_size)
                 ax.imshow(imgs)
+                ax.axis("off")
                 plt.show()
 
     def on_epoch_end(self, epoch, logs=None):
@@ -308,9 +311,10 @@ class GenImage(Callback):
 
         with torch.no_grad():
             for i in range(self.samples):
-                imgs = g().cpu().numpy().tranpose([0, 2, 3, 1])
-                imgs = imgs.reshape([rows, -1, *imgs.shape[1:]]).transpose([0, 1, 2, 4, 5])
-                imgs = imgs.reshape([rows * imgs.shape[1], -1, imgs.shape[-1]])
+                imgs = g().cpu().numpy().transpose([0, 2, 3, 1])
+                h, w, c = imgs.shape[1:]
+                imgs = imgs.reshape([rows, -1, *imgs.shape[1:]]).transpose([0, 2, 1, 3, 4])
+                imgs = imgs.reshape([rows * h, -1, c])
                 imgs = imgs[..., 0] if imgs.shape[-1] == 1 else imgs
 
                 iio.imsave(f"{path}/{i}.png", imgs)

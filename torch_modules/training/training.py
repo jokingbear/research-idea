@@ -107,7 +107,7 @@ class Trainer:
 
 class GANTrainer:
 
-    def __init__(self, discriminator, generator, d_optimizer, g_optimizer, loss=nn.BCELoss(), metrics=None):
+    def __init__(self, discriminator, generator, d_optimizer, g_optimizer, loss, metrics=None):
         self.discriminator = discriminator
         self.generator = generator
         self.d_optimizer = d_optimizer
@@ -143,7 +143,7 @@ class GANTrainer:
     def train_one_epoch(self, train, pbar, callbacks):
         n = len(train)
         metrics_names = ["real_loss", "fake_loss"] + [m.__name__ for m in self.metrics]
-        running_metrics = np.zeros(shape=len(self.metrics) + 1)
+        running_metrics = np.zeros(shape=len(self.metrics) + 2)
 
         with pbar(total=n, desc="train") as pbar:
             for i, x in enumerate(train):

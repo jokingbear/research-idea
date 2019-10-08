@@ -10,3 +10,5 @@ tf_logs
 experiment*
 
 .vscode/
+
+gen_data/
