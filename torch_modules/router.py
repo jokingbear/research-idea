@@ -4,11 +4,13 @@ import torch.nn as nn
 
 class DynamicRouting(nn.Module):
 
-    def __init__(self, in_filters, out_filters, groups, iters=3, rank=2, bias=True):
+    def __init__(self, in_filters, out_filters, groups, iters=3, rank=2, bias=True, debug=False):
         super().__init__()
 
         spatial_shape = [1] * rank
         shape = [out_filters, in_filters * groups, *spatial_shape]
+        self.in_filters = in_filters
+        self.out_filters = out_filters
         self.groups = groups
         self.iters = iters
         self.rank = rank
@@ -18,6 +20,8 @@ class DynamicRouting(nn.Module):
 
         self.reset_parameters()
 
+        self.log = {} if debug else None
+
     def forward(self, x):
         con_op = self.con_op
 
@@ -26,21 +30,25 @@ class DynamicRouting(nn.Module):
 
             return con
         else:
-            fo, gfi = self.weight.shape[:2]
+            fo = self.out_filters
+            fi = self.in_filters
             g = self.groups
-            fi = gfi // g
             rank = self.rank
 
             weight = self.weight.reshape([fo, g, fi] + [1] * rank).transpose(0, 1).reshape([g * fo, fi] + [1] * rank)
             con = con_op(x, weight, groups=self.groups)
             spatial_shape = con.shape[2:]
             con = con.reshape([-1, g, fo, *spatial_shape])
+            self.log["con"] = con.detach().cpu().numpy() if self.log else None
 
             beta = torch.zeros([], device=x.device)
 
             for i in range(self.iters):
                 alpha = torch.sigmoid(beta)
+                self.log[f"a_{i}"] = alpha.detach().cpu().numpy() if self.log and i > 0 else None
+
                 v = torch.sum(alpha * con, dim=(1,), keepdim=True)
+                self.log[f"v_{i}"] = v.detach().cpu().numpy() if self.log else None
 
                 if i == self.iters - 1:
                     v = v[:, 0, ...]
@@ -52,8 +60,8 @@ class DynamicRouting(nn.Module):
         nn.init.kaiming_normal_(self.weight)
 
     def extra_repr(self):
-        fo = self.weight.shape[0]
-        fi = self.weight.shape[1] // self.groups
+        fo = self.out_filters
+        fi = self.in_filters
 
         return f"in_filters={fi}, out_filters={fo}, groups={self.groups}, iters={self.iters}, rank={self.rank}" \
                f", bias={self.bias is not None}"

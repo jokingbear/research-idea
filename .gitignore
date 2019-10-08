@@ -8,6 +8,7 @@ tf_logs
 .project
 
 experiment*
-test*
 
 .vscode/
+
+gen_data/

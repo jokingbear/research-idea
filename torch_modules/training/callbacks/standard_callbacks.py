@@ -6,6 +6,8 @@ import numpy as np
 import torch
 import torch.optim.lr_scheduler as schedulers
 import csv
+import matplotlib.pyplot as plt
+import imageio as iio
 
 from torch_modules.training.callbacks.root_class import Callback
 from collections import OrderedDict
@@ -13,25 +15,25 @@ from collections import OrderedDict
 
 class ReduceLROnPlateau(Callback):
 
-    def __init__(self, monitor="val_loss", patience=5, mode="min", factor=0.1, verbose=1):
+    def __init__(self, monitor="val_loss", patience=5, mode="min", factor=0.1, verbose=True):
         super().__init__()
 
         self.monitor = monitor
         self.patience = patience
         self.mode = mode
         self.factor = factor
-        self.verbose = verbose > 0
+        self.verbose = verbose
         self.scheduler = None
 
     def on_train_begin(self):
         self.scheduler = schedulers.ReduceLROnPlateau(self.optimizer, mode=self.mode, factor=self.factor,
-                                                      patience=self.patience - 1, verbose=self.verbose > 1)
+                                                      patience=self.patience - 1, verbose=self.verbose)
 
     def on_epoch_end(self, epoch, logs=None):
-        self.scheduler.step(logs[self.monitor])
-        lr = self.optimizer.param_groups[0]["lr"]
+        for i, param_group in enumerate(self.optimizer.param_groups):
+            logs[f"group {i} lr"] = param_group["lr"]
 
-        logs["lr"] = lr
+        self.scheduler.step(logs[self.monitor], epoch + 1)
 
 
 class EarlyStopping(Callback):
@@ -218,3 +220,120 @@ class CSVLogger(Callback):
     def on_train_end(self, logs=None):
         self.csv_file.close()
         self.writer = None
+
+
+class LRFinder(Callback):
+
+    def __init__(self, min_lr=1e-5, max_lr=1e-2, steps_per_epoch=None, epochs=None):
+        super().__init__()
+
+        self.min_lr = min_lr
+        self.max_lr = max_lr
+        self.total_iterations = steps_per_epoch * epochs
+        self.iteration = 0
+        self.history = {}
+
+    def clr(self):
+        """Calculate the learning rate."""
+        x = self.iteration / self.total_iterations
+        return self.min_lr + (self.max_lr - self.min_lr) * x
+
+    def on_train_begin(self, logs=None):
+        """Initialize the learning rate to the minimum value at the start of training."""
+        self.optimizer.param_groups[0]["lr"] = self.min_lr
+
+    def on_batch_end(self, epoch, logs=None):
+        """Record previous batch statistics and update the learning rate."""
+        logs = logs or {}
+        self.iteration += 1
+
+        self.history.setdefault('lr', []).append(self.optimizer.param_groups[0]["lr"])
+        self.history.setdefault('iterations', []).append(self.iteration)
+
+        for k, v in logs.items():
+            self.history.setdefault(k, []).append(v)
+
+        self.optimizer.param_groups[0]["lr"] = self.clr()
+
+    def plot_lr(self):
+        """Helper function to quickly inspect the learning rate schedule."""
+        plt.plot(self.history['iterations'], self.history['lr'])
+        plt.yscale('log')
+        plt.xlabel('Iteration')
+        plt.ylabel('Learning rate')
+        plt.show()
+
+    def plot_loss(self):
+        """Helper function to quickly observe the learning rate experiment results."""
+        plt.plot(self.history['lr'], self.history['loss'])
+        plt.xscale('log')
+        plt.xlabel('Learning rate')
+        plt.ylabel('Loss')
+        plt.show()
+
+
+class GenImage(Callback):
+
+    def __init__(self, path="gen_data", samples=1, rows=2, render_steps=50, render_size=(15, 15)):
+        super().__init__()
+
+        self.path = path
+        self.samples = samples
+        self.rows = rows
+        self.render_steps = render_steps
+        self.render_size = render_size
+
+    def on_train_begin(self):
+        if not os.path.exists(self.path):
+            os.mkdir(self.path)
+
+    def on_batch_end(self, batch, logs=None):
+        if batch % self.render_steps == 0:
+            rows = self.rows
+            g = self.model[1].eval()
+
+            with torch.no_grad():
+                imgs = g().cpu().numpy().transpose([0, 2, 3, 1])
+                h, w, c = imgs.shape[1:]
+                imgs = imgs.reshape([rows, -1, *imgs.shape[1:]]).transpose([0, 2, 1, 3, 4])
+                imgs = imgs.reshape([rows * h, -1, c])
+                imgs = imgs[..., 0] if imgs.shape[-1] == 1 else imgs
+
+                _, ax = plt.subplots(figsize=self.render_size)
+                ax.imshow(imgs)
+                ax.axis("off")
+                plt.show()
+
+    def on_epoch_end(self, epoch, logs=None):
+        g = self.model[1].eval()
+        rows = self.rows
+
+        path = f"{self.path}/epoch {epoch}"
+
+        if not os.path.exists(path):
+            os.mkdir(path)
+
+        with torch.no_grad():
+            for i in range(self.samples):
+                imgs = g().cpu().numpy().transpose([0, 2, 3, 1])
+                h, w, c = imgs.shape[1:]
+                imgs = imgs.reshape([rows, -1, *imgs.shape[1:]]).transpose([0, 2, 1, 3, 4])
+                imgs = imgs.reshape([rows * h, -1, c])
+                imgs = imgs[..., 0] if imgs.shape[-1] == 1 else imgs
+
+                iio.imsave(f"{path}/{i}.png", imgs)
+
+
+class GanCheckpoint(Callback):
+
+    def __init__(self, filename, overwrite=False):
+        super().__init__()
+
+        self.filename = filename
+        self.overwrite = overwrite
+
+    def on_epoch_end(self, epoch, logs=None):
+        if self.overwrite:
+            torch.save(self.model[-1].state_dict(), self.filename)
+        else:
+            torch.save(self.model[-1].state_dict(), f"{self.filename}-{epoch}")

@@ -1,5 +1,4 @@
 import torch
-import torch.nn.functional as fn
 
 
 def accuracy(y_true, y_pred):
@@ -21,8 +20,6 @@ def dice_coefficient_fn(n_class=2, rank=2, smooth=1E-7):
         if n_class > 2:
             y_true = y_true[:, 1:, ...]
             y_pred = y_pred[:, 1:, ...]
-        else:
-            y_pred = (y_pred >= 0.5).type(torch.float)
 
         p = (y_true * y_pred).sum(dim=spatial_axes)
         s = (y_true + y_pred).sum(dim=spatial_axes)
