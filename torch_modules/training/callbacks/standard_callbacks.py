@@ -283,6 +283,10 @@ class GenImage(Callback):
         self.render_steps = render_steps
         self.render_size = render_size
 
+    def on_train_begin(self):
+        if not os.path.exists(self.path):
+            os.mkdir(self.path)
+
     def on_batch_end(self, batch, logs=None):
         if batch % self.render_steps == 0:
             rows = self.rows
@@ -318,3 +322,18 @@ class GenImage(Callback):
                 imgs = imgs[..., 0] if imgs.shape[-1] == 1 else imgs
 
                 iio.imsave(f"{path}/{i}.png", imgs)
+
+
+class GanCheckpoint(Callback):
+
+    def __init__(self, filename, overwrite=False):
+        super().__init__()
+
+        self.filename = filename
+        self.overwrite = overwrite
+
+    def on_epoch_end(self, epoch, logs=None):
+        if self.overwrite:
+            torch.save(self.model[-1].state_dict(), self.filename)
+        else:
+            torch.save(self.model[-1].state_dict(), f"{self.filename}-{epoch}")
