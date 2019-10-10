@@ -9,7 +9,7 @@ conv_layer = nn.Conv2d
 decon_layer = nn.ConvTranspose2d
 router_layer = DynamicRouting
 pooling_layer = nn.AvgPool2d
-activation_layer = nn.LeakyReLU(0.2)
+activation_layer = nn.ReLU()
 
 
 def normalize_deconvolution(x):

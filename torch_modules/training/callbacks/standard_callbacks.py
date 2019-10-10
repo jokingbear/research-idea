@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import imageio as iio
 
 from torch_modules.training.callbacks.root_class import Callback
+from torch.utils.tensorboard import SummaryWriter
 from collections import OrderedDict
 
 
@@ -346,3 +347,35 @@ class GanCheckpoint(Callback):
             torch.save(self.model[-1].state_dict(), self.filename)
         else:
             torch.save(self.model[-1].state_dict(), f"{self.filename}-{epoch}")
+
+
+class Tensorboard(Callback):
+
+    def __init__(self, log_dir, steps=50, flushes=60):
+        super().__init__()
+
+        self.log_dir = log_dir
+        self.steps = steps
+        self.current_step = 0
+        self.flushes = flushes
+
+        self.writer = None
+
+    def on_train_begin(self):
+        self.writer = SummaryWriter(self.log_dir, flush_secs=self.flushes)
+
+    def on_batch_end(self, batch, logs=None):
+        if self.current_step % self.steps == 0:
+            for k in logs:
+                print(k, "  ", logs[k])
+                self.writer.add_scalar(k, logs[k], self.current_step)
+
+        self.current_step += 1
+
+    def on_epoch_end(self, epoch, logs=None):
+        for k in logs:
+            if "val" in k:
+                self.writer.add_scalar(k, logs[k], epoch)
+
+    def on_train_end(self):
+        self.writer = None
