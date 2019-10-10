@@ -1,7 +1,7 @@
 import torch
 
 
-def accuracy(y_true, y_pred):
+def accuracy(y_pred, y_true):
     if y_pred.shape[1] == 1:
         y_pred = y_pred[:, 0, ...]
         y_pred = y_pred >= 0.5
@@ -16,7 +16,7 @@ def accuracy(y_true, y_pred):
 def dice_coefficient_fn(n_class=2, rank=2, smooth=1E-7):
     spatial_axes = tuple(range(2, 2 + rank))
 
-    def dice_coefficient(y_true, y_pred):
+    def dice_coefficient(y_pred, y_true):
         if n_class > 2:
             y_true = y_true[:, 1:, ...]
             y_pred = y_pred[:, 1:, ...]

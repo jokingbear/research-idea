@@ -55,7 +55,7 @@ class Trainer:
                 loss, y_pred = self.train_one_batch(x, y)
 
                 with torch.no_grad():
-                    current_metrics = self.get_metrics(loss, y, y_pred)
+                    current_metrics = self.get_metrics(loss, y_pred, y)
                     running_metrics += current_metrics
 
                     logs = dict(zip(metrics_names, running_metrics / (i + 1)))
@@ -70,7 +70,7 @@ class Trainer:
     def train_one_batch(self, x, y):
         self.model.zero_grad()
         y_pred = self.model(x)
-        loss = self.loss(y, y_pred)
+        loss = self.loss(y_pred, y)
         loss.backward()
         self.optimizer.step()
 
@@ -87,9 +87,9 @@ class Trainer:
         with pbar(total=n, desc="evaluate") as pbar, torch.no_grad():
             for i, (x, y) in enumerate(test):
                 y_pred = model(x)
-                loss = self.loss(y, y_pred)
+                loss = self.loss(y_pred, y)
 
-                metrics = self.get_metrics(loss, y, y_pred)
+                metrics = self.get_metrics(loss, y_pred, y)
                 running_metrics += metrics
                 pbar.update(1)
 
@@ -98,8 +98,8 @@ class Trainer:
 
         return val_logs
 
-    def get_metrics(self, loss, y, y_pred):
-        metrics = [float(m(y, y_pred)) for m in self.metrics]
+    def get_metrics(self, loss, y_pred, y):
+        metrics = [float(m(y_pred, y)) for m in self.metrics]
         metrics = [float(loss)] + metrics
 
         return np.array(metrics)
@@ -170,7 +170,7 @@ class GANTrainer:
 
         d.zero_grad()
         real_labels = torch.ones(x.shape[0], dtype=torch.float, device=x.device)
-        real_loss = self.loss(real_labels, d(x))
+        real_loss = self.loss(d(x), real_labels)
         real_loss.backward()
         self.d_optimizer.step()
 
@@ -178,7 +178,7 @@ class GANTrainer:
         with torch.no_grad():
             fakes = g()
         fake_labels = torch.zeros(fakes.shape[0], dtype=torch.float, device=fakes.device)
-        fake_loss = self.loss(fake_labels, d(fakes))
+        fake_loss = self.loss(d(fakes), fake_labels)
         fake_loss.backward()
         self.d_optimizer.step()
 
@@ -192,7 +192,7 @@ class GANTrainer:
         fakes = g()
         score = d(fakes)
         labels = torch.ones(score.shape[0], dtype=torch.float, device=score.device)
-        loss = self.loss(labels, score)
+        loss = self.loss(score, labels)
         loss.backward()
         self.g_optimizer.step()
 

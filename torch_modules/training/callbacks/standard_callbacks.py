@@ -298,6 +298,7 @@ class GenImage(Callback):
                 imgs = imgs.reshape([rows, -1, *imgs.shape[1:]]).transpose([0, 2, 1, 3, 4])
                 imgs = imgs.reshape([rows * h, -1, c])
                 imgs = imgs[..., 0] if imgs.shape[-1] == 1 else imgs
+                imgs = self.standardize_output(imgs)
 
                 _, ax = plt.subplots(figsize=self.render_size)
                 ax.imshow(imgs)
@@ -322,6 +323,14 @@ class GenImage(Callback):
                 imgs = imgs[..., 0] if imgs.shape[-1] == 1 else imgs
 
                 iio.imsave(f"{path}/{i}.png", imgs)
+
+    def standardize_output(self, imgs):
+        min_val = imgs.min()
+
+        if min_val < 0:
+            imgs = imgs * 0.5 + 0.5
+
+        return imgs
 
 
 class GanCheckpoint(Callback):
