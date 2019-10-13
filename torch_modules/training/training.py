@@ -3,34 +3,51 @@ import torch
 
 from tqdm import tqdm, tqdm_notebook as tqdm_nb
 from torch_modules.training import predictor
+from torch.utils.data import DataLoader, RandomSampler as Sampler
 
 
 on_notebook = True
+default_device = torch.device("cuda:0" if torch.cuda.device_count() > 0 else "cpu")
 
 
 class Trainer:
 
-    def __init__(self, model, optimizer, loss, metrics=None):
+    def __init__(self, model, optimizer, loss, metrics=None,
+                 x_device=None, x_type=torch.float, y_device=None, y_type=torch.long):
         self.model = model.train()
         self.optimizer = optimizer
         self.loss = loss
         self.metrics = metrics or []
+
+        self.x_device = x_device
+        self.x_type = x_type
+        self.y_device = y_device
+        self.y_type = y_type
+
         self.train_mode = True
 
-    def fit(self, train, test=None, epochs=1, callbacks=None):
+    def fit(self, train, test=None, epochs=1, batch_size=32, val_batch_size=1,
+            workers=0, pin_memory=True, callbacks=None):
         callbacks = callbacks or []
 
         [c.set_model_optimizer_trainer(self.model, self.optimizer, self) for c in callbacks]
         [c.on_train_begin() for c in callbacks]
+
+        train_loader = DataLoader(train, batch_size=batch_size, sampler=train if isinstance(train, Sampler) else None,
+                                  shuffle=not isinstance(train, Sampler), drop_last=True,
+                                  num_workers=workers, pin_memory=pin_memory)
+
+        test_loader = DataLoader(test, batch_size=val_batch_size, sampler=test if isinstance(test, Sampler) else None,
+                                 drop_last=True, num_workers=workers, pin_memory=pin_memory) if test else None
 
         for e in range(epochs):
             print(f"epochs: {e + 1}/{epochs}")
 
             [c.on_epoch_begin(e) for c in callbacks]
 
-            train_logs = self.train_one_epoch(train, callbacks)
+            train_logs = self.train_one_epoch(train_loader, callbacks)
 
-            val_logs = self.evaluate_one_epoch(test) if test is not None else {}
+            val_logs = self.evaluate_one_epoch(test_loader) if test else {}
 
             logs = {**train_logs, **val_logs}
 
@@ -50,6 +67,9 @@ class Trainer:
         with get_pbar()(total=n, desc="train") as pbar:
             for i, (x, y) in enumerate(train):
                 [c.on_batch_begin(i) for c in callbacks]
+
+                x = to_device(x, self.x_type, self.x_device)
+                y = to_device(y, self.y_type, self.y_device)
 
                 loss, y_pred = self.train_one_batch(x, y)
 
@@ -84,6 +104,9 @@ class Trainer:
 
         with get_pbar()(total=n, desc="evaluate") as pbar, torch.no_grad():
             for i, (x, y) in enumerate(test):
+                x = to_device(x, self.x_type, self.x_device)
+                y = to_device(y, self.y_type, self.y_device)
+
                 y_pred = model(x)
                 loss = self.loss(y_pred, y)
 
@@ -106,103 +129,17 @@ class Trainer:
         return predictor.StandardPredictor(self.model)
 
 
-class GANTrainer:
-
-    def __init__(self, discriminator, generator, d_optimizer, g_optimizer, loss, metrics=None):
-        self.discriminator = discriminator
-        self.generator = generator
-        self.d_optimizer = d_optimizer
-        self.g_optimizer = g_optimizer
-        self.loss = loss
-        self.metrics = metrics or []
-        self.train_mode = True
-
-    def fit(self, train, epochs=1, callbacks=None):
-        callbacks = callbacks or []
-
-        [c.set_model_optimizer_trainer([self.discriminator, self.generator], [self.d_optimizer, self.g_optimizer], self)
-         for c in callbacks]
-
-        [c.on_train_begin() for c in callbacks]
-
-        for e in range(epochs):
-            print(f"{e + 1}/{epochs}")
-
-            [c.on_epoch_begin(e) for c in callbacks]
-
-            train_logs = self.train_one_epoch(train, callbacks)
-
-            [c.on_epoch_end(e, train_logs) for c in callbacks]
-
-            if not self.train_mode:
-                break
-        [c.on_train_end() for c in callbacks]
-
-    def train_one_epoch(self, train, callbacks):
-        n = len(train)
-        metrics_names = ["real_loss", "fake_loss"] + [m.__name__ for m in self.metrics]
-        running_metrics = np.zeros(shape=len(self.metrics) + 2)
-
-        with get_pbar()(total=n, desc="train") as pbar:
-            for i, x in enumerate(train):
-                [c.on_batch_begin(i) for c in callbacks]
-
-                real_loss = self.train_discriminator(x)
-                fake_loss = self.train_generator(x)
-
-                with torch.no_grad():
-                    current_metrics = self.get_metrics(real_loss, fake_loss)
-                    running_metrics += current_metrics
-
-                    logs = dict(zip(metrics_names, running_metrics / (i + 1)))
-                    [c.on_batch_end(i, logs) for c in callbacks]
-
-                pbar.set_postfix(logs, refresh=False)
-                pbar.update(1)
-
-        return logs
-
-    def train_discriminator(self, x):
-        d = self.discriminator.train()
-        g = self.generator.train()
-
-        d.zero_grad()
-        real_labels = torch.ones(x.shape[0], dtype=torch.float, device=x.device)
-        real_loss = self.loss(d(x), real_labels)
-        real_loss.backward()
-        self.d_optimizer.step()
-
-        d.zero_grad()
-        with torch.no_grad():
-            fakes = g()
-        fake_labels = torch.zeros(fakes.shape[0], dtype=torch.float, device=fakes.device)
-        fake_loss = self.loss(d(fakes), fake_labels)
-        fake_loss.backward()
-        self.d_optimizer.step()
-
-        return (real_loss + fake_loss).detach()
-
-    def train_generator(self, _):
-        g = self.generator.train()
-        d = self.discriminator.train()
-
-        g.zero_grad()
-        fakes = g()
-        score = d(fakes)
-        labels = torch.ones(score.shape[0], dtype=torch.float, device=score.device)
-        loss = self.loss(score, labels)
-        loss.backward()
-        self.g_optimizer.step()
-
-        return loss.detach()
-
-    def get_metrics(self, real_loss, fake_loss):
-        g = self.generator.eval()
-        metrics = [float(m(g)) for m in self.metrics]
-        metrics = [float(real_loss), float(fake_loss)] + metrics
-
-        return np.array(metrics)
-
-
 def get_pbar():
     return tqdm_nb if on_notebook else tqdm
+
+
+def to_device(xs, dtype, device):
+    device = device or default_device
+
+    if device == "cpu":
+        return xs
+
+    if type(xs) is list:
+        return [x.type(dtype).to(device) for x in xs]
+    else:
+        return xs.type(dtype).to(device)
