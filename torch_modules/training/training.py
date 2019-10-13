@@ -1,8 +1,11 @@
 import numpy as np
 import torch
-import torch.nn as nn
 
-from tqdm import tqdm
+from tqdm import tqdm, tqdm_notebook as tqdm_nb
+from torch_modules.training import predictor
+
+
+on_notebook = True
 
 
 class Trainer:
@@ -14,9 +17,8 @@ class Trainer:
         self.metrics = metrics or []
         self.train_mode = True
 
-    def fit(self, train, test=None, epochs=1, callbacks=None, pbar=None):
+    def fit(self, train, test=None, epochs=1, callbacks=None):
         callbacks = callbacks or []
-        pbar = pbar or tqdm
 
         [c.set_model_optimizer_trainer(self.model, self.optimizer, self) for c in callbacks]
         [c.on_train_begin() for c in callbacks]
@@ -26,29 +28,26 @@ class Trainer:
 
             [c.on_epoch_begin(e) for c in callbacks]
 
-            train_logs = self.train_one_epoch(train, pbar, callbacks)
+            train_logs = self.train_one_epoch(train, callbacks)
 
-            val_logs = self.evaluate_one_epoch(test, pbar) if test is not None else {}
+            val_logs = self.evaluate_one_epoch(test) if test is not None else {}
 
             logs = {**train_logs, **val_logs}
 
             [c.on_epoch_end(e, logs) for c in callbacks]
-            train.shuffle()
-            test.shuffle() if test is not None else None
 
             if not self.train_mode:
                 break
 
         [c.on_train_end() for c in callbacks]
 
-    def train_one_epoch(self, train, pbar=None, callbacks=None):
-        pbar = pbar or tqdm
+    def train_one_epoch(self, train, callbacks=None):
         n = len(train)
         callbacks = callbacks or []
         metrics_names = ["loss"] + [m.__name__ for m in self.metrics]
         running_metrics = np.zeros(shape=len(self.metrics) + 1)
 
-        with pbar(total=n, desc="train") as pbar:
+        with get_pbar()(total=n, desc="train") as pbar:
             for i, (x, y) in enumerate(train):
                 [c.on_batch_begin(i) for c in callbacks]
 
@@ -76,15 +75,14 @@ class Trainer:
 
         return loss.detach(), y_pred.detach()
 
-    def evaluate_one_epoch(self, test, pbar=None):
+    def evaluate_one_epoch(self, test):
         model = self.model.eval()
 
-        pbar = pbar or tqdm
         n = len(test)
         metrics_names = ["val_loss"] + ["val_" + m.__name__ for m in self.metrics]
         running_metrics = np.zeros(len(self.metrics) + 1)
 
-        with pbar(total=n, desc="evaluate") as pbar, torch.no_grad():
+        with get_pbar()(total=n, desc="evaluate") as pbar, torch.no_grad():
             for i, (x, y) in enumerate(test):
                 y_pred = model(x)
                 loss = self.loss(y_pred, y)
@@ -104,6 +102,9 @@ class Trainer:
 
         return np.array(metrics)
 
+    def get_predictor(self):
+        return predictor.StandardPredictor(self.model)
+
 
 class GANTrainer:
 
@@ -116,9 +117,8 @@ class GANTrainer:
         self.metrics = metrics or []
         self.train_mode = True
 
-    def fit(self, train, epochs=1, callbacks=None, pbar=tqdm):
+    def fit(self, train, epochs=1, callbacks=None):
         callbacks = callbacks or []
-        pbar = pbar or tqdm
 
         [c.set_model_optimizer_trainer([self.discriminator, self.generator], [self.d_optimizer, self.g_optimizer], self)
          for c in callbacks]
@@ -130,22 +130,20 @@ class GANTrainer:
 
             [c.on_epoch_begin(e) for c in callbacks]
 
-            train_logs = self.train_one_epoch(train, pbar, callbacks)
+            train_logs = self.train_one_epoch(train, callbacks)
 
             [c.on_epoch_end(e, train_logs) for c in callbacks]
-
-            train.shuffle()
 
             if not self.train_mode:
                 break
         [c.on_train_end() for c in callbacks]
 
-    def train_one_epoch(self, train, pbar, callbacks):
+    def train_one_epoch(self, train, callbacks):
         n = len(train)
         metrics_names = ["real_loss", "fake_loss"] + [m.__name__ for m in self.metrics]
         running_metrics = np.zeros(shape=len(self.metrics) + 2)
 
-        with pbar(total=n, desc="train") as pbar:
+        with get_pbar()(total=n, desc="train") as pbar:
             for i, x in enumerate(train):
                 [c.on_batch_begin(i) for c in callbacks]
 
@@ -184,7 +182,7 @@ class GANTrainer:
 
         return (real_loss + fake_loss).detach()
 
-    def train_generator(self, x):
+    def train_generator(self, _):
         g = self.generator.train()
         d = self.discriminator.train()
 
@@ -204,3 +202,7 @@ class GANTrainer:
         metrics = [float(real_loss), float(fake_loss)] + metrics
 
         return np.array(metrics)
+
+
+def get_pbar():
+    return tqdm_nb if on_notebook else tqdm

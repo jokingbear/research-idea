@@ -283,10 +283,17 @@ class GenImage(Callback):
         self.rows = rows
         self.render_steps = render_steps
         self.render_size = render_size
+        self.epoch = 0
 
     def on_train_begin(self):
         if not os.path.exists(self.path):
             os.mkdir(self.path)
+
+        if not os.path.exists(self.path + "/iterations"):
+            os.mkdir(self.path + "/iterations")
+
+        if not os.path.exists(self.path + "/epochs"):
+            os.mkdir(self.path + "/epochs")
 
     def on_batch_end(self, batch, logs=None):
         if batch % self.render_steps == 0:
@@ -299,21 +306,12 @@ class GenImage(Callback):
                 imgs = imgs.reshape([rows, -1, *imgs.shape[1:]]).transpose([0, 2, 1, 3, 4])
                 imgs = imgs.reshape([rows * h, -1, c])
                 imgs = imgs[..., 0] if imgs.shape[-1] == 1 else imgs
-                imgs = self.standardize_output(imgs)
 
-                _, ax = plt.subplots(figsize=self.render_size)
-                ax.imshow(imgs)
-                ax.axis("off")
-                plt.show()
+                iio.imsave(f"{self.path}/iterations/{self.epoch}-{batch}.png", imgs)
 
     def on_epoch_end(self, epoch, logs=None):
         g = self.model[1].eval()
         rows = self.rows
-
-        path = f"{self.path}/epoch {epoch}"
-
-        if not os.path.exists(path):
-            os.mkdir(path)
 
         with torch.no_grad():
             for i in range(self.samples):
@@ -323,15 +321,9 @@ class GenImage(Callback):
                 imgs = imgs.reshape([rows * h, -1, c])
                 imgs = imgs[..., 0] if imgs.shape[-1] == 1 else imgs
 
-                iio.imsave(f"{path}/{i}.png", imgs)
+                iio.imsave(f"{self.path}/epochs/{epoch}-{i}.png", imgs)
 
-    def standardize_output(self, imgs):
-        min_val = imgs.min()
-
-        if min_val < 0:
-            imgs = imgs * 0.5 + 0.5
-
-        return imgs
+        self.epoch += 1
 
 
 class GanCheckpoint(Callback):
