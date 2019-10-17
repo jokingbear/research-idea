@@ -9,7 +9,7 @@ class LrFinder(Callback):
         self.min_lr = min_lr
         self.max_lr = max_lr
         self.steps = steps
-        self.current_step = 1
+        self.current_step = 0
         self.history = {}
 
     def on_train_begin(self):
@@ -61,7 +61,7 @@ class CLR(Callback):
         self.max_lr = max_lr
 
         self.epoch_steps = epoch_steps
-        self.current_step = 1
+        self.current_step = 0
 
         assert cycle_rate % 2 == 0, "cycle_rate must be divisible by 2"
         self.cycle_rate = cycle_rate
@@ -84,8 +84,8 @@ class CLR(Callback):
             self.current_step = 0
 
             if self.reduce_lr_each_cycle:
-                self.max_lr = self.max_lr / 2
-                print(f"reduced max lr to {self.max_lr / 2}")
+                self.max_lr = self.min_lr + (self.max_lr - self.min_lr) / 2
+                print(f"reduced max lr to {self.max_lr}")
 
     def get_lr(self):
         a = self.current_step / self.epoch_steps
