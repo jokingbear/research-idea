@@ -12,3 +12,5 @@ experiment*
 .vscode/
 
 gen_data/
+
+logs/

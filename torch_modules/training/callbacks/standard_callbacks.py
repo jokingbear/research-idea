@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import imageio as iio
 
 from torch_modules.training.callbacks.root_class import Callback
+from torch.utils.tensorboard import SummaryWriter
 from collections import OrderedDict
 
 
@@ -282,10 +283,17 @@ class GenImage(Callback):
         self.rows = rows
         self.render_steps = render_steps
         self.render_size = render_size
+        self.epoch = 0
 
     def on_train_begin(self):
         if not os.path.exists(self.path):
             os.mkdir(self.path)
+
+        if not os.path.exists(self.path + "/iterations"):
+            os.mkdir(self.path + "/iterations")
+
+        if not os.path.exists(self.path + "/epochs"):
+            os.mkdir(self.path + "/epochs")
 
     def on_batch_end(self, batch, logs=None):
         if batch % self.render_steps == 0:
@@ -299,19 +307,11 @@ class GenImage(Callback):
                 imgs = imgs.reshape([rows * h, -1, c])
                 imgs = imgs[..., 0] if imgs.shape[-1] == 1 else imgs
 
-                _, ax = plt.subplots(figsize=self.render_size)
-                ax.imshow(imgs)
-                ax.axis("off")
-                plt.show()
+                iio.imsave(f"{self.path}/iterations/{self.epoch}-{batch}.png", imgs)
 
     def on_epoch_end(self, epoch, logs=None):
         g = self.model[1].eval()
         rows = self.rows
-
-        path = f"{self.path}/epoch {epoch}"
-
-        if not os.path.exists(path):
-            os.mkdir(path)
 
         with torch.no_grad():
             for i in range(self.samples):
@@ -321,7 +321,9 @@ class GenImage(Callback):
                 imgs = imgs.reshape([rows * h, -1, c])
                 imgs = imgs[..., 0] if imgs.shape[-1] == 1 else imgs
 
-                iio.imsave(f"{path}/{i}.png", imgs)
+                iio.imsave(f"{self.path}/epochs/{epoch}-{i}.png", imgs)
+
+        self.epoch += 1
 
 
 class GanCheckpoint(Callback):
@@ -337,3 +339,35 @@ class GanCheckpoint(Callback):
             torch.save(self.model[-1].state_dict(), self.filename)
         else:
             torch.save(self.model[-1].state_dict(), f"{self.filename}-{epoch}")
+
+
+class Tensorboard(Callback):
+
+    def __init__(self, log_dir, steps=50, flushes=60):
+        super().__init__()
+
+        self.log_dir = log_dir
+        self.steps = steps
+        self.current_step = 0
+        self.flushes = flushes
+
+        self.writer = None
+
+    def on_train_begin(self):
+        self.writer = SummaryWriter(self.log_dir, flush_secs=self.flushes)
+
+    def on_batch_end(self, batch, logs=None):
+        if self.current_step % self.steps == 0:
+            for k in logs:
+                print(k, "  ", logs[k])
+                self.writer.add_scalar(k, logs[k], self.current_step)
+
+        self.current_step += 1
+
+    def on_epoch_end(self, epoch, logs=None):
+        for k in logs:
+            if "val" in k:
+                self.writer.add_scalar(k, logs[k], epoch)
+
+    def on_train_end(self):
+        self.writer = None
