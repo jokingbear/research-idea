@@ -10,7 +10,7 @@ def get_pbar():
     return tqdm_nb if on_notebook else tqdm
 
 
-def to_device(xs, dtype, device):
+def to_device(xs, dtype, device, return_array=True):
     device = device or default_device
 
     if device == "cpu":
@@ -19,4 +19,5 @@ def to_device(xs, dtype, device):
     if type(xs) is list:
         return [x.type(dtype).to(device) for x in xs]
     else:
-        return xs.type(dtype).to(device)
+        x = xs.type(dtype).to(device)
+        return [x] if return_array else x

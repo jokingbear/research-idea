@@ -65,9 +65,9 @@ class StandardTrainer:
                 [c.on_batch_begin(i) for c in callbacks]
 
                 x = utils.to_device(x, self.x_type, self.x_device)
-                y = utils.to_device(y, self.y_type, self.y_device)
+                y = utils.to_device(y, self.y_type, self.y_device, return_array=False)
 
-                loss, y_pred = self.train_one_batch(x, y)
+                loss, y_pred = self.train_one_batch(*x, y)
 
                 with torch.no_grad():
                     current_metrics = self.get_metrics(loss, y_pred, y)
@@ -82,9 +82,9 @@ class StandardTrainer:
 
         return logs
 
-    def train_one_batch(self, x, y):
+    def train_one_batch(self, *x, y):
         self.model.zero_grad()
-        y_pred = self.model(x)
+        y_pred = self.model(*x)
         loss = self.loss(y_pred, y)
         loss.backward()
         self.optimizer.step()
@@ -100,9 +100,9 @@ class StandardTrainer:
         with utils.get_pbar()(total=n, desc="evaluate") as pbar, torch.no_grad():
             for i, (x, y) in enumerate(test):
                 x = utils.to_device(x, self.x_type, self.x_device)
-                y = utils.to_device(y, self.y_type, self.y_device)
+                y = utils.to_device(y, self.y_type, self.y_device, return_array=False)
 
-                y_pred = self.model(x)
+                y_pred = self.model(*x)
                 loss = self.loss(y_pred, y)
 
                 metrics = self.get_metrics(loss, y_pred, y)
