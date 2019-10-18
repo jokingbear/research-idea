@@ -2,7 +2,6 @@ import numpy as np
 import torch
 
 from tqdm import tqdm, tqdm_notebook as tqdm_nb
-from torch_modules.training import predictor
 from torch.utils.data import DataLoader, RandomSampler as Sampler
 
 
@@ -59,6 +58,7 @@ class Trainer:
         [c.on_train_end() for c in callbacks]
 
     def train_one_epoch(self, train, callbacks=None):
+        self.model.train()
         n = len(train)
         callbacks = callbacks or []
         metrics_names = ["loss"] + [m.__name__ for m in self.metrics]
@@ -96,8 +96,7 @@ class Trainer:
         return loss.detach(), y_pred.detach()
 
     def evaluate_one_epoch(self, test):
-        model = self.model.eval()
-
+        self.model.eval()
         n = len(test)
         metrics_names = ["val_loss"] + ["val_" + m.__name__ for m in self.metrics]
         running_metrics = np.zeros(len(self.metrics) + 1)
@@ -107,7 +106,7 @@ class Trainer:
                 x = to_device(x, self.x_type, self.x_device)
                 y = to_device(y, self.y_type, self.y_device)
 
-                y_pred = model(x)
+                y_pred = self.model(x)
                 loss = self.loss(y_pred, y)
 
                 metrics = self.get_metrics(loss, y_pred, y)
@@ -124,9 +123,6 @@ class Trainer:
         metrics = [float(loss)] + metrics
 
         return np.array(metrics)
-
-    def get_predictor(self):
-        return predictor.StandardPredictor(self.model)
 
 
 def get_pbar():
