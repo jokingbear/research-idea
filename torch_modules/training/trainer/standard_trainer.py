@@ -1,15 +1,11 @@
 import numpy as np
 import torch
+import torch_modules.training.trainer.utils as utils
 
-from tqdm import tqdm, tqdm_notebook as tqdm_nb
 from torch.utils.data import DataLoader, RandomSampler as Sampler
 
 
-on_notebook = True
-default_device = torch.device("cuda:0" if torch.cuda.device_count() > 0 else "cpu")
-
-
-class Trainer:
+class StandardTrainer:
 
     def __init__(self, model, optimizer, loss, metrics=None,
                  x_device=None, x_type=torch.float, y_device=None, y_type=torch.long):
@@ -64,12 +60,12 @@ class Trainer:
         metrics_names = ["loss"] + [m.__name__ for m in self.metrics]
         running_metrics = np.zeros(shape=len(self.metrics) + 1)
 
-        with get_pbar()(total=n, desc="train") as pbar:
+        with utils.get_pbar()(total=n, desc="train") as pbar:
             for i, (x, y) in enumerate(train):
                 [c.on_batch_begin(i) for c in callbacks]
 
-                x = to_device(x, self.x_type, self.x_device)
-                y = to_device(y, self.y_type, self.y_device)
+                x = utils.to_device(x, self.x_type, self.x_device)
+                y = utils.to_device(y, self.y_type, self.y_device)
 
                 loss, y_pred = self.train_one_batch(x, y)
 
@@ -101,10 +97,10 @@ class Trainer:
         metrics_names = ["val_loss"] + ["val_" + m.__name__ for m in self.metrics]
         running_metrics = np.zeros(len(self.metrics) + 1)
 
-        with get_pbar()(total=n, desc="evaluate") as pbar, torch.no_grad():
+        with utils.get_pbar()(total=n, desc="evaluate") as pbar, torch.no_grad():
             for i, (x, y) in enumerate(test):
-                x = to_device(x, self.x_type, self.x_device)
-                y = to_device(y, self.y_type, self.y_device)
+                x = utils.to_device(x, self.x_type, self.x_device)
+                y = utils.to_device(y, self.y_type, self.y_device)
 
                 y_pred = self.model(x)
                 loss = self.loss(y_pred, y)
@@ -123,19 +119,3 @@ class Trainer:
         metrics = [float(loss)] + metrics
 
         return np.array(metrics)
-
-
-def get_pbar():
-    return tqdm_nb if on_notebook else tqdm
-
-
-def to_device(xs, dtype, device):
-    device = device or default_device
-
-    if device == "cpu":
-        return xs
-
-    if type(xs) is list:
-        return [x.type(dtype).to(device) for x in xs]
-    else:
-        return xs.type(dtype).to(device)
