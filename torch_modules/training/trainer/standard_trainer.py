@@ -54,7 +54,6 @@ class StandardTrainer:
         [c.on_train_end() for c in callbacks]
 
     def train_one_epoch(self, train, callbacks=None):
-        self.model.train()
         n = len(train)
         callbacks = callbacks or []
         metrics_names = ["loss"] + [m.__name__ for m in self.metrics]
@@ -67,7 +66,7 @@ class StandardTrainer:
                 x = utils.to_device(x, self.x_type, self.x_device)
                 y = utils.to_device(y, self.y_type, self.y_device, return_array=False)
 
-                loss, y_pred = self.train_one_batch(*x, y)
+                loss, y_pred = self.train_one_batch(*x, y=y)
 
                 with torch.no_grad():
                     current_metrics = self.get_metrics(loss, y_pred, y)
@@ -83,7 +82,9 @@ class StandardTrainer:
         return logs
 
     def train_one_batch(self, *x, y):
+        self.model.train()
         self.model.zero_grad()
+
         y_pred = self.model(*x)
         loss = self.loss(y_pred, y)
         loss.backward()

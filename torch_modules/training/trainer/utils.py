@@ -16,7 +16,7 @@ def to_device(xs, dtype, device, return_array=True):
     if device == "cpu":
         return xs
 
-    if type(xs) is list:
+    if type(xs) in {list, tuple}:
         return [x.type(dtype).to(device) for x in xs]
     else:
         x = xs.type(dtype).to(device)

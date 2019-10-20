@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as func
 
 
 class DynamicRouting(nn.Module):
@@ -54,6 +55,7 @@ class DynamicRouting(nn.Module):
                     v = v[:, 0, ...]
                     return v if self.bias is None else v + self.bias
 
+                v = func.normalize(v, dim=2)
                 beta = beta + torch.sum(v * con, dim=(2,), keepdim=True)
 
     def reset_parameters(self):
