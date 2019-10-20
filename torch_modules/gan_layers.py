@@ -29,7 +29,7 @@ class ScaleCon(nn.Module):
         return con_op(x, self.const * self.weight, self.bias, self.stride, self.padding)
 
     def reset_parameters(self):
-        nn.init.kaiming_normal_(self.weight)
+        nn.init.normal_(self.weight)
 
     def extra_repr(self):
         f_out, f_in = self.weight.shape[:2]
@@ -53,7 +53,7 @@ class ScaleLinear(nn.Module):
         return func.linear(x, self.const * self.weight, self.bias)
 
     def reset_parameters(self):
-        nn.init.kaiming_normal_(self.weight)
+        nn.init.normal_(self.weight)
 
     def extra_repr(self):
         f_out, f_in = self.weight.shape
