@@ -58,3 +58,9 @@ class ScaleLinear(nn.Module):
     def extra_repr(self):
         f_out, f_in = self.weight.shape
         return f"in_channels={f_in}, out_channels={f_out}, bias={self.bias is not None}"
+
+
+class MiniBatchStd(nn.Module):
+
+    def forward(self, x):
+        return x.var(dim=0).mean().expand(x.shape[0], 1, *x.shape[2:])
