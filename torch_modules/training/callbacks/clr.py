@@ -80,7 +80,7 @@ class CLR(Callback):
             g["lr"] = lr
 
     def on_epoch_end(self, epoch, logs=None):
-        if epoch % self.cycle_rate == 0 and epoch != 0:
+        if (epoch + 1) % self.cycle_rate == 0:
             self.current_step = 0
 
             if self.reduce_lr_each_cycle:
@@ -88,9 +88,9 @@ class CLR(Callback):
                 print(f"reduced max lr to {self.max_lr}")
 
     def get_lr(self):
-        a = self.current_step / self.epoch_steps
+        a = (self.current_step % self.epoch_steps) / self.epoch_steps
 
         if self.current_step > self.epoch_steps * self.cycle_rate // 2:
-            a = -a
-
-        return self.min_lr + a * (self.max_lr - self.min_lr)
+            return self.max_lr - a * (self.max_lr - self.min_lr)
+        else:
+            return self.min_lr + a * (self.max_lr - self.min_lr)
