@@ -36,7 +36,7 @@ class StandardTrainer:
                                  drop_last=True, num_workers=workers, pin_memory=pin_memory) if test else None
 
         for e in range(epochs):
-            print(f"epochs: {e + 1}/{epochs}")
+            print(f"epoch: {e + 1}/{epochs}")
 
             [c.on_epoch_begin(e) for c in callbacks]
 
