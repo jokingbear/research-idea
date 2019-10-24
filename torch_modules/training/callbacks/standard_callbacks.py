@@ -7,7 +7,6 @@ import torch
 import torch.optim.lr_scheduler as schedulers
 import csv
 import matplotlib.pyplot as plt
-import imageio as iio
 
 from torch_modules.training.callbacks.root_class import Callback
 from torch.utils.tensorboard import SummaryWriter
@@ -75,7 +74,8 @@ class EarlyStopping(Callback):
 
 class ModelCheckpoint(Callback):
 
-    def __init__(self, filepath, monitor="val_loss", mode="min", save_best_only=False, save_weights_only=False,
+    def __init__(self, filepath, monitor="val_loss", mode="min",
+                 save_best_only=False, save_weights_only=False, save_optimizer=False,
                  verbose=1):
         super().__init__()
 
@@ -84,6 +84,7 @@ class ModelCheckpoint(Callback):
         self.mode = mode
         self.save_best_only = save_best_only
         self.save_weights_only = save_weights_only
+        self.save_optimizer = save_optimizer
         self.verbose = verbose
         self.running_monitor_val = None
 
@@ -102,7 +103,10 @@ class ModelCheckpoint(Callback):
             save_obj = self.model.state_dict() if self.save_weights_only else self.model
 
             print("saving model to ", self.filepath) if self.verbose else None
-            torch.save(save_obj, self.filepath)
+            torch.save(save_obj, self.filepath + ".model")
+
+            if self.save_optimizer:
+                torch.save(self.optimizer.state_dict(), self.filepath + ".opt")
 
             self.running_monitor_val = monitor_val
 
@@ -271,74 +275,6 @@ class LRFinder(Callback):
         plt.xlabel('Learning rate')
         plt.ylabel('Loss')
         plt.show()
-
-
-class GenImage(Callback):
-
-    def __init__(self, path="gen_data", samples=1, rows=2, render_steps=50, render_size=(15, 15)):
-        super().__init__()
-
-        self.path = path
-        self.samples = samples
-        self.rows = rows
-        self.render_steps = render_steps
-        self.render_size = render_size
-        self.epoch = 0
-
-    def on_train_begin(self):
-        if not os.path.exists(self.path):
-            os.mkdir(self.path)
-
-        if not os.path.exists(self.path + "/iterations"):
-            os.mkdir(self.path + "/iterations")
-
-        if not os.path.exists(self.path + "/epochs"):
-            os.mkdir(self.path + "/epochs")
-
-    def on_batch_end(self, batch, logs=None):
-        if batch % self.render_steps == 0:
-            rows = self.rows
-            g = self.model[1].eval()
-
-            with torch.no_grad():
-                imgs = g().cpu().numpy().transpose([0, 2, 3, 1])
-                h, w, c = imgs.shape[1:]
-                imgs = imgs.reshape([rows, -1, *imgs.shape[1:]]).transpose([0, 2, 1, 3, 4])
-                imgs = imgs.reshape([rows * h, -1, c])
-                imgs = imgs[..., 0] if imgs.shape[-1] == 1 else imgs
-
-                iio.imsave(f"{self.path}/iterations/{self.epoch}-{batch}.png", imgs)
-
-    def on_epoch_end(self, epoch, logs=None):
-        g = self.model[1].eval()
-        rows = self.rows
-
-        with torch.no_grad():
-            for i in range(self.samples):
-                imgs = g().cpu().numpy().transpose([0, 2, 3, 1])
-                h, w, c = imgs.shape[1:]
-                imgs = imgs.reshape([rows, -1, *imgs.shape[1:]]).transpose([0, 2, 1, 3, 4])
-                imgs = imgs.reshape([rows * h, -1, c])
-                imgs = imgs[..., 0] if imgs.shape[-1] == 1 else imgs
-
-                iio.imsave(f"{self.path}/epochs/{epoch}-{i}.png", imgs)
-
-        self.epoch += 1
-
-
-class GanCheckpoint(Callback):
-
-    def __init__(self, filename, overwrite=False):
-        super().__init__()
-
-        self.filename = filename
-        self.overwrite = overwrite
-
-    def on_epoch_end(self, epoch, logs=None):
-        if self.overwrite:
-            torch.save(self.model[-1].state_dict(), self.filename)
-        else:
-            torch.save(self.model[-1].state_dict(), f"{self.filename}-{epoch}")
 
 
 class Tensorboard(Callback):
