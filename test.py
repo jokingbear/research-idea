@@ -1,9 +1,12 @@
-import torch.optim as opts
-import cv2
+import torch
+import numpy as np
 
-from tensorflow.keras.datasets import mnist
+from torch_modules.models import ResCap
 
 
-(x_train, _), _ = mnist.load_data()
+corr_matrix = np.random.randn(14, 14)
+a = ResCap(corr_matrix).cuda(0)
 
-imgs = x_train / 127.5 - 1
+b = torch.randn(32, 1, 256, 256).cuda(0)
+
+tmp = a(b)

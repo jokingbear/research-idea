@@ -74,7 +74,8 @@ class EarlyStopping(Callback):
 
 class ModelCheckpoint(Callback):
 
-    def __init__(self, filepath, monitor="val_loss", mode="min", save_best_only=False, save_weights_only=False,
+    def __init__(self, filepath, monitor="val_loss", mode="min",
+                 save_best_only=False, save_weights_only=False, save_optimizer=False,
                  verbose=1):
         super().__init__()
 
@@ -83,6 +84,7 @@ class ModelCheckpoint(Callback):
         self.mode = mode
         self.save_best_only = save_best_only
         self.save_weights_only = save_weights_only
+        self.save_optimizer = save_optimizer
         self.verbose = verbose
         self.running_monitor_val = None
 
@@ -101,7 +103,10 @@ class ModelCheckpoint(Callback):
             save_obj = self.model.state_dict() if self.save_weights_only else self.model
 
             print("saving model to ", self.filepath) if self.verbose else None
-            torch.save(save_obj, self.filepath)
+            torch.save(save_obj, self.filepath + ".model")
+
+            if self.save_optimizer:
+                torch.save(self.optimizer.state_dict(), self.filepath + ".opt")
 
             self.running_monitor_val = monitor_val
 

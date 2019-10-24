@@ -60,7 +60,7 @@ class ConvBlock(Block):
         con = conv_layer(in_filters * groups, out_filters * groups, kernel_size, stride, padding,
                          dilation, groups, bias=False)
 
-        super().__init__(out_filters, con, normalizer, has_activator)
+        super().__init__(out_filters * groups, con, normalizer, has_activator)
 
 
 class DeconBlock(Block):
