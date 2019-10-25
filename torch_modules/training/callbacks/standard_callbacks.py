@@ -15,7 +15,7 @@ from collections import OrderedDict
 
 class ReduceLROnPlateau(Callback):
 
-    def __init__(self, monitor="val_loss", patience=5, mode="min", factor=0.1, verbose=True):
+    def __init__(self, monitor="val_loss", patience=5, mode="min", factor=0.1, verbose=1):
         super().__init__()
 
         self.monitor = monitor
@@ -74,16 +74,15 @@ class EarlyStopping(Callback):
 
 class ModelCheckpoint(Callback):
 
-    def __init__(self, filepath, monitor="val_loss", mode="min",
-                 save_best_only=False, save_weights_only=False, save_optimizer=False,
+    def __init__(self, file_path, monitor="val_loss", mode="min",
+                 save_best_only=False, save_optimizer=False,
                  verbose=1):
         super().__init__()
 
-        self.filepath = filepath
+        self.file_path = file_path
         self.monitor = monitor
         self.mode = mode
         self.save_best_only = save_best_only
-        self.save_weights_only = save_weights_only
         self.save_optimizer = save_optimizer
         self.verbose = verbose
         self.running_monitor_val = None
@@ -100,45 +99,11 @@ class ModelCheckpoint(Callback):
         is_save = not self.save_best_only or is_min or is_max
 
         if is_save:
-            save_obj = self.model.state_dict() if self.save_weights_only else self.model
-
-            print("saving model to ", self.filepath) if self.verbose else None
-            torch.save(save_obj, self.filepath + ".model")
-
-            if self.save_optimizer:
-                torch.save(self.optimizer.state_dict(), self.filepath + ".opt")
+            print("saving model to ", self.file_path) if self.verbose else None
+            torch.save(self.model.state_dict(), self.file_path + ".model")
+            torch.save(self.optimizer.state_dict(), self.file_path + ".opt") if self.save_optimizer else None
 
             self.running_monitor_val = monitor_val
-
-
-class Lookahead(Callback):
-
-    def __init__(self, alpha=0.5, inner_step=5):
-        super().__init__()
-
-        self.alpha = alpha
-        self.inner_step = inner_step
-        self.parameters = None
-
-    def on_train_begin(self):
-        d = self.model.state_dict()
-
-        self.parameters = {k: d[k].clone() for k in d}
-
-    def on_batch_end(self, batch, logs=None):
-        if batch % self.inner_step == 0 and batch != 0:
-            kws0 = self.parameters
-            kws1 = self.model.state_dict()
-            alpha = self.alpha
-
-            kws = [(k, kws0[k] + alpha * (kws1[k] - kws0[k])) for k in kws1]
-            kws = OrderedDict(kws)
-
-            self.parameters = kws
-            self.model.load_state_dict(kws)
-
-    def on_train_end(self):
-        self.parameters = None
 
 
 class CSVLogger(Callback):
@@ -225,56 +190,6 @@ class CSVLogger(Callback):
     def on_train_end(self, logs=None):
         self.csv_file.close()
         self.writer = None
-
-
-class LRFinder(Callback):
-
-    def __init__(self, min_lr=1e-5, max_lr=1e-2, steps_per_epoch=None, epochs=None):
-        super().__init__()
-
-        self.min_lr = min_lr
-        self.max_lr = max_lr
-        self.total_iterations = steps_per_epoch * epochs
-        self.iteration = 0
-        self.history = {}
-
-    def clr(self):
-        """Calculate the learning rate."""
-        x = self.iteration / self.total_iterations
-        return self.min_lr + (self.max_lr - self.min_lr) * x
-
-    def on_train_begin(self, logs=None):
-        """Initialize the learning rate to the minimum value at the start of training."""
-        self.optimizer.param_groups[0]["lr"] = self.min_lr
-
-    def on_batch_end(self, epoch, logs=None):
-        """Record previous batch statistics and update the learning rate."""
-        logs = logs or {}
-        self.iteration += 1
-
-        self.history.setdefault('lr', []).append(self.optimizer.param_groups[0]["lr"])
-        self.history.setdefault('iterations', []).append(self.iteration)
-
-        for k, v in logs.items():
-            self.history.setdefault(k, []).append(v)
-
-        self.optimizer.param_groups[0]["lr"] = self.clr()
-
-    def plot_lr(self):
-        """Helper function to quickly inspect the learning rate schedule."""
-        plt.plot(self.history['iterations'], self.history['lr'])
-        plt.yscale('log')
-        plt.xlabel('Iteration')
-        plt.ylabel('Learning rate')
-        plt.show()
-
-    def plot_loss(self):
-        """Helper function to quickly observe the learning rate experiment results."""
-        plt.plot(self.history['lr'], self.history['loss'])
-        plt.xscale('log')
-        plt.xlabel('Learning rate')
-        plt.ylabel('Loss')
-        plt.show()
 
 
 class Tensorboard(Callback):

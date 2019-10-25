@@ -1,26 +1,14 @@
-import torch
-
 from abc import abstractmethod
-from queue import Queue
-from threading import Thread
 from torch.utils import data
 
 
-class StandardDataset(data.Dataset, data.RandomSampler):
-
-    def __init__(self):
-        super().__init__(self)
+class StandardDataset(data.Dataset):
 
     def __len__(self):
         return self.get_len()
 
     def __getitem__(self, idx):
         return self.get_item(idx)
-
-    def __iter__(self):
-        self.sample()
-
-        return super().__iter__()
 
     @abstractmethod
     def get_len(self):
@@ -32,3 +20,19 @@ class StandardDataset(data.Dataset, data.RandomSampler):
 
     def sample(self):
         pass
+
+    def get_sampler(self):
+        return CustomSampler(self)
+
+
+class CustomSampler(data.RandomSampler):
+
+    def __init__(self, dataset):
+        super().__init__(dataset, replacement=False)
+
+        self.dataset = dataset
+
+    def __iter__(self):
+        self.dataset.sample()
+
+        return super().__iter__()

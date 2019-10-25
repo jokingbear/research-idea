@@ -25,7 +25,7 @@ class Reshape(nn.Module):
         self.shape = shape
 
     def forward(self, x):
-        return x.reshape([-1, *self.shape])
+        return x.reshape([x.shape[0], *self.shape])
 
     def extra_repr(self):
         return f"shape={self.shape}"

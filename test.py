@@ -1,12 +1,24 @@
 import torch
 import numpy as np
 
-from torch_modules.models import ResCap
+from torch_modules.training import StandardDataset
+from torch.utils import data
 
 
-corr_matrix = np.random.randn(14, 14)
-a = ResCap(corr_matrix).cuda(0)
+class Data(StandardDataset):
 
-b = torch.randn(32, 1, 256, 256).cuda(0)
+    def get_len(self):
+        return 10
 
-tmp = a(b)
+    def get_item(self, idx):
+        return idx
+
+    def sample(self):
+        print("sample")
+
+
+d = Data()
+loader = data.DataLoader(d, sampler=d.get_sampler(), batch_size=4)
+
+for _ in loader:
+    print(_)
