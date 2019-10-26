@@ -20,7 +20,7 @@ class ScaleCon(nn.Module):
         spatial_shape = [1] * rank
         kernel_shape = [kernel_size] * rank
         self.weight = nn.Parameter(torch.Tensor(out_channels, in_channels, *kernel_shape))
-        self.bias = nn.Parameter(torch.zeros(1, out_channels, *spatial_shape)) if bias else None
+        self.bias = nn.Parameter(torch.Tensor(1, out_channels, *spatial_shape)) if bias else None
         self.const = np.sqrt(2 / (in_channels * kernel_size**rank))
 
         self.reset_parameters()
@@ -43,8 +43,8 @@ class ScaleLinear(nn.Module):
     def __init__(self, in_channels, out_channels, bias=True):
         super().__init__()
 
-        self.weight = nn.Parameter(torch.tensor(out_channels, in_channels))
-        self.bias = nn.Parameter(torch.tensor(out_channels)) if bias else None
+        self.weight = nn.Parameter(torch.Tensor(out_channels, in_channels))
+        self.bias = nn.Parameter(torch.Tensor(out_channels)) if bias else None
         self.const = np.sqrt(2 / in_channels)
 
         self.reset_parameters()
@@ -63,4 +63,7 @@ class ScaleLinear(nn.Module):
 class MiniBatchStd(nn.Module):
 
     def forward(self, x):
-        return x.var(dim=0).mean().expand(x.shape[0], 1, *x.shape[2:])
+        var = x.var(dim=0).mean()
+        std = torch.sqrt(var + 1e-5).expand(x.shape[0], 1, *x.shape[2:])
+
+        return torch.cat([x, std], dim=1)

@@ -23,7 +23,7 @@ class Callback:
     def on_train_end(self):
         pass
 
-    def set_model_optimizer_trainer(self, model, optimizer, trainer):
-        self.model = model
-        self.optimizer = optimizer
+    def set_trainer(self, trainer):
+        self.model = trainer.model
+        self.optimizer = trainer.optimizer
         self.trainer = trainer

@@ -6,7 +6,7 @@ on_notebook = True
 default_device = torch.device("cuda:0" if torch.cuda.device_count() > 0 else "cpu")
 
 
-def get_pbar():
+def get_tqdm():
     return tqdm_nb if on_notebook else tqdm
 
 
