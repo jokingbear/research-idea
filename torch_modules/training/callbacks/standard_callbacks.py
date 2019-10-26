@@ -6,11 +6,9 @@ import numpy as np
 import torch
 import torch.optim.lr_scheduler as schedulers
 import csv
-import matplotlib.pyplot as plt
 
 from torch_modules.training.callbacks.root_class import Callback
 from torch.utils.tensorboard import SummaryWriter
-from collections import OrderedDict
 
 
 class ReduceLROnPlateau(Callback):
@@ -27,7 +25,7 @@ class ReduceLROnPlateau(Callback):
 
     def on_train_begin(self):
         self.scheduler = schedulers.ReduceLROnPlateau(self.optimizer, mode=self.mode, factor=self.factor,
-                                                      patience=self.patience - 1, verbose=self.verbose)
+                                                      patience=self.patience - 1, verbose=bool(self.verbose))
 
     def on_epoch_end(self, epoch, logs=None):
         for i, param_group in enumerate(self.optimizer.param_groups):
