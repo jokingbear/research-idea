@@ -3,3 +3,11 @@ conda install nodejs jupyterlab ipywidgets jupyterhub -c conda-forge
 conda install albumentations -c albumentations
 conda install pytorch torchvision cudatoolkit=10.1 -c pytorch
 conda install -c conda-forge conda-pack
+
+-------------------------------------------------------------
+
+# setup jupyterlab and tqdm
+jupyter nbextension enable --py widgetsnbextension
+jupyter labextension install @jupyter-widgets/jupyterlab-manager
+
+-------------------------------------------------------------
