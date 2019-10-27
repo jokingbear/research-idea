@@ -1,15 +1,14 @@
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as func
-
-import numpy as np
 
 from torch_modules import blocks
 
 
 class ResCap(nn.Sequential):
 
-    def __init__(self, corr_matrix, in_filters=1, start_filters=64, groups=32, d=4, iters=1, classifier=None):
+    def __init__(self, corr_matrix, in_filters=1, start_filters=64, groups=32, d=4, iters=1):
         super().__init__()
 
         f = start_filters
@@ -65,8 +64,8 @@ class GraphTransform(nn.Module):
         self.in_filters = in_filters
         self.out_filters = out_filters
 
-        self.weights = nn.Parameter(torch.Tensor(in_filters, out_filters))
-        self.bias = nn.Parameter(torch.Tensor(out_filters))
+        self.weights = nn.Parameter(torch.zeros(in_filters, out_filters), requires_grad=True)
+        self.bias = nn.Parameter(torch.zeros(out_filters), requires_grad=True)
 
         self.init_param()
 

@@ -1,9 +1,7 @@
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as func
-
-import numpy as np
-
 
 rank = 2
 con_op = func.conv2d
@@ -19,8 +17,8 @@ class ScaleCon(nn.Module):
 
         spatial_shape = [1] * rank
         kernel_shape = [kernel_size] * rank
-        self.weight = nn.Parameter(torch.Tensor(out_channels, in_channels, *kernel_shape))
-        self.bias = nn.Parameter(torch.Tensor(1, out_channels, *spatial_shape)) if bias else None
+        self.weight = nn.Parameter(torch.zeros(out_channels, in_channels, *kernel_shape), requires_grad=True)
+        self.bias = nn.Parameter(torch.zeros(1, out_channels, *spatial_shape), requires_grad=True) if bias else None
         self.const = np.sqrt(2 / (in_channels * kernel_size**rank))
 
         self.reset_parameters()
@@ -43,8 +41,8 @@ class ScaleLinear(nn.Module):
     def __init__(self, in_channels, out_channels, bias=True):
         super().__init__()
 
-        self.weight = nn.Parameter(torch.Tensor(out_channels, in_channels))
-        self.bias = nn.Parameter(torch.Tensor(out_channels)) if bias else None
+        self.weight = nn.Parameter(torch.zeros(out_channels, in_channels), requires_grad=True)
+        self.bias = nn.Parameter(torch.zeros(out_channels), requires_grad=True) if bias else None
         self.const = np.sqrt(2 / in_channels)
 
         self.reset_parameters()

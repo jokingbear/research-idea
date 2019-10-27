@@ -1,24 +1,7 @@
-import torch
-import numpy as np
+import torch.nn as nn
 
-from torch_modules.training import StandardDataset
-from torch.utils import data
+import torch_modules.initializations as inits
 
+inits.standard_layers = {}
 
-class Data(StandardDataset):
-
-    def get_len(self):
-        return 10
-
-    def get_item(self, idx):
-        return idx
-
-    def sample(self):
-        print("sample")
-
-
-d = Data()
-loader = data.DataLoader(d, sampler=d.get_sampler(), batch_size=4)
-
-for _ in loader:
-    print(_)
+inits.kaiming_init()(nn.Conv2d(1, 2, 3))
