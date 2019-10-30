@@ -92,8 +92,7 @@ class StandardTrainer:
         loss = self.loss(y_pred, y)
         loss.backward()
 
-        if self.grad_accumulation:
-            self.grad_step += 1
+        self.grad_step += 1
 
         if self.grad_step == self.grad_accumulation:
             self.grad_step = 0

@@ -8,7 +8,7 @@ from plasma import blocks
 
 class ResCap(nn.Sequential):
 
-    def __init__(self, corr_matrix, in_filters=1, start_filters=64, groups=32, d=4, iters=1):
+    def __init__(self, in_filters=1, start_filters=64, groups=32, d=4, iters=1):
         super().__init__()
 
         f = start_filters
@@ -52,7 +52,19 @@ class ResCap(nn.Sequential):
 
         self.features = blocks.commons.GlobalAverage()
 
-        self.classifier = GraphClassifier(corr_matrix)
+        self.classifier = nn.Sequential(*[
+            nn.Linear(f * 32, 14),
+            nn.Sigmoid()
+        ])
+
+    def forward(self, x):
+        con1 = self.con1(x)
+        con2 = self.con2(con1)
+        con3 = self.con3(con2)
+        con4 = self.con4(con3)
+        con5 = self.con5(con4)
+
+        return con5
 
 
 class GraphTransform(nn.Module):

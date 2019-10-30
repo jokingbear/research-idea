@@ -5,7 +5,7 @@ import torch.nn.functional as func
 
 class DynamicRouting(nn.Module):
 
-    def __init__(self, in_filters, out_filters, groups, iters=3, rank=2, bias=True, debug=False):
+    def __init__(self, in_filters, out_filters, groups, iters=3, rank=2, bias=True):
         super().__init__()
 
         spatial_shape = [1] * rank
@@ -20,8 +20,6 @@ class DynamicRouting(nn.Module):
         self.con_op = torch.conv2d if rank == 2 else torch.conv3d if rank == 3 else torch.convolution
 
         self.reset_parameters()
-
-        self.log = {} if debug else None
 
     def forward(self, x):
         con_op = self.con_op
@@ -40,16 +38,13 @@ class DynamicRouting(nn.Module):
             con = con_op(x, weight, groups=self.groups)
             spatial_shape = con.shape[2:]
             con = con.reshape([-1, g, fo, *spatial_shape])
-            self.log["con"] = con.detach().cpu().numpy() if self.log else None
 
             beta = torch.zeros([], device=x.device)
 
             for i in range(self.iters):
                 alpha = torch.sigmoid(beta)
-                self.log[f"a_{i}"] = alpha.detach().cpu().numpy() if self.log and i > 0 else None
 
                 v = torch.sum(alpha * con, dim=(1,), keepdim=True)
-                self.log[f"v_{i}"] = v.detach().cpu().numpy() if self.log else None
 
                 if i == self.iters - 1:
                     v = v[:, 0, ...]

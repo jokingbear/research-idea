@@ -73,7 +73,7 @@ class EarlyStopping(Callback):
 class ModelCheckpoint(Callback):
 
     def __init__(self, file_path, monitor="val_loss", mode="min",
-                 save_best_only=False, save_optimizer=False,
+                 save_best_only=True, save_optimizer=False,
                  verbose=1):
         super().__init__()
 
@@ -192,31 +192,33 @@ class CSVLogger(Callback):
 
 class Tensorboard(Callback):
 
-    def __init__(self, log_dir, steps=50, flushes=60):
+    def __init__(self, log_dir, steps=50, flushes=60, input_shape=None, input_device=None):
         super().__init__()
 
         self.log_dir = log_dir
         self.steps = steps
         self.current_step = 0
         self.flushes = flushes
+        self.input_shape = input_shape
+        self.input_device = input_device or "cpu"
 
         self.writer = None
 
     def on_train_begin(self):
         self.writer = SummaryWriter(self.log_dir, flush_secs=self.flushes)
 
+        if self.input_shape:
+            input_shape = [1, *self.input_shape]
+            self.writer.add_graph(self.model, torch.ones(input_shape, dtype=torch.float, device=self.input_device))
+
     def on_batch_end(self, batch, logs=None):
         if self.current_step % self.steps == 0:
-            for k in logs:
-                print(k, "  ", logs[k])
-                self.writer.add_scalar(k, logs[k], self.current_step)
+            self.writer.add_scalars("iterations", logs, self.current_step)
 
         self.current_step += 1
 
     def on_epoch_end(self, epoch, logs=None):
-        for k in logs:
-            if "val" in k:
-                self.writer.add_scalar(k, logs[k], epoch)
+        self.writer.add_scalars("epochs", logs, epoch + 1)
 
     def on_train_end(self):
         self.writer = None

@@ -1,7 +1,8 @@
-import torch.nn as nn
+import torch
 
-import plasma.initializations as inits
+from plasma import models
 
-inits.standard_layers = {}
+m = models.ResCap(None)
 
-inits.kaiming_init()(nn.Conv2d(1, 2, 3))
+a = torch.ones(1, 1, 320, 384)
+m(a)
