@@ -1,14 +1,14 @@
 import collections
+import csv
 import io
 import os
 
 import numpy as np
 import torch
 import torch.optim.lr_scheduler as schedulers
-import csv
-
-from torch_modules.training.callbacks.root_class import Callback
 from torch.utils.tensorboard import SummaryWriter
+
+from plasma.training.callbacks.root_class import Callback
 
 
 class ReduceLROnPlateau(Callback):

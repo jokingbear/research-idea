@@ -1,4 +1,4 @@
-from torch_modules.training.callbacks import Callback
+from plasma.training.callbacks import Callback
 
 
 class LrFinder(Callback):

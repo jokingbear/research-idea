@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as func
 
-from torch_modules import blocks
+from plasma import blocks
 
 
 class ResCap(nn.Sequential):

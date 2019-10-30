@@ -1,8 +1,8 @@
 import numpy as np
 import torch
-import torch_modules.training.trainer.utils as utils
-
 from torch.utils.data import DataLoader
+
+import plasma.training.trainer.utils as utils
 
 
 class StandardTrainer:

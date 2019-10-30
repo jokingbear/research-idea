@@ -1,6 +1,6 @@
 import torch.nn as nn
 
-import torch_modules.initializations as inits
+import plasma.initializations as inits
 
 inits.standard_layers = {}
 
