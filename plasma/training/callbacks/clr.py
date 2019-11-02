@@ -3,12 +3,14 @@ from plasma.training.callbacks import Callback
 
 class LrFinder(Callback):
 
-    def __init__(self, min_lr, max_lr, steps):
+    def __init__(self, min_lr, max_lr, epoch, iterations):
         super().__init__()
 
         self.min_lr = min_lr
         self.max_lr = max_lr
-        self.steps = steps
+
+        self.epoch = epoch
+        self.steps = iterations
         self.current_step = 0
         self.history = {}
 
@@ -31,7 +33,7 @@ class LrFinder(Callback):
                 self.history[i] = []
 
     def get_lr(self):
-        a = self.current_step / self.steps
+        a = self.current_step / self.steps / self.epoch
         lr = self.min_lr + a * (self.max_lr - self.min_lr)
 
         return lr

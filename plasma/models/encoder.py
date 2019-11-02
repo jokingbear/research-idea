@@ -16,11 +16,14 @@ class ResCap(nn.Sequential):
         self.con1 = nn.Sequential(*[
             blocks.ConvBlock(in_filters, f, kernel_size=7, stride=2, padding=3),
             blocks.ConvBlock(f, f * 2, kernel_size=7, stride=2, padding=3),
+            blocks.ResidualBlock(f * 2, d, groups, iters),
+            blocks.ResidualBlock(f * 2, d, groups, iters),
         ])  # 2f x 128 x 128
 
         self.con2 = nn.Sequential(*[
             blocks.ResidualBlock(f * 2, d, groups, iters, down_sample=True),
             blocks.ConvBlock(f * 4, f * 4),
+            blocks.ResidualBlock(f * 4, d, groups, iters),
             blocks.ResidualBlock(f * 4, d, groups, iters),
             blocks.ResidualBlock(f * 4, d, groups, iters),
         ])  # 4f x 64 x 64

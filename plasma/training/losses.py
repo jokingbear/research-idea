@@ -2,8 +2,7 @@ import torch
 
 
 def focal_loss_fn(gamma=2, binary=False):
-
-    def focal_loss(y_true, y_pred):
+    def focal_loss(y_pred, y_true):
         one = torch.ones([], dtype=torch.float, device=y_pred.device)
 
         if binary:
@@ -19,11 +18,11 @@ def focal_loss_fn(gamma=2, binary=False):
     return focal_loss
 
 
-def dice_loss_fn(n_class=2, rank=2, smooth=1, binary=False):
+def dice_loss_fn(rank=2, smooth=1, binary=False):
     spatial_axes = tuple(range(2, 2 + rank))
 
-    def dice_loss(y_true, y_pred):
-        if not binary and n_class > 2:
+    def dice_loss(y_pred, y_true):
+        if not binary:
             y_true = y_true[:, 1:, ...]
             y_pred = y_pred[:, 1:, ...]
 
@@ -37,9 +36,9 @@ def dice_loss_fn(n_class=2, rank=2, smooth=1, binary=False):
     return dice_loss
 
 
-def f1_loss_fn(n_class=2, smooth=1, binary=False):
-    def f1_loss(y_true, y_pred):
-        if n_class > 2 and not binary:
+def f1_loss_fn(binary=False, smooth=1):
+    def f1_loss(y_pred, y_true):
+        if not binary:
             y_true = y_true[:, 1:, ...]
             y_pred = y_pred[:, 1:, ...]
 
@@ -51,3 +50,17 @@ def f1_loss_fn(n_class=2, smooth=1, binary=False):
         return (1 - f1).mean()
 
     return f1_loss
+
+
+def combine_loss(*losses, weights=None):
+    weights = weights or [1] * len(losses)
+
+    def total_loss(y_pred, y_true):
+        loss = 0
+
+        for w, l in zip(losses, weights):
+            loss = w * l(y_pred, y_true)
+
+        return loss
+
+    return total_loss
