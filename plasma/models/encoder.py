@@ -18,40 +18,41 @@ class ResCap(nn.Sequential):
             blocks.ConvBlock(f, f * 2, kernel_size=7, stride=2, padding=3),
             blocks.ResidualBlock(f * 2, d, groups, iters),
             blocks.ResidualBlock(f * 2, d, groups, iters),
-        ])  # 2f x 128 x 128
+        ])  # 2f x h / 4 x w / 4
 
         self.con2 = nn.Sequential(*[
             blocks.ResidualBlock(f * 2, d, groups, iters, down_sample=True),
             blocks.ConvBlock(f * 4, f * 4),
-            blocks.ResidualBlock(f * 4, d, groups, iters),
-            blocks.ResidualBlock(f * 4, d, groups, iters),
-            blocks.ResidualBlock(f * 4, d, groups, iters),
-        ])  # 4f x 64 x 64
+            blocks.ResidualBlock(f * 4, 2 * d, groups, iters),
+            blocks.ResidualBlock(f * 4, 2 * d, groups, iters),
+            blocks.ResidualBlock(f * 4, 2 * d, groups, iters),
+        ])  # 4f x h / 8 x w / 8
 
         self.con3 = nn.Sequential(*[
-            blocks.ResidualBlock(f * 4, d, groups, iters, down_sample=True),
+            blocks.ResidualBlock(f * 4, 2 * d, groups, iters, down_sample=True),
             blocks.ConvBlock(f * 8, f * 8),
-            blocks.ResidualBlock(f * 8, 2 * d, groups, iters),
-            blocks.ResidualBlock(f * 8, 2 * d, groups, iters),
-            blocks.ResidualBlock(f * 8, 2 * d, groups, iters),
-        ])  # 8f x 32 x 32
+            blocks.ResidualBlock(f * 8, 4 * d, groups, iters),
+            blocks.ResidualBlock(f * 8, 4 * d, groups, iters),
+            blocks.ResidualBlock(f * 8, 4 * d, groups, iters),
+            blocks.ResidualBlock(f * 8, 4 * d, groups, iters),
+            blocks.ResidualBlock(f * 8, 4 * d, groups, iters),
+        ])  # 8f x h / 16 x w / 16
 
         self.con4 = nn.Sequential(*[
-            blocks.ResidualBlock(f * 8, 2 * d, groups, iters, down_sample=True),
+            blocks.ResidualBlock(f * 8, 4 * d, groups, iters, down_sample=True),
             blocks.ConvBlock(f * 16, f * 16),
-            blocks.ResidualBlock(f * 16, 4 * d, groups, iters),
-            blocks.ResidualBlock(f * 16, 4 * d, groups, iters),
-            blocks.ResidualBlock(f * 16, 4 * d, groups, iters),
-            blocks.ResidualBlock(f * 16, 4 * d, groups, iters),
-        ])  # 16f x 16 x 16
+            blocks.ResidualBlock(f * 16, 8 * d, groups, iters),
+            blocks.ResidualBlock(f * 16, 8 * d, groups, iters),
+            blocks.ResidualBlock(f * 16, 8 * d, groups, iters),
+        ])  # 16f x h / 32 x w / 32
 
         self.con5 = nn.Sequential(*[
-            blocks.ResidualBlock(f * 16, 4 * d, groups, iters, down_sample=True),
+            blocks.ResidualBlock(f * 16, 8 * d, groups, iters, down_sample=True),
             blocks.ConvBlock(f * 32, f * 32),
-            blocks.ResidualBlock(f * 32, 8 * d, groups, iters),
-            blocks.ResidualBlock(f * 32, 8 * d, groups, iters),
-            blocks.ResidualBlock(f * 32, 8 * d, groups, iters),
-        ])  # 32f x 8 x 8
+            blocks.ResidualBlock(f * 32, 16 * d, groups, iters),
+            blocks.ResidualBlock(f * 32, 16 * d, groups, iters),
+            blocks.ResidualBlock(f * 32, 16 * d, groups, iters),
+        ])  # 32f x h / 64 x w / 64
 
         self.features = blocks.commons.GlobalAverage()
 
@@ -59,15 +60,6 @@ class ResCap(nn.Sequential):
             nn.Linear(f * 32, 14),
             nn.Sigmoid()
         ])
-
-    def forward(self, x):
-        con1 = self.con1(x)
-        con2 = self.con2(con1)
-        con3 = self.con3(con2)
-        con4 = self.con4(con3)
-        con5 = self.con5(con4)
-
-        return con5
 
 
 class GraphTransform(nn.Module):

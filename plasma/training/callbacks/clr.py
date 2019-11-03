@@ -56,13 +56,13 @@ class LrFinder(Callback):
 
 class CLR(Callback):
 
-    def __init__(self, min_lr, max_lr, epoch_steps, cycle_rate=2, reduce_lr_each_cycle=False):
+    def __init__(self, min_lr, max_lr, iterations, cycle_rate=2, reduce_lr_each_cycle=False):
         super().__init__()
 
         self.min_lr = min_lr
         self.max_lr = max_lr
 
-        self.epoch_steps = epoch_steps
+        self.iterations = iterations
         self.current_step = 0
 
         assert cycle_rate % 2 == 0, "cycle_rate must be divisible by 2"
@@ -90,9 +90,9 @@ class CLR(Callback):
                 print(f"reduced max lr to {self.max_lr}")
 
     def get_lr(self):
-        a = (self.current_step % self.epoch_steps) / self.epoch_steps
+        a = (self.current_step % self.iterations) / self.iterations
 
-        if self.current_step > self.epoch_steps * self.cycle_rate // 2:
+        if self.current_step > self.iterations * self.cycle_rate // 2:
             return self.max_lr - a * (self.max_lr - self.min_lr)
         else:
             return self.min_lr + a * (self.max_lr - self.min_lr)
