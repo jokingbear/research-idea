@@ -1,17 +1,3 @@
-import torch
-import torch.nn as nn
+from albumentations import ShiftScaleRotate
 
-
-class temp(nn.Module):
-
-    def forward(self, x, alpha=None):
-        alpha = alpha or 1
-        print(alpha)
-        return x + alpha
-
-
-b = nn.DataParallel(temp()).cuda(0)
-
-a = torch.ones(1, 2, 3, dtype=torch.float, device="cuda:0")
-
-b(a, alpha=5)
+aug = ShiftScaleRotate(rotate_limit=15, always_apply=True)
