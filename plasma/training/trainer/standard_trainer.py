@@ -35,7 +35,7 @@ class StandardTrainer:
 
         test_sampler = test.get_sampler() if hasattr(test, "get_sampler") else None
         test_loader = DataLoader(test, batch_size=val_batch_size, sampler=test_sampler, drop_last=False,
-                                 num_workers=workers, pin_memory=pin_memory) if test else None
+                                 num_workers=workers, pin_memory=pin_memory) if test is not None else None
 
         [c.set_trainer(self) for c in callbacks]
         [c.on_train_begin() for c in callbacks]
@@ -46,7 +46,7 @@ class StandardTrainer:
 
             train_logs = self.train_one_epoch(train_loader, callbacks)
 
-            val_logs = self.evaluate_one_epoch(test_loader) if test else {}
+            val_logs = self.evaluate_one_epoch(test_loader) if test is not None else {}
 
             logs = {**train_logs, **val_logs}
 

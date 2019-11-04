@@ -1,8 +1,9 @@
-conda install matplotlib pandas seaborn scikit-learn imageio imgaug h5py tqdm -c conda-forge
-conda install nodejs jupyterlab ipywidgets jupyterhub -c conda-forge
-conda install albumentations -c albumentations
+conda install matplotlib pandas seaborn scikit-learn imageio h5py tqdm
+conda install nodejs jupyterlab ipywidgets
 conda install pytorch torchvision cudatoolkit=10.1 -c pytorch
-conda install -c conda-forge conda-pack
+conda install tensorflow
+conda install imgaug -c conda-forge
+conda install albumentations -c albumentations
 
 -------------------------------------------------------------
 

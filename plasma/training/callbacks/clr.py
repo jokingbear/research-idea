@@ -1,4 +1,6 @@
-from plasma.training.callbacks import Callback
+import torch.optim as opts
+
+from plasma.training.callbacks.root_class import Callback
 
 
 class LrFinder(Callback):
@@ -63,36 +65,35 @@ class CLR(Callback):
         self.max_lr = max_lr
 
         self.iterations = iterations
-        self.current_step = 0
 
         assert cycle_rate % 2 == 0, "cycle_rate must be divisible by 2"
         self.cycle_rate = cycle_rate
         self.reduce_lr_each_cycle = reduce_lr_each_cycle
+        self.clr = None
 
     def on_train_begin(self):
-        for g in self.optimizer.param_groups:
-            g["lr"] = self.min_lr
+        self.clr = opts.lr_scheduler.CyclicLR(self.optimizer, self.min_lr, self.max_lr,
+                                              step_size_up=self.cycle_rate // 2 * self.iterations,
+                                              mode="triangular2" if self.reduce_lr_each_cycle else "triangular")
 
     def on_batch_end(self, batch, logs=None):
-        self.current_step += 1
+        self.clr.step()
 
-        lr = self.get_lr()
 
-        for g in self.optimizer.param_groups:
-            g["lr"] = lr
+class WarmRestart(Callback):
 
-    def on_epoch_end(self, epoch, logs=None):
-        if (epoch + 1) % self.cycle_rate == 0:
-            self.current_step = 0
+    def __init__(self, min_lr, t0, factor=1):
+        super().__init__()
 
-            if self.reduce_lr_each_cycle:
-                self.max_lr = self.min_lr + (self.max_lr - self.min_lr) / 2
-                print(f"reduced max lr to {self.max_lr}")
+        self.min_lr = min_lr
+        self.t0 = t0
+        self.factor = factor
 
-    def get_lr(self):
-        a = (self.current_step % self.iterations) / self.iterations
+        self.scheduler = None
 
-        if self.current_step > self.iterations * self.cycle_rate // 2:
-            return self.max_lr - a * (self.max_lr - self.min_lr)
-        else:
-            return self.min_lr + a * (self.max_lr - self.min_lr)
+    def on_train_begin(self):
+        self.scheduler = opts.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizer, self.t0,
+                                                                       T_mult=self.factor, eta_min=self.min_lr)
+
+    def on_epoch_begin(self, epoch):
+        self.scheduler.step(epoch)
