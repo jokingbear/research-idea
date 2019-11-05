@@ -12,33 +12,25 @@ class LrFinder(Callback):
         self.max_lr = max_lr
 
         self.epoch = epoch
-        self.steps = iterations
-        self.current_step = 0
+        self.iterations = iterations
+
+        self.scheduler = None
         self.history = {}
 
     def on_train_begin(self):
-        for g in self.optimizer.param_groups:
-            g["lr"] = self.min_lr
+        self.scheduler = opts.lr_scheduler.CyclicLR(self.optimizer, self.min_lr, self.max_lr,
+                                                    step_size_up=self.epoch * self.iterations)
 
     def on_batch_end(self, batch, logs=None):
-        self.current_step += 1
+        lr = self.scheduler.get_lr()
 
-        lr = self.get_lr()
+        self.scheduler.step()
 
         for i, g in enumerate(self.optimizer.param_groups):
-            old_lr = g["lr"]
-            g["lr"] = lr
-
             if i in self.history:
-                self.history[i].append((old_lr, logs))
+                self.history[i].append((lr, logs))
             else:
                 self.history[i] = []
-
-    def get_lr(self):
-        a = self.current_step / self.steps / self.epoch
-        lr = self.min_lr + a * (self.max_lr - self.min_lr)
-
-        return lr
 
     def get_data(self, group=0, target="loss"):
         for lr, logs in self.history[group]:
@@ -52,7 +44,6 @@ class LrFinder(Callback):
         plt.xlabel("lr")
         plt.ylabel(target)
         plt.title(f"lr vs {target}")
-        plt.legend()
         plt.show()
 
 
