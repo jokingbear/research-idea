@@ -1,15 +1,14 @@
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as func
 
-import numpy as np
-
-from torch_modules import blocks
+from plasma import blocks
 
 
 class ResCap(nn.Sequential):
 
-    def __init__(self, corr_matrix, in_filters=1, start_filters=64, groups=32, d=4, iters=1, classifier=None):
+    def __init__(self, in_filters=1, start_filters=64, groups=32, d=4, iters=1):
         super().__init__()
 
         f = start_filters
@@ -17,43 +16,50 @@ class ResCap(nn.Sequential):
         self.con1 = nn.Sequential(*[
             blocks.ConvBlock(in_filters, f, kernel_size=7, stride=2, padding=3),
             blocks.ConvBlock(f, f * 2, kernel_size=7, stride=2, padding=3),
-        ])  # 2f x 128 x 128
+            blocks.ResidualBlock(f * 2, d, groups, iters),
+            blocks.ResidualBlock(f * 2, d, groups, iters),
+        ])  # 2f x h / 4 x w / 4
 
         self.con2 = nn.Sequential(*[
             blocks.ResidualBlock(f * 2, d, groups, iters, down_sample=True),
             blocks.ConvBlock(f * 4, f * 4),
-            blocks.ResidualBlock(f * 4, d, groups, iters),
-            blocks.ResidualBlock(f * 4, d, groups, iters),
-        ])  # 4f x 64 x 64
+            blocks.ResidualBlock(f * 4, 2 * d, groups, iters),
+            blocks.ResidualBlock(f * 4, 2 * d, groups, iters),
+            blocks.ResidualBlock(f * 4, 2 * d, groups, iters),
+        ])  # 4f x h / 8 x w / 8
 
         self.con3 = nn.Sequential(*[
-            blocks.ResidualBlock(f * 4, d, groups, iters, down_sample=True),
+            blocks.ResidualBlock(f * 4, 2 * d, groups, iters, down_sample=True),
             blocks.ConvBlock(f * 8, f * 8),
-            blocks.ResidualBlock(f * 8, 2 * d, groups, iters),
-            blocks.ResidualBlock(f * 8, 2 * d, groups, iters),
-            blocks.ResidualBlock(f * 8, 2 * d, groups, iters),
-        ])  # 8f x 32 x 32
+            blocks.ResidualBlock(f * 8, 4 * d, groups, iters),
+            blocks.ResidualBlock(f * 8, 4 * d, groups, iters),
+            blocks.ResidualBlock(f * 8, 4 * d, groups, iters),
+            blocks.ResidualBlock(f * 8, 4 * d, groups, iters),
+            blocks.ResidualBlock(f * 8, 4 * d, groups, iters),
+        ])  # 8f x h / 16 x w / 16
 
         self.con4 = nn.Sequential(*[
-            blocks.ResidualBlock(f * 8, 2 * d, groups, iters, down_sample=True),
+            blocks.ResidualBlock(f * 8, 4 * d, groups, iters, down_sample=True),
             blocks.ConvBlock(f * 16, f * 16),
-            blocks.ResidualBlock(f * 16, 4 * d, groups, iters),
-            blocks.ResidualBlock(f * 16, 4 * d, groups, iters),
-            blocks.ResidualBlock(f * 16, 4 * d, groups, iters),
-            blocks.ResidualBlock(f * 16, 4 * d, groups, iters),
-        ])  # 16f x 16 x 16
+            blocks.ResidualBlock(f * 16, 8 * d, groups, iters),
+            blocks.ResidualBlock(f * 16, 8 * d, groups, iters),
+            blocks.ResidualBlock(f * 16, 8 * d, groups, iters),
+        ])  # 16f x h / 32 x w / 32
 
         self.con5 = nn.Sequential(*[
-            blocks.ResidualBlock(f * 16, 4 * d, groups, iters, down_sample=True),
+            blocks.ResidualBlock(f * 16, 8 * d, groups, iters, down_sample=True),
             blocks.ConvBlock(f * 32, f * 32),
-            blocks.ResidualBlock(f * 32, 8 * d, groups, iters),
-            blocks.ResidualBlock(f * 32, 8 * d, groups, iters),
-            blocks.ResidualBlock(f * 32, 8 * d, groups, iters),
-        ])  # 32f x 8 x 8
+            blocks.ResidualBlock(f * 32, 16 * d, groups, iters),
+            blocks.ResidualBlock(f * 32, 16 * d, groups, iters),
+            blocks.ResidualBlock(f * 32, 16 * d, groups, iters),
+        ])  # 32f x h / 64 x w / 64
 
         self.features = blocks.commons.GlobalAverage()
 
-        self.classifier = GraphClassifier(corr_matrix)
+        self.classifier = nn.Sequential(*[
+            nn.Linear(f * 32, 14),
+            nn.Sigmoid()
+        ])
 
 
 class GraphTransform(nn.Module):
@@ -65,8 +71,8 @@ class GraphTransform(nn.Module):
         self.in_filters = in_filters
         self.out_filters = out_filters
 
-        self.weights = nn.Parameter(torch.Tensor(in_filters, out_filters))
-        self.bias = nn.Parameter(torch.Tensor(out_filters))
+        self.weights = nn.Parameter(torch.zeros(in_filters, out_filters), requires_grad=True)
+        self.bias = nn.Parameter(torch.zeros(out_filters), requires_grad=True)
 
         self.init_param()
 

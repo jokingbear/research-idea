@@ -1,7 +1,6 @@
-import torch_modules.blocks as blocks
-
 from torch import nn
 
+import plasma.blocks as blocks
 
 standard_layers = {
     blocks.ConvBlock, blocks.RoutingBlock

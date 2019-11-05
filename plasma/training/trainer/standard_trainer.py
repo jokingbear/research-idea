@@ -1,8 +1,8 @@
 import numpy as np
 import torch
-import torch_modules.training.trainer.utils as utils
-
 from torch.utils.data import DataLoader
+
+import plasma.training.trainer.utils as utils
 
 
 class StandardTrainer:
@@ -35,7 +35,7 @@ class StandardTrainer:
 
         test_sampler = test.get_sampler() if hasattr(test, "get_sampler") else None
         test_loader = DataLoader(test, batch_size=val_batch_size, sampler=test_sampler, drop_last=False,
-                                 num_workers=workers, pin_memory=pin_memory) if test else None
+                                 num_workers=workers, pin_memory=pin_memory) if test is not None else None
 
         [c.set_trainer(self) for c in callbacks]
         [c.on_train_begin() for c in callbacks]
@@ -46,7 +46,7 @@ class StandardTrainer:
 
             train_logs = self.train_one_epoch(train_loader, callbacks)
 
-            val_logs = self.evaluate_one_epoch(test_loader) if test else {}
+            val_logs = self.evaluate_one_epoch(test_loader) if test is not None else {}
 
             logs = {**train_logs, **val_logs}
 
@@ -69,7 +69,7 @@ class StandardTrainer:
                 x = utils.to_device(x, self.x_type, self.x_device)
                 y = utils.to_device(y, self.y_type, self.y_device, return_array=False)
 
-                loss, y_pred = self.train_one_batch(*x, y=y)
+                loss, y_pred = self.train_one_batch(y, *x)
 
                 with torch.no_grad():
                     current_metrics = self.get_metrics(loss, y_pred, y)
@@ -84,7 +84,7 @@ class StandardTrainer:
 
         return logs
 
-    def train_one_batch(self, *x, y):
+    def train_one_batch(self, y, *x):
         self.model.train()
         self.model.zero_grad()
 
@@ -92,8 +92,7 @@ class StandardTrainer:
         loss = self.loss(y_pred, y)
         loss.backward()
 
-        if self.grad_accumulation:
-            self.grad_step += 1
+        self.grad_step += 1
 
         if self.grad_step == self.grad_accumulation:
             self.grad_step = 0
