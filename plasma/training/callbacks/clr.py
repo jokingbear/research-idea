@@ -1,3 +1,4 @@
+import torch
 import torch.optim as opts
 
 from plasma.training.callbacks.root_class import Callback
@@ -31,6 +32,12 @@ class LrFinder(Callback):
                 self.history[i].append((lr, logs))
             else:
                 self.history[i] = []
+
+    def on_epoch_end(self, epoch, logs=None):
+        self.trainer.train_mode = epoch + 1 != self.epoch
+
+    def on_train_end(self):
+        self.plot_data()
 
     def get_data(self, group=0, target="loss"):
         for lr, logs in self.history[group]:
@@ -73,14 +80,18 @@ class CLR(Callback):
 
 class WarmRestart(Callback):
 
-    def __init__(self, min_lr, t0, factor=1):
+    def __init__(self, min_lr, t0, factor=1, snapshot=False, directory="checkpoint"):
         super().__init__()
 
         self.min_lr = min_lr
         self.t0 = t0
         self.factor = factor
+        self.snapshot = snapshot
+        self.dir = directory
 
         self.scheduler = None
+        self.current_epoch = 0
+        self.max_epoch = t0
 
     def on_train_begin(self):
         self.scheduler = opts.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizer, self.t0,
@@ -88,3 +99,13 @@ class WarmRestart(Callback):
 
     def on_epoch_begin(self, epoch):
         self.scheduler.step(epoch)
+
+    def on_epoch_end(self, epoch, logs=None):
+        self.current_epoch += 1
+
+        if self.current_epoch == self.max_epoch:
+            self.current_epoch = 0
+            self.max_epoch *= self.factor
+
+            if self.snapshot:
+                torch.save(self.model.state_dict(), f"{self.dir}/snapshot-{epoch}")
