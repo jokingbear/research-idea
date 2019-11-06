@@ -6,21 +6,25 @@ from plasma.training.callbacks.root_class import Callback
 
 class LrFinder(Callback):
 
-    def __init__(self, min_lr, max_lr, epoch, iterations):
+    def __init__(self, min_lr, max_lr):
         super().__init__()
 
         self.min_lr = min_lr
         self.max_lr = max_lr
 
-        self.epoch = epoch
-        self.iterations = iterations
+        self.epochs = 1
+        self.iterations = 1
 
         self.scheduler = None
         self.history = {}
 
+    def set_train_config(self, epochs, iterations):
+        self.epochs = epochs
+        self.iterations = iterations
+
     def on_train_begin(self):
         self.scheduler = opts.lr_scheduler.CyclicLR(self.optimizer, self.min_lr, self.max_lr,
-                                                    step_size_up=self.epoch * self.iterations)
+                                                    step_size_up=self.epochs * self.iterations)
 
     def on_batch_end(self, batch, logs=None):
         lr = self.scheduler.get_lr()
@@ -34,7 +38,7 @@ class LrFinder(Callback):
                 self.history[i] = []
 
     def on_epoch_end(self, epoch, logs=None):
-        self.trainer.train_mode = epoch + 1 != self.epoch
+        self.trainer.train_mode = epoch + 1 != self.epochs
 
     def on_train_end(self):
         self.plot_data()
@@ -56,18 +60,21 @@ class LrFinder(Callback):
 
 class CLR(Callback):
 
-    def __init__(self, min_lr, max_lr, iterations, cycle_rate=2, reduce_lr_each_cycle=False):
+    def __init__(self, min_lr, max_lr, cycle_rate=2, reduce_lr_each_cycle=False):
         super().__init__()
 
         self.min_lr = min_lr
         self.max_lr = max_lr
 
-        self.iterations = iterations
+        self.iterations = 1
 
         assert cycle_rate % 2 == 0, "cycle_rate must be divisible by 2"
         self.cycle_rate = cycle_rate
         self.reduce_lr_each_cycle = reduce_lr_each_cycle
         self.clr = None
+
+    def set_train_config(self, epochs, iterations):
+        self.iterations = iterations
 
     def on_train_begin(self):
         self.clr = opts.lr_scheduler.CyclicLR(self.optimizer, self.min_lr, self.max_lr,
@@ -108,4 +115,4 @@ class WarmRestart(Callback):
             self.max_epoch *= self.factor
 
             if self.snapshot:
-                torch.save(self.model.state_dict(), f"{self.dir}/snapshot-{epoch}")
+                torch.save(self.model.state_dict(), f"{self.dir}/snapshot-{epoch + 1}")

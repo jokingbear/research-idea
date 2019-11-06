@@ -27,3 +27,6 @@ class Callback:
         self.model = trainer.model
         self.optimizer = trainer.optimizer
         self.trainer = trainer
+
+    def set_train_config(self, epochs, iterations):
+        pass

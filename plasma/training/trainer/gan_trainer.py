@@ -24,15 +24,15 @@ class GANTrainer:
         self.fake_label = fake_label
         self.x_device = x_device
 
-        self.d_kwarg = {}
-        self.g_kwarg = {}
+        self.d_kwargs = {}
+        self.g_kwargs = {}
         self.stop_training = False
 
     def fit(self, train, epochs=100, batch_size=32, g_batch_size=None, workers=0, callbacks=None):
         sampler = train.get_sampler() if hasattr(train, "get_sampler") else None
         loader = data.DataLoader(train, batch_size, sampler=sampler, shuffle=sampler is None, num_workers=workers,
                                  pin_memory=True, drop_last=True)
-        self.g_kwarg["batch_size"] = g_batch_size or batch_size
+        self.g_kwargs["batch_size"] = g_batch_size or batch_size
         callbacks = callbacks or []
 
         [c.set_trainer_dataset(self, train) for c in callbacks]
@@ -44,7 +44,8 @@ class GANTrainer:
 
             logs = self.train_one_epoch(loader, callbacks)
 
-            [c.on_epoch_end(e, logs) for c in callbacks]
+            with torch.no_grad():
+                [c.on_epoch_end(e, logs) for c in callbacks]
         [c.on_train_end() for c in callbacks]
 
     def train_one_epoch(self, loader, callbacks):
@@ -75,10 +76,10 @@ class GANTrainer:
 
     def train_discriminator(self, *x):
         self.discriminator.train().zero_grad()
-        self.generator.train()
+        self.generator.train().zero_grad()
 
         x = [ag.Variable(a, requires_grad=True) for a in x] if self.r1 else x
-        real_score = self.discriminator(*x, **self.d_kwarg)
+        real_score = self.discriminator(*x, **self.d_kwargs)
         real_label = self.real_label * torch.ones(real_score.shape, dtype=real_score.dtype, device=real_score.device)
         loss1 = self.loss(real_score, real_label)
 
@@ -93,9 +94,9 @@ class GANTrainer:
         loss1.backward()
 
         with torch.no_grad():
-            fakes = self.generator(**self.g_kwarg)
+            fakes = self.generator(**self.g_kwargs)
             fakes = fakes if not torch.is_tensor(fakes) else [fakes]
-        fake_score = self.discriminator(*fakes, **self.d_kwarg)
+        fake_score = self.discriminator(*fakes, **self.d_kwargs)
         fake_label = self.fake_label * torch.ones(fake_score.shape, dtype=fake_score.dtype, device=fake_score.device)
         loss2 = self.loss(fake_score, fake_label)
         loss2.backward()
@@ -106,11 +107,11 @@ class GANTrainer:
         return loss.detach()
 
     def train_generator(self, *_):
-        self.discriminator.train()
+        self.discriminator.train().zero_grad()
         self.generator.train().zero_grad()
 
-        fake = self.generator(**self.g_kwarg)
-        fake_score = self.discriminator(fake, **self.d_kwarg)
+        fake = self.generator(**self.g_kwargs)
+        fake_score = self.discriminator(fake, **self.d_kwargs)
         real_label = self.real_label * torch.ones(fake_score.shape, dtype=fake_score.dtype, device=fake_score.device)
         loss = self.loss(fake_score, real_label)
         loss.backwad()
