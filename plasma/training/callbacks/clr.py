@@ -1,3 +1,5 @@
+import os
+
 import torch
 import torch.optim as opts
 
@@ -87,7 +89,7 @@ class CLR(Callback):
 
 class WarmRestart(Callback):
 
-    def __init__(self, min_lr, t0, factor=1, snapshot=False, directory="checkpoint"):
+    def __init__(self, min_lr, t0, factor=1, snapshot=False, directory="checkpoint", model_name=None):
         super().__init__()
 
         self.min_lr = min_lr
@@ -95,6 +97,7 @@ class WarmRestart(Callback):
         self.factor = factor
         self.snapshot = snapshot
         self.dir = directory
+        self.model_name = model_name or "model"
 
         self.scheduler = None
         self.current_epoch = 0
@@ -103,6 +106,9 @@ class WarmRestart(Callback):
     def on_train_begin(self):
         self.scheduler = opts.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizer, self.t0,
                                                                        T_mult=self.factor, eta_min=self.min_lr)
+
+        if not os.path.exists(self.dir) and self.snapshot:
+            os.mkdir(self.dir)
 
     def on_epoch_begin(self, epoch):
         self.scheduler.step(epoch)
@@ -115,4 +121,4 @@ class WarmRestart(Callback):
             self.max_epoch *= self.factor
 
             if self.snapshot:
-                torch.save(self.model.state_dict(), f"{self.dir}/snapshot-{epoch + 1}")
+                torch.save(self.model.state_dict(), f"{self.dir}/snapshot_{self.model_name}-{epoch + 1}")

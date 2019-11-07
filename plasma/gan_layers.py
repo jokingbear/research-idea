@@ -15,10 +15,9 @@ class ScaleCon(nn.Module):
         self.stride = stride
         self.padding = padding
 
-        spatial_shape = [1] * rank
         kernel_shape = [kernel_size] * rank
         self.weight = nn.Parameter(torch.zeros(out_channels, in_channels, *kernel_shape), requires_grad=True)
-        self.bias = nn.Parameter(torch.zeros(1, out_channels, *spatial_shape), requires_grad=True) if bias else None
+        self.bias = nn.Parameter(torch.zeros(out_channels), requires_grad=True) if bias else None
         self.const = np.sqrt(2 / (in_channels * kernel_size**rank))
 
         self.reset_parameters()

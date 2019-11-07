@@ -17,13 +17,13 @@ class GenImage(Callback):
         self.normalize = normalize
 
     def on_train_begin(self):
-        if not os.path.exists(f"/{self.path}"):
+        if not os.path.exists(f"{self.path}"):
             os.mkdir(self.path)
 
-        if not os.path.exists(f"/{self.path}/iterations"):
+        if not os.path.exists(f"{self.path}/iterations"):
             os.mkdir(self.path + "/iterations")
 
-        if not os.path.exists(f"/{self.path}/epochs"):
+        if not os.path.exists(f"{self.path}/epochs"):
             os.mkdir(self.path + "/epochs")
 
     def on_batch_end(self, batch, logs=None):
@@ -35,7 +35,7 @@ class GenImage(Callback):
 
     def render_image(self, file_name):
         g = self.generator.eval()
-        imgs = g(**self.generator.g_kwarg)
+        imgs = g(**self.trainer.g_kwargs)
         tv.utils.save_image(imgs, file_name, nrow=self.rows, normalize=self.normalize)
 
 

@@ -114,7 +114,7 @@ class GANTrainer:
         fake_score = self.discriminator(fake, **self.d_kwargs)
         real_label = self.real_label * torch.ones(fake_score.shape, dtype=fake_score.dtype, device=fake_score.device)
         loss = self.loss(fake_score, real_label)
-        loss.backwad()
+        loss.backward()
 
         self.g_optimizer.step()
 
