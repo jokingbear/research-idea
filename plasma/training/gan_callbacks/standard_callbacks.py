@@ -39,6 +39,7 @@ class GenImage(Callback):
         tv.utils.save_image(imgs, file_name, nrow=self.rows, normalize=self.normalize)
 
 
+# TODO: change this flow
 class Progressive(Callback):
 
     def __init__(self, iterations, start_epochs=30, increase_rate=1.5, verbose=1):

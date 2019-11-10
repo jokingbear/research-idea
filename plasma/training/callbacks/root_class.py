@@ -4,6 +4,7 @@ class Callback:
         self.trainer = None
         self.model = None
         self.optimizer = None
+        self.training_config = None
 
     def on_train_begin(self):
         pass
@@ -28,5 +29,5 @@ class Callback:
         self.optimizer = trainer.optimizer
         self.trainer = trainer
 
-    def set_train_config(self, epochs, iterations):
-        pass
+    def set_train_config(self, **kwargs):
+        self.training_config = kwargs

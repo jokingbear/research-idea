@@ -14,19 +14,14 @@ class LrFinder(Callback):
         self.min_lr = min_lr
         self.max_lr = max_lr
 
-        self.epochs = 1
-        self.iterations = 1
-
         self.scheduler = None
         self.history = {}
 
-    def set_train_config(self, epochs, iterations):
-        self.epochs = epochs
-        self.iterations = iterations
-
     def on_train_begin(self):
+        epochs = self.training_config["epochs"]
+        iterations = self.training_config["iterations"]
         self.scheduler = opts.lr_scheduler.CyclicLR(self.optimizer, self.min_lr, self.max_lr,
-                                                    step_size_up=self.epochs * self.iterations)
+                                                    step_size_up=epochs * iterations)
 
     def on_batch_end(self, batch, logs=None):
         lr = self.scheduler.get_lr()
@@ -38,9 +33,6 @@ class LrFinder(Callback):
                 self.history[i].append((lr, logs))
             else:
                 self.history[i] = []
-
-    def on_epoch_end(self, epoch, logs=None):
-        self.trainer.train_mode = epoch + 1 != self.epochs
 
     def on_train_end(self):
         self.plot_data()
@@ -68,19 +60,14 @@ class CLR(Callback):
         self.min_lr = min_lr
         self.max_lr = max_lr
 
-        self.iterations = 1
-
         assert cycle_rate % 2 == 0, "cycle_rate must be divisible by 2"
         self.cycle_rate = cycle_rate
         self.reduce_lr_each_cycle = reduce_lr_each_cycle
         self.clr = None
 
-    def set_train_config(self, epochs, iterations):
-        self.iterations = iterations
-
     def on_train_begin(self):
         self.clr = opts.lr_scheduler.CyclicLR(self.optimizer, self.min_lr, self.max_lr,
-                                              step_size_up=self.cycle_rate // 2 * self.iterations,
+                                              step_size_up=self.cycle_rate // 2 * self.training_config["iterations"],
                                               mode="triangular2" if self.reduce_lr_each_cycle else "triangular")
 
     def on_batch_end(self, batch, logs=None):

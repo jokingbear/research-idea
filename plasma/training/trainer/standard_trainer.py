@@ -38,7 +38,7 @@ class StandardTrainer:
                                  num_workers=workers, pin_memory=pin_memory) if test is not None else None
 
         [c.set_trainer(self) for c in callbacks]
-        [c.set_train_config(epochs, len(train_loader)) for c in callbacks]
+        [c.set_train_config(epochs=epochs, iterations=len(train_loader)) for c in callbacks]
         [c.on_train_begin() for c in callbacks]
         for e in range(epochs):
             print(f"epoch: {e + 1}/{epochs}")
