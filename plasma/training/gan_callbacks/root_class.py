@@ -1,5 +1,3 @@
-from torch.utils.data import Dataset
-
 from plasma.training.trainer.gan_trainer import GANTrainer
 
 
@@ -9,7 +7,10 @@ class Callback:
         self.trainer = None
         self.discriminator = None
         self.generator = None
+        self.d_optimizer = None
+        self.g_optimizer = None
         self.dataset = None
+        self.training_config = None
 
     def on_train_begin(self):
         pass
@@ -29,8 +30,12 @@ class Callback:
     def on_train_end(self):
         pass
 
-    def set_trainer_dataset(self, trainer: GANTrainer, dataset: Dataset):
+    def set_trainer(self, trainer: GANTrainer):
         self.trainer = trainer
         self.discriminator = trainer.discriminator
         self.generator = trainer.generator
-        self.dataset = dataset
+        self.d_optimizer = trainer.d_optimizer
+        self.g_optimizer = trainer.g_optimizer
+
+    def set_training_config(self, **kwargs):
+        self.training_config = kwargs

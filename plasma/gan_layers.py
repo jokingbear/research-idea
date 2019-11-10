@@ -64,3 +64,39 @@ class MiniBatchStd(nn.Module):
         std = torch.sqrt(var + 1e-5).expand(x.shape[0], 1, *x.shape[2:])
 
         return torch.cat([x, std], dim=1)
+
+
+class NoiseInjector(nn.Module):
+
+    def __init__(self, in_filters):
+        super().__init__()
+
+        self.in_filters = in_filters
+        self.weight = nn.Parameter(torch.zeros(1, in_filters, 1, 1), requires_grad=True)
+
+    def forward(self, x, noise=None):
+        noise = torch.randn(x.shape[0], 1, x.shape[1], x.shape[2], device=x.device)
+
+        return x + self.weight * noise
+
+
+class AdaN(nn.Module):
+
+    def __init__(self, normalization):
+        super().__init__()
+
+        self.normalization = normalization
+
+    def forward(self, x, ys, yb):
+        return ys * self.normalization(x) + yb
+
+
+class Const(nn.Module):
+
+    def __init__(self, *shape, const=1):
+        super().__init__()
+
+        self.const = nn.Parameter(const * torch.ones(1, *shape), requires_grad=True)
+
+    def forward(self, batch_size=1):
+        return self.const.expand(batch_size, -1, -1, -1)

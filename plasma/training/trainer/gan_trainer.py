@@ -35,7 +35,9 @@ class GANTrainer:
         self.g_kwargs["batch_size"] = g_batch_size or batch_size
         callbacks = callbacks or []
 
-        [c.set_trainer_dataset(self, train) for c in callbacks]
+        [c.set_trainer(self) for c in callbacks]
+        [c.set_training_config(dataset=train, epochs=epochs,
+                               batch_size=batch_size, g_batch_size=g_batch_size) for c in callbacks]
         [c.on_train_begin() for c in callbacks]
 
         for e in range(epochs):

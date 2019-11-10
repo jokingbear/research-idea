@@ -77,14 +77,14 @@ class Progressive(Callback):
         print("fading in") if self.fade_in and self.verbose else None
 
     def on_batch_begin(self, batch):
+        alpha = 1
+
         if self.fade_in:
             e = self.epoch_counter
             alpha = (e + 1) * (batch + 1) / self.epochs / self.iterations
-            self.trainer.d_kwarg["alpha"] = alpha
-            self.trainer.g_kward["alpha"] = alpha
-        else:
-            self.trainer.d_kwarg["alpha"] = 1
-            self.trainer.g_kwarg["alpha"] = 1
+
+        self.trainer.d_kwarg["alpha"] = alpha
+        self.trainer.g_kward["alpha"] = alpha
 
     def on_epoch_end(self, e, logs=None):
         self.epoch_counter += 1
