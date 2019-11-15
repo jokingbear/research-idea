@@ -3,23 +3,24 @@ import os
 import torch
 import torch.optim as opts
 
-from plasma.training.callbacks.root_class import Callback
+from plasma.training.callbacks.base_class import Callback
 
 
 class LrFinder(Callback):
 
-    def __init__(self, min_lr, max_lr):
+    def __init__(self, min_lr, max_lr, epochs=3):
         super().__init__()
 
         self.min_lr = min_lr
         self.max_lr = max_lr
+        self.epochs = epochs
 
         self.scheduler = None
         self.history = {}
 
-    def on_train_begin(self):
-        epochs = self.training_config["epochs"]
-        iterations = self.training_config["iterations"]
+    def on_train_begin(self, train_loader, **train_configs):
+        epochs = self.epochs
+        iterations = len(train_loader)
         self.scheduler = opts.lr_scheduler.CyclicLR(self.optimizer, self.min_lr, self.max_lr,
                                                     step_size_up=epochs * iterations)
 
@@ -33,6 +34,9 @@ class LrFinder(Callback):
                 self.history[i].append((lr, logs))
             else:
                 self.history[i] = []
+
+    def on_epoch_end(self, epoch, logs=None):
+        self.trainer.stop_training = epoch + 1 == self.epochs
 
     def on_train_end(self):
         self.plot_data()
@@ -65,9 +69,11 @@ class CLR(Callback):
         self.reduce_lr_each_cycle = reduce_lr_each_cycle
         self.clr = None
 
-    def on_train_begin(self):
+    def on_train_begin(self, train_loader, **train_configs):
+        iterations = len(train_loader)
+
         self.clr = opts.lr_scheduler.CyclicLR(self.optimizer, self.min_lr, self.max_lr,
-                                              step_size_up=self.cycle_rate // 2 * self.training_config["iterations"],
+                                              step_size_up=self.cycle_rate // 2 * iterations,
                                               mode="triangular2" if self.reduce_lr_each_cycle else "triangular")
 
     def on_batch_end(self, batch, logs=None):
@@ -76,7 +82,7 @@ class CLR(Callback):
 
 class WarmRestart(Callback):
 
-    def __init__(self, min_lr, t0, factor=1, snapshot=False, directory="checkpoint", model_name=None):
+    def __init__(self, min_lr, t0=10, factor=2, snapshot=False, directory="checkpoint", model_name=None):
         super().__init__()
 
         self.min_lr = min_lr
@@ -90,22 +96,21 @@ class WarmRestart(Callback):
         self.current_epoch = 0
         self.max_epoch = t0
 
-    def on_train_begin(self):
+    def on_train_begin(self, **train_configs):
         self.scheduler = opts.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizer, self.t0,
                                                                        T_mult=self.factor, eta_min=self.min_lr)
 
         if not os.path.exists(self.dir) and self.snapshot:
             os.mkdir(self.dir)
 
-    def on_epoch_begin(self, epoch):
-        self.scheduler.step(epoch)
-
     def on_epoch_end(self, epoch, logs=None):
         self.current_epoch += 1
+        self.scheduler.step()
 
         if self.current_epoch == self.max_epoch:
             self.current_epoch = 0
             self.max_epoch *= self.factor
 
+            print("starting new period")
             if self.snapshot:
                 torch.save(self.model.state_dict(), f"{self.dir}/snapshot_{self.model_name}-{epoch + 1}")
