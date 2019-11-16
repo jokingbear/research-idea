@@ -14,3 +14,5 @@ experiment*
 gen_data/
 
 logs/
+
+checkpoint/

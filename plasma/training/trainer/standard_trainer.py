@@ -1,8 +1,9 @@
 import numpy as np
 import torch
-from torch.utils.data import DataLoader
-
 import plasma.training.trainer.utils as utils
+
+from torch.utils.data import DataLoader
+from itertools import count
 
 
 class StandardTrainer:
@@ -23,9 +24,9 @@ class StandardTrainer:
         self.grad_accumulation = grad_accumulation or 1
         self.grad_step = 0
 
-        self.train_mode = True
+        self.stop_training = False
 
-    def fit(self, train, test=None, epochs=1, batch_size=32, val_batch_size=1,
+    def fit(self, train, test=None, batch_size=32, val_batch_size=1,
             workers=0, pin_memory=True, callbacks=None):
         callbacks = callbacks or []
 
@@ -38,9 +39,9 @@ class StandardTrainer:
                                  num_workers=workers, pin_memory=pin_memory) if test is not None else None
 
         [c.set_trainer(self) for c in callbacks]
-        [c.on_train_begin() for c in callbacks]
-        for e in range(epochs):
-            print(f"epoch: {e + 1}/{epochs}")
+        [c.on_train_begin(train_loader=train_loader, test_loader=test_loader) for c in callbacks]
+        for e in count(start=0):
+            print(f"epoch {e + 1}")
 
             [c.on_epoch_begin(e) for c in callbacks]
 
@@ -52,7 +53,7 @@ class StandardTrainer:
 
             [c.on_epoch_end(e, logs) for c in callbacks]
 
-            if not self.train_mode:
+            if self.stop_training:
                 break
         [c.on_train_end() for c in callbacks]
 
@@ -128,3 +129,5 @@ class StandardTrainer:
         metrics = [float(loss)] + metrics
 
         return np.array(metrics)
+
+# TODO: test config

@@ -17,13 +17,13 @@ class GenImage(Callback):
         self.normalize = normalize
 
     def on_train_begin(self):
-        if not os.path.exists(f"/{self.path}"):
+        if not os.path.exists(f"{self.path}"):
             os.mkdir(self.path)
 
-        if not os.path.exists(f"/{self.path}/iterations"):
+        if not os.path.exists(f"{self.path}/iterations"):
             os.mkdir(self.path + "/iterations")
 
-        if not os.path.exists(f"/{self.path}/epochs"):
+        if not os.path.exists(f"{self.path}/epochs"):
             os.mkdir(self.path + "/epochs")
 
     def on_batch_end(self, batch, logs=None):
@@ -35,10 +35,11 @@ class GenImage(Callback):
 
     def render_image(self, file_name):
         g = self.generator.eval()
-        imgs = g(**self.generator.g_kwarg)
+        imgs = g(**self.trainer.g_kwargs)
         tv.utils.save_image(imgs, file_name, nrow=self.rows, normalize=self.normalize)
 
 
+# TODO: change this flow
 class Progressive(Callback):
 
     def __init__(self, iterations, start_epochs=30, increase_rate=1.5, verbose=1):
@@ -47,11 +48,11 @@ class Progressive(Callback):
         assert increase_rate >= 1, "increase rate must be bigger than or equal to 1"
 
         self.iterations = iterations
-        self.max_epochs = start_epochs
+        self.epochs = start_epochs
         self.increase_rate = increase_rate
         self.verbose = verbose
 
-        self.current_epoch = 0
+        self.epoch_counter = 0
         self.fade_in = False
         self.fine_tuning = False
         self.alpha = 1
@@ -63,31 +64,31 @@ class Progressive(Callback):
             f"{type(self.generator)} must have attribute increase_resolution"
 
     def on_epoch_begin(self, e):
-        if self.current_epoch == self.max_epochs:
-            self.current_epoch = 0
+        if self.epoch_counter == self.epochs:
+            self.epoch_counter = 0
 
-            if not self.fade_in:
+            if self.fade_in:
+                self.epochs = int(self.epochs * self.increase_rate)
+                self.fade_in = False
+            else:
                 self.dataset.increase_resolution()
                 self.generator.increase_resolution()
                 self.fade_in = True
-            else:
-                self.max_epochs = int(self.max_epochs * self.increase_rate)
-                self.fade_in = False
 
         print("fading in") if self.fade_in and self.verbose else None
 
     def on_batch_begin(self, batch):
+        alpha = 1
+
         if self.fade_in:
-            e = self.current_epoch
-            alpha = (e + 1) * (batch + 1) / self.max_epochs / self.iterations
-            self.trainer.d_kwarg["alpha"] = alpha
-            self.trainer.g_kward["alpha"] = alpha
-        else:
-            self.trainer.d_kwarg["alpha"] = 1
-            self.trainer.g_kwarg["alpha"] = 1
+            e = self.epoch_counter
+            alpha = (e + 1) * (batch + 1) / self.epochs / self.iterations
+
+        self.trainer.d_kwarg["alpha"] = alpha
+        self.trainer.g_kward["alpha"] = alpha
 
     def on_epoch_end(self, e, logs=None):
-        self.current_epoch += 1
+        self.epoch_counter += 1
 
 
 class ModelCheckpoints(Callback):

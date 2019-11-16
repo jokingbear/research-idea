@@ -8,7 +8,7 @@ import torch
 import torch.optim.lr_scheduler as schedulers
 from torch.utils.tensorboard import SummaryWriter
 
-from plasma.training.callbacks.root_class import Callback
+from plasma.training.callbacks.base_class import Callback
 
 
 class ReduceLROnPlateau(Callback):
@@ -23,7 +23,7 @@ class ReduceLROnPlateau(Callback):
         self.verbose = verbose
         self.scheduler = None
 
-    def on_train_begin(self):
+    def on_train_begin(self, **train_configs):
         self.scheduler = schedulers.ReduceLROnPlateau(self.optimizer, mode=self.mode, factor=self.factor,
                                                       patience=self.patience - 1, verbose=bool(self.verbose))
 
@@ -43,11 +43,8 @@ class EarlyStopping(Callback):
         self.patience = patience
         self.mode = mode
         self.verbose = verbose
-        self.monitor_val = None
+        self.monitor_val = np.inf if mode == "min" else -np.inf
         self.patience_count = 0
-
-    def on_train_begin(self):
-        self.monitor_val = np.inf if self.mode == "min" else -np.inf
 
     def on_epoch_end(self, epoch, logs=None):
         monitor_val = float(logs[self.monitor])
@@ -66,7 +63,7 @@ class EarlyStopping(Callback):
             print(f"model didn't improve from {self.monitor_val:.04f}") if self.verbose else None
 
         if self.patience_count == self.patience:
-            self.trainer.train_mode = False
+            self.trainer.stop_training = True
             print("Early stopping") if self.verbose else None
 
 
@@ -83,10 +80,7 @@ class ModelCheckpoint(Callback):
         self.save_best_only = save_best_only
         self.save_optimizer = save_optimizer
         self.verbose = verbose
-        self.running_monitor_val = None
-
-    def on_train_begin(self):
-        self.running_monitor_val = np.inf if self.mode == "min" else -np.inf
+        self.running_monitor_val = np.inf if mode == "min" else -np.inf
 
     def on_epoch_end(self, epoch, logs=None):
         monitor_val = logs[self.monitor]
@@ -137,7 +131,7 @@ class CSVLogger(Callback):
         self._open_args = {'newline': '\n'}
         self.csv_file = None
 
-    def on_train_begin(self, logs=None):
+    def on_train_begin(self, **train_configs):
         if self.append:
             if os.path.exists(self.filename):
                 with open(self.filename, 'r' + self.file_flags) as f:
@@ -204,7 +198,7 @@ class Tensorboard(Callback):
 
         self.writer = None
 
-    def on_train_begin(self):
+    def on_train_begin(self, **train_configs):
         self.writer = SummaryWriter(self.log_dir, flush_secs=self.flushes)
 
         if self.input_shape:
@@ -222,3 +216,14 @@ class Tensorboard(Callback):
 
     def on_train_end(self):
         self.writer = None
+
+
+class TrainingScheduler(Callback):
+
+    def __init__(self, epochs=100):
+        super().__init__()
+
+        self.epochs = epochs
+
+    def on_epoch_end(self, epoch, logs=None):
+        self.trainer.stop_training = epoch + 1 == self.epochs
