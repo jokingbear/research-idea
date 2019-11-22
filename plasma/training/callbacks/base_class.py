@@ -1,4 +1,4 @@
-from plasma.training.trainer.standard_trainer import StandardTrainer as Trainer
+from plasma.training.trainer import StandardTrainer as Trainer
 
 
 class Callback:

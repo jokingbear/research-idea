@@ -1,9 +1,10 @@
+from itertools import count
+
 import numpy as np
 import torch
-import plasma.training.trainer.utils as utils
-
 from torch.utils.data import DataLoader
-from itertools import count
+
+import plasma.training.utils as utils
 
 
 class StandardTrainer:
@@ -87,7 +88,6 @@ class StandardTrainer:
 
     def train_one_batch(self, y, *x):
         self.model.train()
-        self.model.zero_grad()
 
         y_pred = self.model(*x)
         loss = self.loss(y_pred, y)
@@ -98,6 +98,7 @@ class StandardTrainer:
         if self.grad_step == self.grad_accumulation:
             self.grad_step = 0
             self.optimizer.step()
+            self.model.zero_grad()
 
         return loss.detach(), y_pred.detach()
 
@@ -129,5 +130,3 @@ class StandardTrainer:
         metrics = [float(loss)] + metrics
 
         return np.array(metrics)
-
-# TODO: test config
