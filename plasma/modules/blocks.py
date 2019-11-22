@@ -1,8 +1,8 @@
 import torch.nn as nn
 
-from plasma import commons
-from plasma.commons import MergeModule
-from plasma.router import DynamicRouting
+from plasma.modules import commons
+from plasma.modules.commons import MergeModule
+from plasma.modules.router import DynamicRouting
 
 rank = 2
 conv_layer = nn.Conv2d

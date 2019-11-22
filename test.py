@@ -1,6 +1,6 @@
 import torch.nn as nn
 
-from plasma import blocks
+from plasma.modules import blocks
 
 
 class Identity(nn.Module):

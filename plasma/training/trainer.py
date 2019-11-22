@@ -4,7 +4,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-import plasma.training.trainer.utils as utils
+import plasma.training.utils as utils
 
 
 class StandardTrainer:
@@ -130,4 +130,3 @@ class StandardTrainer:
         metrics = [float(loss)] + metrics
 
         return np.array(metrics)
-

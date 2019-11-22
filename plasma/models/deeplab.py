@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as func
 
-from plasma import blocks
+from plasma.modules import blocks
 
 
 class DeepLab3(nn.Module):

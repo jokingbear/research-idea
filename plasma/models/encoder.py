@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as func
 
-from plasma import blocks
+from plasma.modules import blocks
 
 
 class ResCap(nn.Sequential):
@@ -54,7 +54,7 @@ class ResCap(nn.Sequential):
             blocks.ResidualBlock(f * 32, 16 * d, groups, iters),
         ])  # 32f x h / 64 x w / 64
 
-        self.features = blocks.commons.GlobalAverage()
+        self.features = plasma.layers.commons.GlobalAverage()
 
         self.classifier = nn.Sequential(*[
             nn.Linear(f * 32, 14),
