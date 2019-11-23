@@ -86,7 +86,7 @@ class GANTrainer:
                 r.requires_grad = True
 
         real_scores = self.discriminator(*reals, **self.d_kwargs)
-        fake_scores, fakes = self.generator_discriminator(g_grad=False, **{**self.g_kwargs, **self.d_kwargs})
+        fake_scores, fakes = self.generator_discriminator(g_grad=False, g_kwargs=self.g_kwargs, d_kwargs=self.d_kwargs)
         loss = self.loss.discriminator_loss(reals, real_scores, fakes, fake_scores)
 
         loss.backward()
