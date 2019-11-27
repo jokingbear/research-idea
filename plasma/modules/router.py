@@ -16,7 +16,7 @@ class DynamicRouting(nn.Module):
         self.iters = iters
         self.rank = rank
         self.weight = nn.Parameter(torch.zeros(*shape), requires_grad=True)
-        self.bias = nn.Parameter(torch.zeros(1, out_filters, *spatial_shape), requires_grad=True) if bias else None
+        self.bias = nn.Parameter(torch.zeros(out_filters), requires_grad=True) if bias else None
         self.con_op = torch.conv2d if rank == 2 else torch.conv3d if rank == 3 else torch.convolution
 
         self.reset_parameters()

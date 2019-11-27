@@ -29,12 +29,13 @@ class GANTrainer:
         self.g_kwargs = {}
         self.stop_training = False
 
-    def fit(self, train, batch_size=32, callbacks=None, workers=0):
+    def fit(self, train, batch_size=32, generator_batch_size=None, callbacks=None, workers=0):
         callbacks = callbacks or []
 
         sampler = train.get_sampler() if hasattr(train, "get_sampler") else None
         loader = DataLoader(train, batch_size, shuffle=sampler is None, sampler=sampler,
                             num_workers=workers, pin_memory=True)
+        self.g_kwargs["batch_size"] = generator_batch_size or batch_size
 
         [c.set_trainer(self) for c in callbacks]
         [c.on_train_begin(loader=loader) for c in callbacks]
@@ -105,5 +106,4 @@ class GANTrainer:
 
         return loss.detach()
 
-# TODO: implement standard loss
 # TODO: implement callbacks
