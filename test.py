@@ -77,7 +77,7 @@ class DenseCap(nn.Sequential):
         ])  # 64 x 256 x 256
 
         # 128 x 128 x 128
-        self.con1 = DenseBlock(f0, bottleneck, routing_features, 2 * f0, blocks, groups, iters)  # 128 x 128 x 128
+        self.con1 = DenseBlock(f0, bottleneck, routing_features, 2 * f0, blocks, groups, iters)
 
         # 256 x 64 x 64
         self.con2 = DenseBlock(2 * f0, 2 * bottleneck, 2 * routing_features, 4 * f0, blocks * 2, groups, iters)

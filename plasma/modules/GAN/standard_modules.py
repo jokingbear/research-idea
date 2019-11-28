@@ -6,7 +6,7 @@ import torch.nn.functional as func
 
 class ScaleConv2D(nn.Module):
 
-    def __init__(self, in_channels, out_channels, kernel=3, stride=1, padding=1, bias=True, lrmul=1):
+    def __init__(self, in_channels, out_channels, kernel=3, stride=1, padding=1, bias=True):
         super().__init__()
 
         self.in_channels = in_channels
@@ -14,7 +14,6 @@ class ScaleConv2D(nn.Module):
         self.kernel = kernel
         self.stride = stride
         self.padding = padding
-        self.lrmul = lrmul
 
         coefficient = np.sqrt(2) / np.sqrt(in_channels * kernel * kernel)
         self.coefficient = torch.tensor(coefficient, dtype=torch.float)
@@ -25,23 +24,22 @@ class ScaleConv2D(nn.Module):
 
     def forward(self, x):
         coefficient = self.coefficient.to(x.device)
-        lrmul = self.lrmul if self.training else 1
-        return lrmul * torch.conv2d(x, coefficient * self.weight, self.bias, self.stride, self.padding)
+
+        return torch.conv2d(x, coefficient * self.weight, self.bias, self.stride, self.padding)
 
     def extra_repr(self):
         return f"in_channels={self.in_channels}, out_channels={self.out_channels}, " \
                f"kernel={self.kernel}, stride={self.stride}, padding={self.padding}, " \
-               f"bias={self.bias is not None}, lrmul={self.lrmul}"
+               f"bias={self.bias is not None}"
 
 
 class ScaleLinear(nn.Module):
 
-    def __init__(self, in_features, out_features, bias=True, lrmul=1):
+    def __init__(self, in_features, out_features, bias=True):
         super().__init__()
 
         self.in_features = in_features
         self.out_features = out_features
-        self.lrmul = lrmul
 
         coefficient = np.sqrt(2) / np.sqrt(in_features)
         self.coefficient = torch.tensor(coefficient, dtype=torch.float)
@@ -52,9 +50,11 @@ class ScaleLinear(nn.Module):
 
     def forward(self, x):
         coefficient = self.coefficient.to(x.device)
-        lrmul = self.lrmul if self.training else 1
 
-        return lrmul * func.linear(x, coefficient * self.weight, self.bias)
+        return func.linear(x, coefficient * self.weight, self.bias)
+
+    def extra_repr(self):
+        return f"in_features={self.in_features}, out_features={self.out_features}, bias={self.bias is not None}"
 
 
 class AdaNorm(nn.Module):
@@ -84,3 +84,37 @@ class Noise(nn.Module):
         noise = noise or torch.randn(1, *x.shape[1:], device=x.device)
 
         return x + self.weight * noise
+
+
+class ParallelGeneratorDiscriminator(nn.DataParallel):
+
+    def forward(self, *inputs, **kwargs):
+        d = {**kwargs}
+        d["g_kwargs"]["batch_size"] = d["g_kwargs"]["batch_size"] // len(self.device_ids)
+
+        return super().forward(*inputs, **d)
+
+
+class GeneratorDiscriminator(nn.Module):
+
+    def __init__(self, generator, discriminator):
+        super().__init__()
+
+        self.generator = generator
+        self.discriminator = discriminator
+
+    def forward(self, g_grad=True, g_kwargs=None, d_kwargs=None):
+        g_kwargs = g_kwargs or {}
+        d_kwargs = d_kwargs or {}
+
+        if g_grad:
+            imgs = self.generator(**g_kwargs)
+        else:
+            with torch.no_grad():
+                imgs = self.generator(**g_kwargs)
+
+        imgs = imgs if not torch.is_tensor(imgs) else [imgs]
+
+        scores = self.discriminator(*imgs, **d_kwargs)
+
+        return scores, imgs

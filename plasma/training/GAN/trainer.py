@@ -58,6 +58,8 @@ class GANTrainer:
         with utils.get_tqdm()(total=n) as pbar:
             for i, reals in enumerate(loader):
                 [c.on_batch_begin(i) for c in callbacks]
+
+                reals = utils.to_device(reals, dtype=self.dtype, device=self.device)
                 d_loss = self.train_discriminator(*reals)
                 g_loss = self.train_generator()
 
@@ -98,12 +100,10 @@ class GANTrainer:
     def train_generator(self):
         self.generator_discriminator.train().zero_grad()
 
-        fake_scores, fakes = self.generator_discriminator(g_grad=True, **{**self.g_kwargs, **self.d_kwargs})
+        fake_scores, fakes = self.generator_discriminator(g_grad=True, g_kwargs=self.g_kwargs, d_kwargs=self.d_kwargs)
         loss = self.loss.generator_loss(fakes, fake_scores)
 
         loss.backward()
         self.generator_optimizer.step()
 
         return loss.detach()
-
-# TODO: implement callbacks

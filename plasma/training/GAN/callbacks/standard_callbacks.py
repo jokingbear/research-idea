@@ -89,6 +89,7 @@ class Progressive(Callback):
     def set_config(self):
         resolution = self.min_resolution
         self.loader.dataset.resolution = resolution
+        self.trainer.g_kwargs["resolution"] = resolution
 
         if resolution in self.batch_dict:
             batch_size = self.batch_dict[resolution]
@@ -110,3 +111,14 @@ class Progressive(Callback):
         self.epoch_counter = 0
         if resolution in self.epoch_dict:
             self.max_epoch = self.epoch_dict[resolution]
+
+
+class TrainingProgress(Callback):
+
+    def __init__(self, epochs):
+        super().__init__()
+
+        self.epochs = epochs
+
+    def on_epoch_end(self, e, logs):
+        self.trainer.stop_training = self.epochs == e + 1
