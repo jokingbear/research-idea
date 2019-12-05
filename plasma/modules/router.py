@@ -1,11 +1,11 @@
-import torch
-import torch.nn as nn
 import torch.nn.functional as func
+
+from plasma.modules.configs import *
 
 
 class DynamicRouting(nn.Module):
 
-    def __init__(self, in_filters, out_filters, groups, iters=3, rank=2, bias=True):
+    def __init__(self, in_filters, out_filters, groups, iters=3, bias=True):
         super().__init__()
 
         spatial_shape = [1] * rank
@@ -14,16 +14,12 @@ class DynamicRouting(nn.Module):
         self.out_filters = out_filters
         self.groups = groups
         self.iters = iters
-        self.rank = rank
         self.weight = nn.Parameter(torch.zeros(*shape), requires_grad=True)
         self.bias = nn.Parameter(torch.zeros(out_filters), requires_grad=True) if bias else None
-        self.con_op = torch.conv2d if rank == 2 else torch.conv3d if rank == 3 else torch.convolution
 
         self.reset_parameters()
 
     def forward(self, x):
-        con_op = self.con_op
-
         if self.iters == 1:
             con = con_op(x, self.weight, self.bias)
 
@@ -32,7 +28,6 @@ class DynamicRouting(nn.Module):
             fo = self.out_filters
             fi = self.in_filters
             g = self.groups
-            rank = self.rank
 
             weight = self.weight.reshape([fo, g, fi] + [1] * rank).transpose(0, 1).reshape([g * fo, fi] + [1] * rank)
             con = con_op(x, weight, groups=self.groups)
@@ -60,5 +55,5 @@ class DynamicRouting(nn.Module):
         fo = self.out_filters
         fi = self.in_filters
 
-        return f"in_filters={fi}, out_filters={fo}, groups={self.groups}, iters={self.iters}, rank={self.rank}" \
-               f", bias={self.bias is not None}"
+        return f"in_filters={fi}, out_filters={fo}, groups={self.groups}, iters={self.iters}, " \
+               f"bias={self.bias is not None}"

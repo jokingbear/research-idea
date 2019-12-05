@@ -1,104 +1,74 @@
-import torch
-import torch.nn as nn
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# File: tensorpack.vgg.py
+import sys
 
-from plasma.modules import DynamicRouting, GlobalAverage
+import numpy as np
+from tensorpack import *
 
-
-class BN_ReLU_Conv(nn.Sequential):
-
-    def __init__(self, in_features, out_features, kernel_size=3, padding=1, stride=1, groups=1):
-        super().__init__()
-
-        self.norm = nn.BatchNorm2d(in_features)
-        self.activation = nn.ReLU(inplace=True)
-        self.conv = nn.Conv2d(in_features, out_features, kernel_size, stride, padding, groups=groups)
-
-
-class BN_ReLU_Routing(nn.Sequential):
-
-    def __init__(self, in_features, out_features, groups=32, iters=1):
-        super().__init__()
-
-        self.norm = nn.BatchNorm2d(in_features * groups)
-        self.activation = nn.ReLU(inplace=True)
-        self.conv = DynamicRouting(in_features, out_features, groups, iters)
+BATCH = 64  # tensorpack's "batch" is per-GPU batch.
+try:
+    NUM_GPU = int(sys.argv[1])
+except IndexError:
+    NUM_GPU = 1
 
 
-class RoutingBlock(nn.Sequential):
+class Model(ModelDesc):
+    def inputs(self):
+        return [tf.TensorSpec([None, 3, 28, 28], tf.float32, 'input'),
+                tf.TensorSpec([None], tf.int32, 'label')]
 
-    def __init__(self, in_features, bottleneck, out_features, groups=32, iters=1, downsample=False):
-        super().__init__()
+    def build_graph(self, image, label):
+        image = image / 255.0
 
-        stride = 2 if downsample else 1
+        with argscope(Conv2D, activation=tf.nn.relu, kernel_size=3), \
+             argscope([Conv2D, MaxPooling], data_format='channels_first'):
+            logits = (LinearWrap(image)
+                      .Conv2D('conv1_1', 64)
+                      .Conv2D('conv1_2', 64)
+                      .MaxPooling('pool1', 2)
+                      # 14
+                      .Conv2D('conv2_1', 128)
+                      .Conv2D('conv2_2', 128)
+                      .MaxPooling('pool2', 2)
+                      # 7
+                      .Conv2D('conv3_1', 256)
+                      .Conv2D('conv3_2', 256)
+                      .Conv2D('conv3_3', 256)
+                      .MaxPooling('pool3', 7)
+                      .FullyConnected('fc8', 10, activation=tf.identity)())
 
-        self.embed1 = BN_ReLU_Conv(in_features, bottleneck * groups, kernel_size=1, padding=0)
-        self.embed2 = BN_ReLU_Conv(bottleneck * groups, bottleneck * groups, groups=groups, stride=stride)
-        self.routing = BN_ReLU_Routing(bottleneck, out_features, groups, iters)
+        cost = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=label)
+        cost = tf.reduce_mean(cost, name='cost')
+        return cost
 
-
-class DenseBlock(nn.Module):
-
-    def __init__(self, in_features, bottleneck, routing_features, out_features, blocks, groups, iters):
-        super().__init__()
-
-        self.down_sampling = nn.AvgPool2d(2, 2)
-        self.down_routing = RoutingBlock(in_features, bottleneck, routing_features, groups, iters, downsample=True)
-
-        self.routing_modules = nn.ModuleList([
-            RoutingBlock(in_features + routing_features * (i + 1), bottleneck, routing_features, groups, iters)
-            for i in range(blocks)])
-
-        self.finalize = BN_ReLU_Conv(in_features + routing_features * (blocks + 1), out_features)
-
-    def forward(self, x):
-        down_sample = self.down_sampling(x)
-        down_routing = self.down_routing(x)
-
-        x = torch.cat([down_sample, down_routing], dim=1)
-        for m in self.routing_modules:
-            y = m(x)
-            x = torch.cat([x, y], dim=1)
-
-        return self.finalize(x)
+    def optimizer(self):
+        return tf.compat.v1.train.RMSPropOptimizer(1e-3, epsilon=1e-8)
 
 
-class DenseCap(nn.Sequential):
+def get_data():
+    X_train = np.random.random((BATCH, 3, 28, 28)).astype('float32')
+    Y_train = np.random.random((BATCH,)).astype('int32')
 
-    def __init__(self, n_channels=1, f0=64, groups=32, iters=1):
-        super().__init__()
+    def gen():
+        while True:
+            yield [X_train, Y_train]
 
-        bottleneck = 4
-        routing_features = 8
-        blocks = 4
-
-        self.con0 = nn.Sequential(*[
-            nn.Conv2d(n_channels, f0, kernel_size=7, stride=2, padding=3),
-            BN_ReLU_Conv(f0, f0),
-        ])  # 64 x 256 x 256
-
-        # 128 x 128 x 128
-        self.con1 = DenseBlock(f0, bottleneck, routing_features, 2 * f0, blocks, groups, iters)
-
-        # 256 x 64 x 64
-        self.con2 = DenseBlock(2 * f0, 2 * bottleneck, 2 * routing_features, 4 * f0, blocks * 2, groups, iters)
-
-        # 512 x 32 x 32
-        self.con3 = DenseBlock(4 * f0, 4 * bottleneck, 4 * routing_features, 8 * f0, blocks * 4, groups, iters)
-
-        # 1024 x 16 x 16
-        self.con4 = DenseBlock(8 * f0, 8 * bottleneck, 8 * routing_features, 16 * f0, blocks * 4, groups, iters)
-
-        # 2048 x 8 x 8
-        self.con5 = DenseBlock(16 * f0, 8 * bottleneck, 8 * routing_features, 32 * f0, blocks * 2, groups, iters)
-
-        self.classifier = nn.Sequential(*[
-            nn.BatchNorm2d(32 * f0),
-            nn.ReLU(inplace=True),
-            GlobalAverage(),
-            nn.Linear(32 * f0, 14),
-            nn.Sigmoid()
-        ])
+    return DataFromGenerator(gen)
 
 
-a = DenseCap()
-a(torch.ones(1, 1, 384, 384))
+if __name__ == '__main__':
+    dataset_train = get_data()
+    config = TrainConfig(
+        model=Model(),
+        data=StagingInput(QueueInput(dataset_train)),
+        callbacks=[],
+        extra_callbacks=[ProgressBar(['cost'])],
+        max_epoch=1,
+        steps_per_epoch=50,
+    )
+    if NUM_GPU == 1:
+        trainer = SimpleTrainer()
+    else:
+        trainer = SyncMultiGPUTrainerReplicated(NUM_GPU, mode='nccl')
+    launch_train_with_config(config, trainer)

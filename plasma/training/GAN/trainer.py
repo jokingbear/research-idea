@@ -107,3 +107,5 @@ class GANTrainer:
         self.generator_optimizer.step()
 
         return loss.detach()
+
+# TODO: test on mnist

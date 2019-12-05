@@ -42,7 +42,8 @@ class GenImage(Callback):
 class Progressive(Callback):
 
     def __init__(self, min_resolution, max_resolution, default_epochs, epoch_dict=None,
-                 batch_dict=None, discriminator_lr_dict=None, generator_lr_dict=None):
+                 discriminator_batch_dict=None, generator_batch_dict=None,
+                 discriminator_lr_dict=None, generator_lr_dict=None):
         super().__init__()
 
         self.min_resolution = min_resolution
@@ -50,7 +51,8 @@ class Progressive(Callback):
 
         self.default_epochs = default_epochs
         self.epoch_dict = epoch_dict or {}
-        self.batch_dict = batch_dict or {}
+        self.discriminator_batch_dict = discriminator_batch_dict or {}
+        self.generator_batch_dict = generator_batch_dict or {}
         self.discriminator_lr_dict = discriminator_lr_dict or {}
         self.generator_lr_dict = generator_lr_dict or {}
 
@@ -74,6 +76,7 @@ class Progressive(Callback):
             alpha = 1
 
         self.trainer.g_kwargs["alpha"] = alpha
+        self.trainer.d_kwargs["alpha"] = alpha
 
     def on_epoch_end(self, e, logs):
         self.epoch_counter += 1
@@ -91,10 +94,12 @@ class Progressive(Callback):
         self.loader.dataset.resolution = resolution
         self.trainer.g_kwargs["resolution"] = resolution
 
-        if resolution in self.batch_dict:
-            batch_size = self.batch_dict[resolution]
+        if resolution in self.discriminator_batch_dict:
+            batch_size = self.discriminator_batch_dict[resolution]
             self.loader.batch_sampler = data.sampler.BatchSampler(self.loader.sampler, batch_size, drop_last=True)
-            self.trainer.g_kwargs["batch_size"] = batch_size
+
+        if resolution in self.generator_batch_dict:
+            self.trainer.g_kwargs["batch_size"] = self.generator_batch_dict[resolution]
 
         if self.fade:
             self.discriminator_optimizer.state = collections.defaultdict(dict, {})
