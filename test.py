@@ -1,71 +1,74 @@
-import torch.nn as nn
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# File: tensorpack.vgg.py
+import sys
 
-from plasma.modules import blocks
+import numpy as np
+from tensorpack import *
 
-
-class Identity(nn.Module):
-
-    def forward(self, x):
-        return x
-
-
-class Encoder(nn.Sequential):
-
-    def __init__(self, img_channels=1, f0=64, b0=4, groups=32, iters=1):
-        super().__init__()
-
-        self.con0 = nn.Sequential(*[
-            blocks.ConvBlock(img_channels, f0)
-        ])
-
-        self.con1 = nn.Sequential(*[
-            blocks.ResidualBlock(f0, b0, groups, iters, down_sample=True),
-            blocks.ConvBlock(2 * f0, 2 * f0),
-            blocks.ResidualBlock(2 * f0, b0, groups, iters)
-        ])
-
-        self.con2 = nn.Sequential(*[
-            blocks.ResidualBlock(2 * f0, 2 * b0, groups, iters, down_sample=True),
-            blocks.ConvBlock(4 * f0, 4 * f0),
-            blocks.ResidualBlock(4 * f0, 2 * b0, groups, iters)
-        ])
-
-        self.con3 = nn.Sequential(*[
-            blocks.ResidualBlock(4 * f0, 4 * b0, groups, iters, down_sample=True),
-            blocks.ConvBlock(8 * f0, 8 * f0),
-            blocks.ResidualBlock(8 * f0, 4 * b0, groups, iters)
-        ])
+BATCH = 64  # tensorpack's "batch" is per-GPU batch.
+try:
+    NUM_GPU = int(sys.argv[1])
+except IndexError:
+    NUM_GPU = 1
 
 
-class Decoder(nn.Sequential):
+class Model(ModelDesc):
+    def inputs(self):
+        return [tf.TensorSpec([None, 3, 28, 28], tf.float32, 'input'),
+                tf.TensorSpec([None], tf.int32, 'label')]
 
-    def __init__(self, f0, img_channels=1, b0=None, groups=32, iters=1):
-        super().__init__()
+    def build_graph(self, image, label):
+        image = image / 255.0
 
-        self.decon2 = nn.Sequential(*[
-            blocks.DeconBlock(f0, f0 // 2),
-            blocks.ConvBlock(f0 // 2, f0 // 2),
-            blocks.ResidualBlock(f0 // 2, b0, groups, iters) if b0 else Identity()
-        ])
+        with argscope(Conv2D, activation=tf.nn.relu, kernel_size=3), \
+             argscope([Conv2D, MaxPooling], data_format='channels_first'):
+            logits = (LinearWrap(image)
+                      .Conv2D('conv1_1', 64)
+                      .Conv2D('conv1_2', 64)
+                      .MaxPooling('pool1', 2)
+                      # 14
+                      .Conv2D('conv2_1', 128)
+                      .Conv2D('conv2_2', 128)
+                      .MaxPooling('pool2', 2)
+                      # 7
+                      .Conv2D('conv3_1', 256)
+                      .Conv2D('conv3_2', 256)
+                      .Conv2D('conv3_3', 256)
+                      .MaxPooling('pool3', 7)
+                      .FullyConnected('fc8', 10, activation=tf.identity)())
 
-        self.decon1 = nn.Sequential(*[
-            blocks.DeconBlock(f0 // 2, f0 // 4),
-            blocks.ConvBlock(f0 // 4, f0 // 4),
-            blocks.ResidualBlock(f0 // 4, b0 // 2, groups, iters) if b0 else Identity()
-        ])
+        cost = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=label)
+        cost = tf.reduce_mean(cost, name='cost')
+        return cost
 
-        self.decon0 = nn.Sequential(*[
-            blocks.DeconBlock(f0 // 4, f0 // 8),
-            blocks.ConvBlock(f0 // 8, f0 // 8),
-            nn.Conv2d(f0 // 8, img_channels, kernel_size=1),
-            nn.Tanh()
-        ])
+    def optimizer(self):
+        return tf.compat.v1.train.RMSPropOptimizer(1e-3, epsilon=1e-8)
 
 
-class Autoencoder(nn.Sequential):
+def get_data():
+    X_train = np.random.random((BATCH, 3, 28, 28)).astype('float32')
+    Y_train = np.random.random((BATCH,)).astype('int32')
 
-    def __init__(self, groups=32, iters=1):
-        super().__init__()
+    def gen():
+        while True:
+            yield [X_train, Y_train]
 
-        self.encoder = Encoder(f0=64, b0=4, groups=groups, iters=iters)
-        self.decoder = Decoder(f0=512, b0=None, groups=groups, iters=iters)
+    return DataFromGenerator(gen)
+
+
+if __name__ == '__main__':
+    dataset_train = get_data()
+    config = TrainConfig(
+        model=Model(),
+        data=StagingInput(QueueInput(dataset_train)),
+        callbacks=[],
+        extra_callbacks=[ProgressBar(['cost'])],
+        max_epoch=1,
+        steps_per_epoch=50,
+    )
+    if NUM_GPU == 1:
+        trainer = SimpleTrainer()
+    else:
+        trainer = SyncMultiGPUTrainerReplicated(NUM_GPU, mode='nccl')
+    launch_train_with_config(config, trainer)

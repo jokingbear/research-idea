@@ -1,5 +1,5 @@
-import plasma.modules.blocks as blocks
-
-from plasma.modules.blocks import ResidualBlock, DeconBlock, ConvBlock, RoutingBlock
-from plasma.modules.commons import GlobalAverage, MergeModule, Reshape
+from plasma.modules.blocks import \
+    Normalize_Activate_Transform_Block as NAT_Block, \
+    Transform_Normalize_Activate_Block as TNA_Block
+from plasma.modules.commons import GlobalAverage, Reshape
 from plasma.modules.router import DynamicRouting

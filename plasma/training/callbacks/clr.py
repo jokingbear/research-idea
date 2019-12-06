@@ -18,9 +18,9 @@ class LrFinder(Callback):
         self.scheduler = None
         self.history = {}
 
-    def on_train_begin(self, train_loader, **train_configs):
+    def on_train_begin(self, **train_configs):
         epochs = self.epochs
-        iterations = len(train_loader)
+        iterations = len(train_configs["train_loader"])
         self.scheduler = opts.lr_scheduler.CyclicLR(self.optimizer, self.min_lr, self.max_lr,
                                                     step_size_up=epochs * iterations)
 
@@ -82,18 +82,20 @@ class CLR(Callback):
 
 class WarmRestart(Callback):
 
-    def __init__(self, min_lr, t0=10, factor=2, snapshot=False, directory="checkpoint", model_name=None):
+    def __init__(self, min_lr, t0=10, factor=2, periods=4, snapshot=True, directory="checkpoint", model_name=None):
         super().__init__()
 
         self.min_lr = min_lr
         self.t0 = t0
         self.factor = factor
+        self.periods = periods
         self.snapshot = snapshot
         self.dir = directory
         self.model_name = model_name or "model"
 
         self.scheduler = None
         self.current_epoch = 0
+        self.current_period = 0
         self.max_epoch = t0
 
     def on_train_begin(self, **train_configs):
@@ -113,4 +115,6 @@ class WarmRestart(Callback):
 
             print("starting new period")
             if self.snapshot:
-                torch.save(self.model.state_dict(), f"{self.dir}/snapshot_{self.model_name}-{epoch + 1}")
+                torch.save(self.model.state_dict(), f"{self.dir}/snapshot_{self.model_name}-{self.current_period + 1}")
+
+        self.trainer.stop_training = self.current_period + 1 == self.periods
