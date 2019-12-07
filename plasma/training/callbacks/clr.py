@@ -109,6 +109,9 @@ class WarmRestart(Callback):
         self.current_epoch += 1
         self.scheduler.step()
 
+        for i, g in enumerate(self.optimizer.param_groups):
+            logs[f"lr {i}"] = g["lr"]
+
         if self.current_epoch == self.max_epoch:
             self.current_epoch = 0
             self.max_epoch *= self.factor
