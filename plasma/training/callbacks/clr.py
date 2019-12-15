@@ -16,27 +16,29 @@ class LrFinder(Callback):
         self.epochs = epochs
 
         self.scheduler = None
+        self.gamma = 0
         self.history = {}
 
     def on_train_begin(self, **train_configs):
         epochs = self.epochs
         iterations = len(train_configs["train_loader"])
-        self.scheduler = opts.lr_scheduler.CyclicLR(self.optimizer, self.min_lr, self.max_lr,
-                                                    step_size_up=epochs * iterations)
+
+        for g in self.optimizer.param_groups:
+            g["lr"] = self.min_lr
+
+        self.gamma = (self.max_lr - self.min_lr) / (epochs * iterations)
 
     def on_batch_end(self, batch, logs=None):
-        lr = self.scheduler.get_lr()
-
-        self.scheduler.step()
-
         for i, g in enumerate(self.optimizer.param_groups):
             if i in self.history:
-                self.history[i].append((lr, logs))
+                self.history[i].append((g["lr"], logs))
             else:
                 self.history[i] = []
 
+            g["lr"] += self.gamma
+
     def on_epoch_end(self, epoch, logs=None):
-        self.trainer.stop_training = epoch + 1 == self.epochs
+        self.trainer.training = epoch + 1 < self.epochs
 
     def on_train_end(self):
         self.plot_data()
@@ -95,7 +97,7 @@ class WarmRestart(Callback):
 
         self.scheduler = None
         self.current_epoch = 0
-        self.current_period = 0
+        self.finished_period = 0
         self.max_epoch = t0
 
     def on_train_begin(self, **train_configs):
@@ -107,17 +109,19 @@ class WarmRestart(Callback):
 
     def on_epoch_end(self, epoch, logs=None):
         self.current_epoch += 1
-        self.scheduler.step()
 
         for i, g in enumerate(self.optimizer.param_groups):
             logs[f"lr {i}"] = g["lr"]
 
+        self.scheduler.step()
+
         if self.current_epoch == self.max_epoch:
             self.current_epoch = 0
             self.max_epoch *= self.factor
+            self.finished_period += 1
 
-            print("starting new period")
+            print("starting new period") if self.finished_period != self.periods else None
             if self.snapshot:
-                torch.save(self.model.state_dict(), f"{self.dir}/snapshot_{self.model_name}-{self.current_period + 1}")
+                torch.save(self.model.state_dict(), f"{self.dir}/snapshot_{self.model_name}-{self.finished_period}")
 
-        self.trainer.stop_training = self.current_period + 1 == self.periods
+        self.trainer.training = self.finished_period < self.periods
