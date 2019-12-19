@@ -120,7 +120,7 @@ class WarmRestart(Callback):
             self.max_epoch *= self.factor
             self.finished_period += 1
 
-            print("starting new period") if self.finished_period != self.periods else None
+            print("starting period ", self.finished_period + 1) if self.finished_period != self.periods else None
             if self.snapshot:
                 torch.save(self.model.state_dict(), f"{self.dir}/snapshot_{self.model_name}-{self.finished_period}")
 
