@@ -63,7 +63,7 @@ class EarlyStopping(Callback):
             print(f"model didn't improve from {self.monitor_val:.04f}") if self.verbose else None
 
         if self.patience_count == self.patience:
-            self.trainer.stop_training = True
+            self.trainer.training = False
             print("Early stopping") if self.verbose else None
 
 
@@ -156,10 +156,6 @@ class CSVLogger(Callback):
         if self.keys is None:
             self.keys = sorted(logs.keys())
 
-        if not self.trainer.train_mode:
-            # We set NA so that csv parsers do not fail for this last epoch.
-            logs = dict([(k, logs[k]) if k in logs else (k, 'NA') for k in self.keys])
-
         if not self.writer:
 
             class CustomDialect(csv.excel):
@@ -226,4 +222,4 @@ class TrainingScheduler(Callback):
         self.epochs = epochs
 
     def on_epoch_end(self, epoch, logs=None):
-        self.trainer.stop_training = epoch + 1 == self.epochs
+        self.trainer.training = epoch + 1 < self.epochs

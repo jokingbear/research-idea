@@ -25,7 +25,7 @@ class StandardTrainer:
         self.grad_accumulation = grad_accumulation or 1
         self.grad_step = 0
 
-        self.stop_training = False
+        self.training = True
 
     def fit(self, train, test=None, batch_size=32, val_batch_size=1,
             workers=0, pin_memory=True, callbacks=None):
@@ -54,7 +54,7 @@ class StandardTrainer:
 
             [c.on_epoch_end(e, logs) for c in callbacks]
 
-            if self.stop_training:
+            if not self.training:
                 break
         [c.on_train_end() for c in callbacks]
 

@@ -51,6 +51,9 @@ def f1_fn(n_class=2, smooth=1e-7, binary=False, cast=False):
             y_pred = torch.argmax(y_pred, dim=1)
             y_pred = func.one_hot(y_pred, num_classes=n_class).type(torch.float)
 
+        y_pred = y_pred[:, 1:, ...] if not binary else y_pred
+        y_true = y_true[:, 1:, ...] if not binary else y_true
+
         p = (y_true * y_pred).sum(dim=0)
         s = (y_true + y_pred).sum(dim=0)
 
