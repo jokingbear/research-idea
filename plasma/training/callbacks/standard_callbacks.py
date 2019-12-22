@@ -201,7 +201,7 @@ class Tensorboard(Callback):
             input_shape = [1, *self.input_shape]
             self.writer.add_graph(self.model, torch.ones(input_shape, dtype=torch.float, device=self.input_device))
 
-    def on_batch_end(self, batch, logs=None):
+    def on_training_batch_end(self, batch, x, y, pred, logs=None):
         if self.current_step % self.steps == 0:
             self.writer.add_scalars("iterations", logs, self.current_step)
 

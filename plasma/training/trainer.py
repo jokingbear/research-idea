@@ -48,7 +48,7 @@ class StandardTrainer:
 
             train_logs = self.train_one_epoch(train_loader, callbacks)
 
-            val_logs = self.evaluate_one_epoch(test_loader) if test is not None else {}
+            val_logs = self.evaluate_one_epoch(test_loader, callbacks) if test is not None else {}
 
             logs = {**train_logs, **val_logs}
 
@@ -66,10 +66,9 @@ class StandardTrainer:
 
         with utils.get_tqdm()(total=n, desc="train") as pbar:
             for i, (x, y) in enumerate(train):
-                [c.on_batch_begin(i) for c in callbacks]
-
                 x = utils.to_device(x, self.x_type, self.x_device)
                 y = utils.to_device(y, self.y_type, self.y_device, return_array=False)
+                [c.on_training_batch_begin(i, x, y) for c in callbacks]
 
                 loss, y_pred = self.train_one_batch(y, *x)
 
@@ -79,7 +78,7 @@ class StandardTrainer:
 
                     logs = dict(zip(metrics_names, running_metrics / (i + 1)))
 
-                    [c.on_batch_end(i, logs) for c in callbacks]
+                    [c.on_training_batch_end(i, x, y, y_pred, logs) for c in callbacks]
 
                 pbar.set_postfix(logs, refresh=False)
                 pbar.update(1)
@@ -102,7 +101,7 @@ class StandardTrainer:
 
         return loss.detach(), y_pred.detach()
 
-    def evaluate_one_epoch(self, test):
+    def evaluate_one_epoch(self, test, callbacks):
         self.model.eval()
         n = len(test)
         metrics_names = ["val_loss"] + ["val_" + m.__name__ for m in self.metrics]
@@ -112,6 +111,7 @@ class StandardTrainer:
             for i, (x, y) in enumerate(test):
                 x = utils.to_device(x, self.x_type, self.x_device)
                 y = utils.to_device(y, self.y_type, self.y_device, return_array=False)
+                [c.on_validation_batch_begin(i, x, y) for c in callbacks]
 
                 y_pred = self.model(*x)
                 loss = self.loss(y_pred, y)
@@ -119,6 +119,8 @@ class StandardTrainer:
                 metrics = self.get_metrics(loss, y_pred, y)
                 running_metrics += metrics
                 pbar.update(1)
+
+                [c.on_validation_batch_end(i, x, y, y_pred) for c in callbacks]
 
             val_logs = dict(zip(metrics_names, running_metrics / n))
             pbar.set_postfix(val_logs)

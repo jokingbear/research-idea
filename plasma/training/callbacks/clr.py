@@ -28,7 +28,7 @@ class LrFinder(Callback):
 
         self.gamma = (self.max_lr - self.min_lr) / (epochs * iterations)
 
-    def on_batch_end(self, batch, logs=None):
+    def on_training_batch_end(self, batch, x, y, pred, logs=None):
         for i, g in enumerate(self.optimizer.param_groups):
             if i in self.history:
                 self.history[i].append((g["lr"], logs))
@@ -78,7 +78,7 @@ class CLR(Callback):
                                               step_size_up=self.cycle_rate // 2 * iterations,
                                               mode="triangular2" if self.reduce_lr_each_cycle else "triangular")
 
-    def on_batch_end(self, batch, logs=None):
+    def on_training_batch_end(self, batch, x, y, pred, logs=None):
         self.clr.step()
 
 
