@@ -3,7 +3,7 @@ import torch
 from tqdm import tqdm, tqdm_notebook as tqdm_nb
 
 on_notebook = True
-default_device = torch.device("cuda:0" if torch.cuda.device_count() > 0 else "cpu")
+default_device = "cpu"
 default_type = torch.float
 
 
