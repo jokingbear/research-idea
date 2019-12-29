@@ -15,10 +15,16 @@ class Callback:
     def on_epoch_begin(self, epoch):
         pass
 
-    def on_batch_begin(self, batch):
+    def on_training_batch_begin(self, batch, x, y):
         pass
 
-    def on_batch_end(self, batch, logs=None):
+    def on_training_batch_end(self, batch, x, y, pred, logs=None):
+        pass
+
+    def on_validation_batch_begin(self, batch, x, y):
+        pass
+
+    def on_validation_batch_end(self, batch, x, y, pred):
         pass
 
     def on_epoch_end(self, epoch, logs=None):

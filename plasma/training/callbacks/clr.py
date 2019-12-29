@@ -1,5 +1,6 @@
 import os
 
+import numpy as np
 import torch
 import torch.optim as opts
 
@@ -28,7 +29,7 @@ class LrFinder(Callback):
 
         self.gamma = (self.max_lr - self.min_lr) / (epochs * iterations)
 
-    def on_batch_end(self, batch, logs=None):
+    def on_training_batch_end(self, batch, x, y, pred, logs=None):
         for i, g in enumerate(self.optimizer.param_groups):
             if i in self.history:
                 self.history[i].append((g["lr"], logs))
@@ -78,7 +79,7 @@ class CLR(Callback):
                                               step_size_up=self.cycle_rate // 2 * iterations,
                                               mode="triangular2" if self.reduce_lr_each_cycle else "triangular")
 
-    def on_batch_end(self, batch, logs=None):
+    def on_training_batch_end(self, batch, x, y, pred, logs=None):
         self.clr.step()
 
 
@@ -95,25 +96,28 @@ class WarmRestart(Callback):
         self.dir = directory
         self.model_name = model_name or "model"
 
+        self.base_lrs = None
         self.scheduler = None
         self.current_epoch = 0
         self.finished_period = 0
         self.max_epoch = t0
 
     def on_train_begin(self, **train_configs):
-        self.scheduler = opts.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizer, self.t0,
-                                                                       T_mult=self.factor, eta_min=self.min_lr)
+        self.base_lrs = [g["lr"] for g in self.optimizer.param_groups]
 
         if not os.path.exists(self.dir) and self.snapshot:
             os.mkdir(self.dir)
 
-    def on_epoch_end(self, epoch, logs=None):
+    def on_epoch_begin(self, epoch):
         self.current_epoch += 1
 
+        min_lr = self.min_lr
+        for lr, g in zip(self.base_lrs, self.optimizer.param_groups):
+            g["lr"] = min_lr + 0.5 * (lr - min_lr) * (1 + np.cos(self.current_epoch / self.max_epoch * np.pi))
+
+    def on_epoch_end(self, epoch, logs=None):
         for i, g in enumerate(self.optimizer.param_groups):
             logs[f"lr {i}"] = g["lr"]
-
-        self.scheduler.step()
 
         if self.current_epoch == self.max_epoch:
             self.current_epoch = 0
@@ -122,6 +126,10 @@ class WarmRestart(Callback):
 
             print("starting period ", self.finished_period + 1) if self.finished_period != self.periods else None
             if self.snapshot:
-                torch.save(self.model.state_dict(), f"{self.dir}/snapshot_{self.model_name}-{self.finished_period}")
+                model_state = self.model.state_dict()
+                torch.save(model_state, f"{self.dir}/snapshot_{self.model_name}-{self.finished_period}.model")
+
+                opt_state = self.optimizer.state_dict()
+                torch.save(opt_state, f"{self.dir}/snapshot_{self.model_name}-{self.finished_period}.opt")
 
         self.trainer.training = self.finished_period < self.periods
