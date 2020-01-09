@@ -13,6 +13,7 @@ utils.on_notebook = False
 x = x[y < 3] / 127.5 - 1
 y = y[y < 3]
 
+
 class Data(data.StandardDataset):
     
     def get_len(self):
@@ -23,29 +24,51 @@ class Data(data.StandardDataset):
 
 
 model = nn.Sequential(*[
-    nn.Conv2d(1, 32, kernel_size=7, stride=2, padding=3),
+    PrimaryGroupConv2d(1, 8, kernel_size=7, stride=2, padding=3),
+    GroupBatchNorm2d(8),
     nn.ReLU(inplace=True),
-    nn.Conv2d(32, 64, kernel_size=7, stride=2, padding=3),
+    GroupConv2d(8, 16, kernel_size=7, stride=2, padding=3),
+    GroupBatchNorm2d(16),
     nn.ReLU(inplace=True),
-    GlobalAverage(),
-    nn.Linear(64, 3)
+    GroupGlobalAverage(),
+    nn.Linear(16 * 12, 3)
 ])
 
 model.cuda(0)
 loss = nn.CrossEntropyLoss()
 
-#opt = opts.RMSprop(model.parameters())
 opt = opts.SGD(model.parameters(), lr=0.25, momentum=0.9, nesterov=True)
 trainer = Trainer(model, opt, loss, metrics=[metrics.accuracy], x_device="cuda:0", y_device="cuda:0")
 
 cbs = [
-    #callbacks.LrFinder(min_lr=1e-5, max_lr=2, epochs=3)
-    callbacks.WarmRestart(1e-5, 10, factor=2, cycles=3, snapshot=False),
-    #callbacks.CLR(1e-5, 4),
-    #callbacks.TrainingScheduler(epochs=1)
+    # callbacks.LrFinder(min_lr=1e-5, max_lr=2, epochs=3)
+    callbacks.WarmRestart(1e-5, 10, factor=2, cycles=1, snapshot=False),
+    # callbacks.CLR(1e-5, 4),
+    # callbacks.TrainingScheduler(epochs=1)
     callbacks.CSVLogger("train.csv")
 ]
 
 trainer.fit(Data(), callbacks=cbs, batch_size=64)
 
-cbs[0].plot_data(target="accuracy")
+import matplotlib.pyplot as plt
+
+a = Data()[2][0]
+ar = np.rot90(a, axes=[1, 2])
+ar = np.copy(ar)
+
+_, ax = plt.subplots(ncols=2)
+ax[0].imshow(a[0])
+ax[1].imshow(ar[0])
+plt.show()
+
+from albumentations import Rotate
+
+img = torch.tensor(a[None, None], dtype=torch.float, device="cuda:0")
+print(model.eval()(img))
+
+ar30 = Rotate(limit=(-30, -30), always_apply=True, border_mode=1)(image=ar[0])["image"]
+plt.imshow(ar30)
+plt.show()
+
+img = torch.tensor(ar30[None, None], dtype=torch.float, device="cuda:0")
+print(model.eval()(img))

@@ -118,6 +118,15 @@ class GroupBatchNorm2d(nn.BatchNorm3d):
         return x
 
 
+class GroupGlobalAverage(nn.Module):
+
+    def forward(self, x):
+        b = x.shape[0]
+        x = x.view(b, -1, n_angle, *x.shape[2:])
+
+        return x.mean(dim=[-1, -2, -3])
+
+
 def compute_polar_to_cartesian_grid(kernel):
     with torch.no_grad():
         # generate polar coordinate
