@@ -1,3 +1,4 @@
+import torch
 import torch.nn.functional as func
 
 from plasma.modules.configs import *
@@ -57,3 +58,45 @@ class DynamicRouting(nn.Module):
 
         return f"in_filters={fi}, out_filters={fo}, groups={self.groups}, iters={self.iters}, " \
                f"bias={self.bias is not None}"
+
+
+class EMRouting(nn.Module):
+
+    def __init__(self, in_channels, out_channels, clusters=3, groups=32, iters=3, bias=True):
+        super().__init__()
+
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.clusters = clusters
+        self.groups = groups
+        self.iters = iters
+
+        self.weight = nn.Parameter(torch.zeros(clusters * out_channels, in_channels * groups, 1, 1), requires_grad=True)
+        self.bias = nn.Parameter(torch.zeros(clusters * out_channels), requires_grad=bias)
+
+        nn.init.kaiming_normal_(self.weight)
+
+    def forward(self, x):
+        if self.iters == 1:
+            return con_op(x, self.weight, self.bias)
+        else:
+            weight = self.weight.view(-1, self.groups, self.in_channels, 1, 1)
+            weight = weight.transpose(0, 1).view(-1, self.in_channels, 1, 1)  # GCO, I
+
+            # B, GCO, H, W
+            con = con_op(x, weight, groups=self.groups)
+
+            # B, G, C, O, H, W
+            con = con.view(-1, self.groups, self.clusters, self.out_channels, *x.shape[2:])
+            coeff = torch.ones(1, self.groups, self.clusters, 1, *con.shape[2:], device=con.device) / self.groups
+
+            for i in range(self.iters):
+                mean = (coeff * con).sum(dim=1, keepdim=True)
+                var = (coeff * con ** 2).sum(dim=1, keepdim=True) - mean ** 2 + 1e-7
+
+                if i == self.iters - 1:
+                    return mean[:, 0, 0, ...]
+
+                pi = coeff.sum(dim=1, keepdim=True) / self.groups
+                log_p = -((con - mean).pow(2) / var + var.log()) / 2
+                coeff = (log_p * pi.log()).softmax(dim=2)
