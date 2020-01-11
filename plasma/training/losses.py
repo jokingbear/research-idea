@@ -73,8 +73,8 @@ def combine_loss(*losses, weights=None):
     def total_loss(y_pred, y_true):
         loss = 0
 
-        for l, w in zip(losses, weights):
-            loss = w * l(y_pred, y_true)
+        for ls, w in zip(losses, weights):
+            loss = loss + w * ls(y_pred, y_true)
 
         return loss
 
