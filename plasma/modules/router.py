@@ -92,7 +92,7 @@ class EMRouting(nn.Module):
 
             for i in range(self.iters):
                 mean = (coeff * con).sum(dim=1, keepdim=True)
-                var = (coeff * con ** 2).sum(dim=1, keepdim=True) - mean ** 2 + 1e-7
+                var = (coeff * con.pow(2)).sum(dim=1, keepdim=True) - mean ** 2 + 1e-7
 
                 if i == self.iters - 1:
                     return mean[:, 0, 0, ...]
