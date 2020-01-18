@@ -72,10 +72,12 @@ class GroupConv2d(nn.Module):
         self.groups = groups
 
         radius, n_ring = compute_radius_ring(kernel_size)
-        self.radius, self.n_ring = compute_radius_ring(kernel_size)
-        self.weight = nn.Parameter(torch.zeros(out_channels, in_channels, n_angle, n_ring, n_angle), requires_grad=True)
-        self.center = nn.Parameter(torch.zeros(out_channels, in_channels, n_angle), requires_grad=True)
-        self.bias = nn.Parameter(torch.zeros(out_channels), requires_grad=True) if bias else None
+        self.radius = radius
+        self.n_ring = n_ring
+        self.weight = nn.Parameter(torch.zeros(groups * out_channels, in_channels, n_angle, n_ring, n_angle),
+                                   requires_grad=True)
+        self.center = nn.Parameter(torch.zeros(groups * out_channels, in_channels, n_angle), requires_grad=True)
+        self.bias = nn.Parameter(torch.zeros(groups * out_channels), requires_grad=True) if bias else None
 
         polar_gauss = compute_polar_to_cartesian_grid(kernel_size, radius, n_ring)
         center_gauss = compute_center_cartesian_grid(kernel_size)
@@ -109,6 +111,26 @@ class GroupConv2d(nn.Module):
         return f"in_channels={self.in_channels}, out_channels={self.out_channels}, kernel={self.kernel}, " \
                f"radius={self.radius}, n_ring={self.n_ring}, " \
                f"stride={self.stride}, padding={self.padding}, dilation={self.dilation}, groups={self.groups}, " \
+               f"bias={self.bias is not None}"
+
+
+class GroupMapping(nn.Module):
+
+    def __init__(self, in_channels, out_channels, groups=1, bias=True):
+        super().__init__()
+
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.groups = groups
+
+        self.weight = nn.Parameter(torch.zeros(groups * out_channels, in_channels, 1, 1, 1), requires_grad=True)
+        self.bias = nn.Parameter(torch.zeros(groups * out_channels), requires_grad=True) if bias else None
+    
+    def forward(self, x):
+        return so2_mapping(x, self.weight, self.bias, self.groups)
+
+    def extra_repr(self):
+        return f"in_channels={self.in_channels}, out_channels={self.out_channels}, groups={self.groups}, " \
                f"bias={self.bias is not None}"
 
 
@@ -163,4 +185,16 @@ def compute_radius_ring(kernel):
     n_ring = kernel
     return radius, n_ring
 
+
+def so2_mapping(x, weight, bias=None, groups=1):
+    h, w = x.shape[-2:]
+    in_channels = x.shape[1] // n_angle
+    
+    x = x.view(-1, in_channels, n_angle, h, w)
+    weight = weight if len(weight.shape[2:]) == 3 else weight[..., np.newaxis]
+    con = torch.conv3d(x, weight, bias, groups=groups)
+
+    return con
+
+# TODO: add extra repr
 # TODO: add dilation and groups

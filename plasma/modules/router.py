@@ -1,66 +1,81 @@
 import torch
+import torch.nn as nn
 import torch.nn.functional as func
 
-from plasma.modules.configs import *
+
+def dynamic_routing(x, groups, iters, bias):
+    channels = x.shape[1] // groups
+    spatial = x.shape[2:]
+    rank = len(spatial)
+    x = x.view(-1, groups, channels, *spatial)
+    beta = 0
+
+    for i in range(iters):
+        alpha = torch.sigmoid(beta)
+        v = (alpha * x).sum(dim=1, keepdim=True)
+
+        if i == iters - 1:
+            v = v[:, 0, ...]
+            return v if bias is None else v + bias.view(-1, channels, *([1] * rank))
+
+        v = func.normalize(v, dim=2)
+        beta = beta + torch.sum(v * x, dim=2, keepdim=True)
 
 
-class DynamicRouting(nn.Module):
+def em_routing(x, clusters, groups, iters, bias=None, epsilon=1e-7):
+    batch = x.shape[0]
+    spatial = x.shape[2:]
+    rank = len(spatial)
+    x = x.view(batch, groups, clusters, -1, *spatial)
 
-    def __init__(self, in_filters, out_filters, groups, iters=3, bias=True):
+    r_ik = torch.ones(1, *x.shape[1:]) / clusters
+
+    for i in range(iters):
+        r_k = r_ik.sum(dim=1, keepdim=True) + epsilon
+        mean = (r_ik * x).sum(dim=1, keepdim=True) / r_k
+
+        if i == iters - 1:
+            mean = mean.view(batch, -1, *spatial)
+            return mean if bias is None else mean + bias.view(1, -1, *[1] * rank)
+
+        var = (r_ik * x.pow(2)).sum(dim=1, keepdim=True) / r_k - mean.pow(2) + epsilon
+        pi_k = r_k / groups
+        log_p = -((x - mean).pow(2) / var + var.log()) / 2
+        r_ik = (log_p + pi_k.log()).softmax(dim=2)
+
+
+class DynamicRouting2d(nn.Module):
+
+    def __init__(self, in_channels, out_channels, groups=32, iters=3, bias=True):
         super().__init__()
 
-        spatial_shape = [1] * rank
-        shape = [out_filters, in_filters * groups, *spatial_shape]
-        self.in_filters = in_filters
-        self.out_filters = out_filters
+        self.in_channels = in_channels
+        self.out_channels = out_channels
         self.groups = groups
         self.iters = iters
-        self.weight = nn.Parameter(torch.zeros(*shape), requires_grad=True)
-        self.bias = nn.Parameter(torch.zeros(out_filters), requires_grad=True) if bias else None
 
-        self.reset_parameters()
+        self.weight = nn.Parameter(torch.zeros(out_channels, groups * in_channels, 1, 1), requires_grad=True)
+        self.bias = nn.Parameter(torch.zeros(out_channels), requires_grad=True) if bias else None
+
+        nn.init.kaiming_normal_(self.weight)
 
     def forward(self, x):
         if self.iters == 1:
-            con = con_op(x, self.weight, self.bias)
-
+            con = torch.conv2d(x, self.weight, self.bias)
             return con
         else:
-            fo = self.out_filters
-            fi = self.in_filters
-            g = self.groups
+            weight = self.weight.view(-1, self.groups, self.in_channels, 1, 1)
+            weight = weight.transpose(0, 1).view(-1, self.in_channels, 1, 1)
+            con = torch.conv2d(x, weight, groups=self.groups)
 
-            weight = self.weight.reshape([fo, g, fi] + [1] * rank).transpose(0, 1).reshape([g * fo, fi] + [1] * rank)
-            con = con_op(x, weight, groups=self.groups)
-            spatial_shape = con.shape[2:]
-            con = con.reshape([-1, g, fo, *spatial_shape])
-
-            beta = torch.zeros([], device=x.device)
-
-            for i in range(self.iters):
-                alpha = torch.sigmoid(beta)
-
-                v = torch.sum(alpha * con, dim=(1,), keepdim=True)
-
-                if i == self.iters - 1:
-                    v = v[:, 0, ...]
-                    return v if self.bias is None else v + self.bias
-
-                v = func.normalize(v, dim=2)
-                beta = beta + torch.sum(v * con, dim=(2,), keepdim=True)
-
-    def reset_parameters(self):
-        nn.init.kaiming_normal_(self.weight)
+            return dynamic_routing(con, self.groups, self.iters, self.bias)
 
     def extra_repr(self):
-        fo = self.out_filters
-        fi = self.in_filters
-
-        return f"in_filters={fi}, out_filters={fo}, groups={self.groups}, iters={self.iters}, " \
-               f"bias={self.bias is not None}"
+        return f"in_channels={self.in_channels}, out_channels={self.out_channels}, groups={self.groups}, " \
+               f"iters={self.iters}, bias={self.bias is not None}"
 
 
-class EMRouting(nn.Module):
+class EMRouting2d(nn.Module):
 
     def __init__(self, in_channels, out_channels, clusters=3, groups=32, iters=3, bias=True):
         super().__init__()
@@ -71,32 +86,20 @@ class EMRouting(nn.Module):
         self.groups = groups
         self.iters = iters
 
-        self.weight = nn.Parameter(torch.zeros(clusters * out_channels, in_channels * groups, 1, 1), requires_grad=True)
-        self.bias = nn.Parameter(torch.zeros(clusters * out_channels), requires_grad=bias)
+        self.weight = nn.Parameter(torch.zeros(clusters * out_channels, groups * in_channels, 1, 1), requires_grad=True)
+        self.bias = nn.Parameter(torch.zeros(clusters * out_channels), requires_grad=True) if bias else None
 
         nn.init.kaiming_normal_(self.weight)
 
     def forward(self, x):
         if self.iters == 1:
-            return con_op(x, self.weight, self.bias)
+            con = torch.conv2d(x, self.weight, self.bias)
+            return con
         else:
             weight = self.weight.view(-1, self.groups, self.in_channels, 1, 1)
-            weight = weight.transpose(0, 1).view(-1, self.in_channels, 1, 1)  # GCO, I
+            weight = weight.transpose(0, 1).view(-1, self.in_channels, 1, 1)
+            con = torch.conv2d(x, weight, groups=self.groups)
 
-            # B, GCO, H, W
-            con = con_op(x, weight, groups=self.groups)
+            return em_routing(con, self.clusters, self.groups, self.iters, self.bias)
 
-            # B, G, C, O, H, W
-            con = con.view(-1, self.groups, self.clusters, self.out_channels, *x.shape[2:])
-            coeff = torch.ones(1, self.groups, self.clusters, 1, *con.shape[2:], device=con.device) / self.groups
-
-            for i in range(self.iters):
-                mean = (coeff * con).sum(dim=1, keepdim=True)
-                var = (coeff * con.pow(2)).sum(dim=1, keepdim=True) - mean ** 2 + 1e-7
-
-                if i == self.iters - 1:
-                    return mean[:, 0, 0, ...]
-
-                pi = coeff.sum(dim=1, keepdim=True) / self.groups
-                log_p = -((con - mean).pow(2) / var + var.log()) / 2
-                coeff = (log_p * pi.log()).softmax(dim=2)
+# TODO: check implementations
