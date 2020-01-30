@@ -25,10 +25,10 @@ class Data(data.StandardDataset):
 
 model = nn.Sequential(*[
     PrimaryGroupConv2d(1, 8, kernel_size=7, stride=2, padding=3),
-    GroupBatchNorm2d(8),
+    GEBatchNorm2d(8),
     nn.ReLU(inplace=True),
-    GroupConv2d(8, 16, kernel_size=7, stride=2, padding=3),
-    GroupBatchNorm2d(16),
+    GEConv2d(8, 16, kernel_size=7, stride=2, padding=3),
+    GEBatchNorm2d(16),
     nn.ReLU(inplace=True),
     GroupGlobalAverage(),
     nn.Linear(16 * 12, 3)
