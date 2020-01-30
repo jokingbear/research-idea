@@ -129,7 +129,7 @@ class GEMapping(nn.Module):
         nn.init.kaiming_normal_(self.weight)
     
     def forward(self, x):
-        x = x.view(-1, self.out_channels, self.in_channels, n_angle, *x.shape[-2:])
+        x = x.view(-1, self.in_channels, n_angle, *x.shape[-2:])
         con = torch.conv3d(x, self.weight, self.bias, groups=self.groups)
 
         return con.view(-1, self.out_channels * n_angle, *x.shape[-2:])
