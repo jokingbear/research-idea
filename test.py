@@ -16,9 +16,9 @@ class ResBlock(nn.Module):
             GEConv2d(bottle_neck, bottle_neck, groups=32),
             nn.ReLU(inplace=True),
             GEMapping(bottle_neck * 32, out_channels))
-        
+
         self.act = nn.ReLU(inplace=True)
-    
+
     def forward(self, x):
         res = self.con(x)
         con = self.act(x + res)
@@ -45,4 +45,3 @@ with torch.no_grad():
     score_a = net(torch.tensor(a[np.newaxis, np.newaxis], dtype=torch.float, device="cuda:0"))
     score_b = net(torch.tensor(b[np.newaxis, np.newaxis], dtype=torch.float, device="cuda:0"))
     err = (score_a - score_b).abs().sum()
-

@@ -4,6 +4,7 @@ import torch.nn as nn
 
 n_angle = 12
 sigma = 0.5
+gaussian_kernel_dict = {}
 
 
 class PrimaryGroupConv2d(nn.Module):
@@ -24,10 +25,7 @@ class PrimaryGroupConv2d(nn.Module):
         self.center = nn.Parameter(torch.zeros(out_channels, in_channels), requires_grad=True)
         self.bias = nn.Parameter(torch.zeros(out_channels), requires_grad=True) if bias else None
 
-        gauss_grid = compute_polar_to_cartesian_grid(kernel_size, radius, n_ring)
-        center_grid = compute_center_cartesian_grid(kernel_size)
-        self.polar_gauss = nn.Parameter(gauss_grid, requires_grad=False)
-        self.center_gauss = nn.Parameter(center_grid, requires_grad=False)
+        self.polar_gauss, self.center_gauss = register_gaussian_kernel(kernel_size, radius, n_ring)
 
         nn.init.kaiming_normal_(self.weight)
         nn.init.kaiming_normal_(self.center)
@@ -79,10 +77,7 @@ class GEConv2d(nn.Module):
         self.center = nn.Parameter(torch.zeros(groups * out_channels, in_channels, n_angle), requires_grad=True)
         self.bias = nn.Parameter(torch.zeros(groups * out_channels), requires_grad=True) if bias else None
 
-        polar_gauss = compute_polar_to_cartesian_grid(kernel_size, radius, n_ring)
-        center_gauss = compute_center_cartesian_grid(kernel_size)
-        self.polar_gauss = nn.Parameter(polar_gauss, requires_grad=False)
-        self.center_gauss = nn.Parameter(center_gauss, requires_grad=False)
+        self.polar_gauss, self.center_gauss = register_gaussian_kernel(kernel_size, radius, n_ring)
         nn.init.kaiming_normal_(self.weight)
         nn.init.kaiming_normal_(self.center)
 
@@ -197,6 +192,19 @@ class GEToPlane(nn.Module):
         return f"in_channels={self.in_channels}, out_channels={self.out_channels}, kernel={self.kernel}, " \
                f"radius={self.radius}, n_ring={self.n_ring}, " \
                f"stride={self.stride}, padding={self.padding}, bias={self.bias is not None}"
+
+
+def register_gaussian_kernel(kernel, radius, n_ring):
+    if kernel not in gaussian_kernel_dict:
+        polar = compute_polar_to_cartesian_grid(kernel, radius, n_ring)
+        center = compute_center_cartesian_grid(kernel)
+
+        gaussian_kernel_dict[kernel] = {
+            "polar": nn.Parameter(polar, requires_grad=False),
+            "center": nn.Parameter(center, requires_grad=False)
+        }
+
+    return gaussian_kernel_dict[kernel]["polar"], gaussian_kernel_dict[kernel]["center"]
 
 
 def compute_polar_to_cartesian_grid(kernel, radius, n_ring):
