@@ -167,6 +167,8 @@ class Decoder(nn.Sequential):
             BN_ReLU_Conv(f0, f0),
             BN_ReLU_Conv(f0, f0),
             nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True),
+            nn.BatchNorm2d(f0),
+            nn.ReLU(inplace=True),
             nn.Conv2d(f0, 1, kernel_size=1),
             nn.Tanh()
         ])  # 1 x 512 x 512
