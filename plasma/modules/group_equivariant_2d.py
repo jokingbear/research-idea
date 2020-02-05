@@ -2,6 +2,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+from plasma.modules import router, ChannelAttention
+
 n_angle = 12
 sigma = 0.5
 gaussian_kernel_dict = {}
@@ -194,6 +196,44 @@ class GEToPlane(nn.Module):
                f"stride={self.stride}, padding={self.padding}, bias={self.bias is not None}"
 
 
+class GEDynamicRouting(nn.Module):
+
+    def __init__(self, in_channels, out_channels, groups=32, iters=3, bias=True):
+        super().__init__()
+
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.groups = groups
+        self.iters = iters
+
+        self.weight = nn.Parameter(torch.zeros(out_channels, in_channels * groups, 1, 1, 1), requires_grad=True)
+        self.bias = nn.Parameter(torch.zeros(out_channels), requires_grad=True) if bias else None
+
+        nn.init.kaiming_normal_(self.weight)
+
+    def forward(self, x):
+        x = x.view(x.shape[0], -1, n_angle, *x.shape[-2:])
+
+        if self.iters == 1:
+            con = torch.conv3d(x, self.weight, self.bias)
+            return con.view(x.shape[0], -1, *x.shape[-2:])
+        else:
+            w = self.weight.view(-1, self.groups, self.in_channels, 1, 1, 1).transpose(0, 1)
+            w = w.view(-1, self.in_channels, 1, 1, 1)
+
+            con = torch.conv3d(x, w, groups=self.groups)
+            final = router.dynamic_routing(con, self.groups, self.iters, self.bias)
+            return final.view(-1, self.out_channels * n_angle, *x.shape[-2:])
+
+
+class GEAttention(ChannelAttention):
+
+    def forward(self, x):
+        x = x.view(x.shape[0], -1, n_angle, *x.shape[-2:])
+
+        return super().forward(x).view(x.shape[0], -1, *x.shape[-2:])
+
+
 def register_gaussian_kernel(kernel, radius, n_ring):
     if kernel not in gaussian_kernel_dict:
         polar = compute_polar_to_cartesian_grid(kernel, radius, n_ring)
@@ -248,15 +288,6 @@ def compute_radius_ring(kernel):
     radius = kernel / np.sqrt(2)
     n_ring = kernel
     return radius, n_ring
-
-
-def so2_mapping(x, weight, bias=None, groups=1):
-    h, w = x.shape[-2:]
-    
-    x = x.view(-1, weight.shape[1], n_angle, h, w)
-    con = torch.conv3d(x, weight, bias, groups=groups)
-
-    return con
 
 # TODO: check logic
 # TODO: add dilation
