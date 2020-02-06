@@ -16,3 +16,9 @@ gen_data/
 logs/
 
 checkpoint/
+
+train/
+
+test/
+
+*h5

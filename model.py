@@ -6,13 +6,13 @@ from plasma.modules import *
 
 class BN_ReLU_Conv(nn.Sequential):
 
-    def __init__(self, in_channels, out_channels, kernel=3, stride=1, padding=1, groups=1):
+    def __init__(self, in_channels, out_channels, kernel=3, stride=1, padding=1, groups=1, bias=False):
         super().__init__()
 
         self.norm = nn.BatchNorm2d(in_channels * groups)
         self.act = nn.ReLU(inplace=True)
         self.con = nn.Conv2d(in_channels * groups, out_channels * groups, kernel, stride, padding, groups=groups,
-                             bias=False)
+                             bias=bias)
 
 
 class BN_ReLU_Routing(nn.Sequential):
@@ -141,34 +141,32 @@ class Decoder(nn.Sequential):
         self.con1 = nn.Sequential(*[
             nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True),
             BN_ReLU_Conv(16 * f0, 16 * f0),
-            BN_ReLU_Conv(16 * f0, 8 * f0),
+            BN_ReLU_Conv(16 * f0, 16 * f0),
         ])  # 256 x 16 x 16
 
         self.con2 = nn.Sequential(*[
             nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True),
+            BN_ReLU_Conv(16 * f0, 8 * f0),
             BN_ReLU_Conv(8 * f0, 8 * f0),
-            BN_ReLU_Conv(8 * f0, 4 * f0),
         ])  # 128 x 32 x 32
 
         self.con3 = nn.Sequential(*[
             nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True),
+            BN_ReLU_Conv(8 * f0, 4 * f0),
             BN_ReLU_Conv(4 * f0, 4 * f0),
-            BN_ReLU_Conv(4 * f0, 2 * f0),
         ])  # 64 x 64 x 64
 
         self.con4 = nn.Sequential(*[
             nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True),
+            BN_ReLU_Conv(4 * f0, 2 * f0),
             BN_ReLU_Conv(2 * f0, 2 * f0),
-            BN_ReLU_Conv(2 * f0, f0),
         ])  # 32 x 128 x 128
 
         self.con5 = nn.Sequential(*[
             nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True),
+            BN_ReLU_Conv(2 * f0, f0),
             BN_ReLU_Conv(f0, f0),
-            BN_ReLU_Conv(f0, f0),
-            nn.BatchNorm2d(f0),
-            nn.ReLU(inplace=True),
             nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True),
-            nn.Conv2d(f0, 1, kernel_size=1),
+            BN_ReLU_Conv(f0, 1, kernel=1, padding=0, bias=True),
             nn.Tanh()
         ])  # 1 x 512 x 512
