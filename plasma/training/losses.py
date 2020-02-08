@@ -52,14 +52,13 @@ def f1_loss_fn(binary=False, smooth=1):
     return f1_loss
 
 
-def weighted_bce(pos_weight, neg_weight=None):
-    neg_weight = neg_weight or 1 - pos_weight
+def weighted_bce(weights):
 
     def loss(y_pred, y_true):
         prob = y_true * y_pred + (1 - y_true) * (1 - y_pred)
         prob = prob.clamp(1e-7, 1 - 1e-7)
 
-        weight = pos_weight * y_true + neg_weight * (1 - y_true)
+        weight = weights[1, ...] * y_true + weights[0, ...] * (1 - y_true)
         log = weight * torch.log(prob)
 
         return (-log).mean()

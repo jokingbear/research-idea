@@ -63,3 +63,20 @@ class ChannelAttention(nn.Module):
 
     def extra_repr(self):
         return f"in_channels={self.in_channels}, ratio={self.ratio}, axes={self.axes}, groups={self.groups}"
+
+
+class GlobalAttention(GlobalAverage):
+
+    def __init__(self, in_channels, rank=2, keepdims=False):
+        super().__init__(rank, keepdims)
+
+        op = nn.Conv2d if rank == 2 else nn.Conv3d
+        self.att = op(in_channels, 1, kernel_size=1)
+
+    def forward(self, x):
+        att = self.att(x).flatten(start_dim=2).softmax(dim=-1)
+        x = x.flatten(start_dim=2)
+        result = (x * att).sum(dim=-1, keepdim=self.keepdims)
+
+        return result
+
