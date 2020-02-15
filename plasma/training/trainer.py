@@ -58,9 +58,8 @@ class StandardTrainer:
                 break
         [c.on_train_end() for c in callbacks]
 
-    def train_one_epoch(self, train, callbacks=None):
+    def train_one_epoch(self, train, callbacks):
         n = len(train)
-        callbacks = callbacks or []
         metrics_names = ["loss"] + [m.__name__ for m in self.metrics]
         running_metrics = np.zeros(shape=len(self.metrics) + 1)
 
