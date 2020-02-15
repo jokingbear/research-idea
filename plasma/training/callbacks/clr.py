@@ -85,13 +85,15 @@ class CLR(Callback):
 
 class WarmRestart(Callback):
 
-    def __init__(self, min_lr, t0=10, factor=2, cycles=3, snapshot=True, directory="checkpoint", model_name=None):
+    def __init__(self, min_lr, t0=10, factor=2, cycles=3, lr_mul=None,
+                 snapshot=True, directory="checkpoint", model_name=None):
         super().__init__()
 
         self.min_lr = min_lr
         self.t0 = t0
         self.factor = factor
-        self.periods = cycles
+        self.cycles = cycles
+        self.lr_mul = lr_mul or 1
         self.snapshot = snapshot
         self.dir = directory
         self.model_name = model_name or "model"
@@ -112,8 +114,8 @@ class WarmRestart(Callback):
         self.current_epoch += 1
 
         min_lr = self.min_lr
-        for lr, g in zip(self.base_lrs, self.optimizer.param_groups):
-            g["lr"] = min_lr + 0.5 * (lr - min_lr) * (1 + np.cos(self.current_epoch / self.max_epoch * np.pi))
+        for max_lr, g in zip(self.base_lrs, self.optimizer.param_groups):
+            g["lr"] = min_lr + 0.5 * (max_lr - min_lr) * (1 + np.cos(self.current_epoch / self.max_epoch * np.pi))
 
     def on_epoch_end(self, epoch, logs=None):
         for i, g in enumerate(self.optimizer.param_groups):
@@ -124,7 +126,7 @@ class WarmRestart(Callback):
             self.max_epoch *= self.factor
             self.finished_cycles += 1
 
-            print("starting cycle ", self.finished_cycles + 1) if self.finished_cycles != self.periods else None
+            print("starting cycle ", self.finished_cycles + 1) if self.finished_cycles != self.cycles else None
             if self.snapshot:
                 model_state = self.model.state_dict()
                 torch.save(model_state, f"{self.dir}/snapshot_{self.model_name}-{self.finished_cycles}.model")
@@ -132,4 +134,6 @@ class WarmRestart(Callback):
                 opt_state = self.optimizer.state_dict()
                 torch.save(opt_state, f"{self.dir}/snapshot_{self.model_name}-{self.finished_cycles}.opt")
 
-        self.trainer.training = self.finished_cycles < self.periods
+            self.base_lrs = [self.lr_mul * lr for lr in self.base_lrs]
+
+        self.trainer.training = self.finished_cycles < self.cycles
