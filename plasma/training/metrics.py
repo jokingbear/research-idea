@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as func
 
 
-def accuracy(y_pred, y_true):
+def accuracy(y_pred, y_true, **_):
     if y_pred.shape[1] == 1:
         y_pred = y_pred[:, 0, ...]
         y_pred = y_pred >= 0.5
@@ -20,7 +20,7 @@ def dice_coefficient_fn(n_class=2, input_rank=4, smooth=1e-7, binary=False, cast
 
     spatial_axes = list(range(2, input_rank))
 
-    def dice_coefficient(y_pred, y_true):
+    def dice_coefficient(y_pred, y_true, **_):
         if cast:
             if binary or n_class == 2:
                 y_pred = (y_pred >= 0.5).type(torch.float)
@@ -44,7 +44,7 @@ def dice_coefficient_fn(n_class=2, input_rank=4, smooth=1e-7, binary=False, cast
 
 def f1_fn(n_class=2, smooth=1e-7, binary=False, cast=False):
 
-    def f1_score(y_pred, y_true):
+    def f1_score(y_pred, y_true, **_):
         if binary and cast:
             y_pred = (y_pred >= 0.5).type(torch.float)
         elif cast:

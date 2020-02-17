@@ -64,12 +64,11 @@ class StandardTrainer:
         running_metrics = np.zeros(shape=len(self.metrics) + 1)
 
         with utils.get_tqdm()(total=n, desc="train") as pbar:
-            for i, (x, y) in enumerate(train):
-                x = utils.to_device(x, self.x_type, self.x_device)
-                y = utils.to_device(y, self.y_type, self.y_device, return_array=False)
+            for i, xy in enumerate(train):
+                x, y = utils.get_inputs_labels(xy, self.x_type, self.x_device, self.y_type, self.y_device)
                 [c.on_training_batch_begin(i, x, y) for c in callbacks]
 
-                loss, y_pred = self.train_one_batch(y, *x)
+                loss, y_pred = self.train_one_batch(y, x)
 
                 with torch.no_grad():
                     current_metrics = self.get_metrics(loss, y_pred, y)
@@ -79,16 +78,16 @@ class StandardTrainer:
 
                     [c.on_training_batch_end(i, x, y, y_pred, logs) for c in callbacks]
 
-                pbar.set_postfix(logs, refresh=False)
+                pbar.set_postfix(logs)
                 pbar.update(1)
 
         return logs
 
-    def train_one_batch(self, y, *x):
+    def train_one_batch(self, y, x):
         self.model.train()
 
-        y_pred = self.model(*x)
-        loss = self.loss(y_pred, y)
+        y_pred = self.model(x)
+        loss = self.loss(y_pred, y, inputs=x)
         loss.backward()
 
         self.grad_step += 1
@@ -107,15 +106,14 @@ class StandardTrainer:
         running_metrics = np.zeros(len(self.metrics) + 1)
 
         with utils.get_tqdm()(total=n, desc="evaluate") as pbar, torch.no_grad():
-            for i, (x, y) in enumerate(test):
-                x = utils.to_device(x, self.x_type, self.x_device)
-                y = utils.to_device(y, self.y_type, self.y_device, return_array=False)
+            for i, xy in enumerate(test):
+                x, y = utils.get_inputs_labels(xy, self.x_type, self.x_device, self.y_type, self.y_device)
                 [c.on_validation_batch_begin(i, x, y) for c in callbacks]
 
                 y_pred = self.model(*x)
-                loss = self.loss(y_pred, y)
+                loss = self.loss(y_pred, y, inputs=x)
 
-                metrics = self.get_metrics(loss, y_pred, y)
+                metrics = self.get_metrics(loss, y_pred, y, x)
                 running_metrics += metrics
                 pbar.update(1)
 
@@ -126,8 +124,8 @@ class StandardTrainer:
 
         return val_logs
 
-    def get_metrics(self, loss, y_pred, y):
-        metrics = [float(m(y_pred, y)) for m in self.metrics]
+    def get_metrics(self, loss, y_pred, y, x):
+        metrics = [float(m(y_pred, y, inputs=x)) for m in self.metrics]
         metrics = [float(loss)] + metrics
 
         return np.array(metrics)

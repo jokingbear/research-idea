@@ -2,7 +2,7 @@ import torch
 
 
 def focal_loss_fn(gamma=2, binary=False):
-    def focal_loss(y_pred, y_true):
+    def focal_loss(y_pred, y_true, **_):
         one = torch.ones([], dtype=torch.float, device=y_pred.device)
 
         if binary:
@@ -21,7 +21,7 @@ def focal_loss_fn(gamma=2, binary=False):
 def dice_loss_fn(rank=2, smooth=1, binary=False):
     spatial_axes = tuple(range(2, 2 + rank))
 
-    def dice_loss(y_pred, y_true):
+    def dice_loss(y_pred, y_true, **_):
         if not binary:
             y_true = y_true[:, 1:, ...]
             y_pred = y_pred[:, 1:, ...]
@@ -37,7 +37,7 @@ def dice_loss_fn(rank=2, smooth=1, binary=False):
 
 
 def f1_loss_fn(binary=False, smooth=1):
-    def f1_loss(y_pred, y_true):
+    def f1_loss(y_pred, y_true, **_):
         if not binary:
             y_true = y_true[:, 1:, ...]
             y_pred = y_pred[:, 1:, ...]
@@ -52,13 +52,26 @@ def f1_loss_fn(binary=False, smooth=1):
     return f1_loss
 
 
+def cross_entropy_fn(binary=False):
+
+    def cross_entropy_loss(y_pred, y_true, **_):
+        if binary:
+            prob = y_pred * y_true + (1 - y_pred) * (1 - y_true)
+        else:
+            prob = (y_pred * y_true).sum(dim=1)
+
+        return -torch.log(prob).mean()
+
+    return cross_entropy_loss
+
+
 def weighted_bce(weights):
 
-    def loss(y_pred, y_true):
+    def loss(y_pred, y_true, **_):
         prob = y_true * y_pred + (1 - y_true) * (1 - y_pred)
         prob = prob.clamp(1e-7, 1 - 1e-7)
 
-        weight = weights[1, ...] * y_true + weights[0, ...] * (1 - y_true)
+        weight = weights[..., 1] * y_true + weights[..., 0] * (1 - y_true)
         log = weight * torch.log(prob)
 
         return (-log).mean()
@@ -69,7 +82,7 @@ def weighted_bce(weights):
 def combine_loss(*losses, weights=None):
     weights = weights or [1] * len(losses)
 
-    def total_loss(y_pred, y_true):
+    def total_loss(y_pred, y_true, **_):
         loss = 0
 
         for ls, w in zip(losses, weights):
@@ -78,3 +91,14 @@ def combine_loss(*losses, weights=None):
         return loss
 
     return total_loss
+
+
+def mse_fn(input_as_label=False):
+
+    def mse(y_pred, y_true, **kwargs):
+        if input_as_label:
+            y_true = kwargs["inputs"]
+
+        return (y_pred - y_true).pow(2).mean()
+
+    return mse
