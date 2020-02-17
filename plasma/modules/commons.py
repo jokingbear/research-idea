@@ -65,17 +65,18 @@ class ChannelAttention(nn.Module):
         return f"in_channels={self.in_channels}, ratio={self.ratio}, axes={self.axes}, groups={self.groups}"
 
 
-class GlobalAttention(GlobalAverage):
+class SpatialAttention(nn.Module):
 
-    def __init__(self, in_channels, kernel=3, padding=1, rank=2, keepdims=False):
-        super().__init__(rank, keepdims)
+    def __init__(self, in_channels, rank=2):
+        super().__init__()
 
         op = nn.Conv2d if rank == 2 else nn.Conv3d
-        self.att = op(in_channels, 1, kernel_size=kernel, padding=padding)
+        self.att = nn.Sequential(*[
+            op(in_channels, 1, kernel_size=1),
+            nn.Sigmoid()
+        ])
 
     def forward(self, x):
-        att = self.att(x).flatten(start_dim=2).softmax(dim=-1)
-        x = x.flatten(start_dim=2)
-        result = (x * att).sum(dim=-1, keepdim=self.keepdims)
+        att = self.att(x)
 
-        return result
+        return att * x
