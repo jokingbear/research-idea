@@ -85,7 +85,7 @@ class CLR(Callback):
 
 class WarmRestart(Callback):
 
-    def __init__(self, min_lr, t0=10, factor=2, cycles=3, lr_mul=None,
+    def __init__(self, min_lr, t0=10, factor=2, cycles=3, lr_muls=None,
                  snapshot=True, directory="checkpoint", model_name=None):
         super().__init__()
 
@@ -93,7 +93,8 @@ class WarmRestart(Callback):
         self.t0 = t0
         self.factor = factor
         self.cycles = cycles
-        self.lr_mul = lr_mul or 1
+        self.lr_muls = [1] * (cycles - 1) if lr_muls is None else \
+            lr_muls if type(lr_muls) in {list, tuple} else [lr_muls] * (cycles - 1)
         self.snapshot = snapshot
         self.dir = directory
         self.model_name = model_name or "model"
@@ -134,6 +135,7 @@ class WarmRestart(Callback):
                 opt_state = self.optimizer.state_dict()
                 torch.save(opt_state, f"{self.dir}/snapshot_{self.model_name}-{self.finished_cycles}.opt")
 
-            self.base_lrs = [self.lr_mul * lr for lr in self.base_lrs]
+            lr_mul = self.lr_muls[self.finished_cycles - 1]
+            self.base_lrs = [lr_mul * lr for lr in self.base_lrs]
 
         self.trainer.training = self.finished_cycles < self.cycles

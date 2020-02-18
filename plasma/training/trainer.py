@@ -71,7 +71,7 @@ class StandardTrainer:
                 loss, y_pred = self.train_one_batch(y, x)
 
                 with torch.no_grad():
-                    current_metrics = self.get_metrics(loss, y_pred, y)
+                    current_metrics = self.get_metrics(loss, y_pred, y, x)
                     running_metrics += current_metrics
 
                     logs = dict(zip(metrics_names, running_metrics / (i + 1)))
