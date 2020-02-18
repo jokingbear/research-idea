@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 
 
 def focal_loss_fn(gamma=2, binary=False):
@@ -53,14 +54,10 @@ def f1_loss_fn(binary=False, smooth=1):
 
 
 def cross_entropy_fn(binary=False):
+    loss = nn.BCELoss() if binary else nn.CrossEntropyLoss()
 
     def cross_entropy_loss(y_pred, y_true, **_):
-        if binary:
-            prob = y_pred * y_true + (1 - y_pred) * (1 - y_true)
-        else:
-            prob = (y_pred * y_true).sum(dim=1)
-
-        return -torch.log(prob).mean()
+        return loss(y_pred, y_true)
 
     return cross_entropy_loss
 

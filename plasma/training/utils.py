@@ -23,7 +23,7 @@ def to_device(xs, dtype=None, device=None):
 
 
 def get_inputs_labels(xy, x_type, x_device, y_type, y_device):
-    if type(xy) is tuple:
+    if type(xy) in {tuple, list}:
         x = to_device(xy[0], dtype=x_type, device=x_device)
         y = to_device(xy[1], dtype=y_type, device=y_device)
 

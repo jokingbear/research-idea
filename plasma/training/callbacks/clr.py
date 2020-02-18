@@ -37,7 +37,7 @@ class LrFinder(Callback):
             else:
                 self.history[i] = []
 
-            g["lr"] += self.gamma
+            g["lr"] = g["lr"] + self.gamma
 
     def on_epoch_end(self, epoch, logs=None):
         self.trainer.training = epoch + 1 < self.epochs
@@ -132,10 +132,10 @@ class WarmRestart(Callback):
             print("starting cycle ", self.finished_cycles + 1) if self.finished_cycles != self.cycles else None
             if self.snapshot:
                 model_state = self.model.state_dict()
-                torch.save(model_state, f"{self.dir}/snapshot_{self.model_name}-{self.finished_cycles}.model")
+                torch.save(model_state, f"{self.dir}/snapshot_{self.model_name}_cycle_{self.finished_cycles}.model")
 
                 opt_state = self.optimizer.state_dict()
-                torch.save(opt_state, f"{self.dir}/snapshot_{self.model_name}-{self.finished_cycles}.opt")
+                torch.save(opt_state, f"{self.dir}/snapshot_{self.model_name}_cycle_{self.finished_cycles}.opt")
 
             lr_mul = self.lr_muls[self.finished_cycles - 1]
             self.base_lrs = [lr_mul * lr for lr in self.base_lrs]

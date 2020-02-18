@@ -59,6 +59,7 @@ class StandardTrainer:
         [c.on_train_end() for c in callbacks]
 
     def train_one_epoch(self, train, callbacks):
+        self.model.train()
         n = len(train)
         metrics_names = ["loss"] + [m.__name__ for m in self.metrics]
         running_metrics = np.zeros(shape=len(self.metrics) + 1)
@@ -84,8 +85,6 @@ class StandardTrainer:
         return logs
 
     def train_one_batch(self, y, x):
-        self.model.train()
-
         y_pred = self.model(x)
         loss = self.loss(y_pred, y, inputs=x)
         loss.backward()
