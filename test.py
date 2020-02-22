@@ -1,4 +1,4 @@
-import torchvision as tv
+import torch
 
 
-a = tv.models.densenet121()
+torch.no_grad()
