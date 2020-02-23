@@ -2,63 +2,64 @@ import torch
 import torch.nn.functional as func
 
 
-def accuracy(y_pred, y_true, **_):
-    if y_pred.shape[1] == 1:
-        y_pred = y_pred[:, 0, ...]
-        y_pred = y_pred >= 0.5
-    elif y_pred.shape[1] > 1:
-        y_pred = torch.argmax(y_pred, dim=1)
-
-    acc = (y_true == y_pred).float()
-
-    return torch.mean(acc)
-
-
-def dice_coefficient_fn(n_class=2, input_rank=4, smooth=1e-7, binary=False, cast=False):
+def dice_coefficient_fn(input_rank=4, smooth=1e-7, binary=False, cast=False):
     assert input_rank >= 3, "input_rank must be bigger than 2"
-    assert n_class > 1, "number of class must be bigger than 1"
 
-    spatial_axes = list(range(2, input_rank))
+    axes = list(range(2, input_rank))
 
-    def dice_coefficient(y_pred, y_true, **_):
+    def dice_coefficient(pred, true):
         if cast:
-            if binary or n_class == 2:
-                y_pred = (y_pred >= 0.5).type(torch.float)
+            if binary:
+                pred = (pred >= 0.5).type(torch.float)
             else:
-                y_pred = torch.argmax(y_pred, dim=1)
-                y_pred = func.one_hot(y_pred, num_classes=n_class).type(torch.float)
-                y_pred = y_pred.permute(0, -1, *[a - 1 for a in spatial_axes])
+                n_class = pred.shape[1]
+                pred = pred.argmax(dim=1)
+                pred = torch.stack([pred == i for i in range(1, n_class)], dim=1)
 
-        y_pred = y_pred[:, 1:, ...] if not binary else y_pred
-        y_true = y_true[:, 1:, ...] if not binary else y_true
+        true = true[:, 1:, ...] if not binary else true
 
-        p = (y_true * y_pred).sum(dim=spatial_axes)
-        s = (y_true + y_pred).sum(dim=spatial_axes)
+        p = 2 * (true * pred).sum(dim=axes)
+        s = (true + pred).sum(dim=axes)
 
-        dice = (2 * p + smooth) / (s + smooth)
+        dice = (p + smooth) / (s + smooth)
 
         return dice.mean()
 
     return dice_coefficient
 
 
-def f1_fn(n_class=2, smooth=1e-7, binary=False, cast=False):
+def fb_fn(beta=1, smooth=1e-7, binary=False, cast=False):
+    beta2 = beta ** 2
 
-    def f1_score(y_pred, y_true, **_):
+    def fb_score(pred, true):
         if binary and cast:
-            y_pred = (y_pred >= 0.5).type(torch.float)
+            pred = (pred >= 0.5).type(torch.float)
         elif cast:
-            y_pred = torch.argmax(y_pred, dim=1)
-            y_pred = func.one_hot(y_pred, num_classes=n_class).type(torch.float)
+            n_class = pred.shape[1]
+            pred = torch.argmax(pred, dim=1)
+            pred = torch.stack([pred == c for c in range(1, n_class)], dim=1)
 
-        y_pred = y_pred[:, 1:, ...] if not binary else y_pred
-        y_true = y_true[:, 1:, ...] if not binary else y_true
+        true = true[:, 1:, ...] if not binary else true
 
-        p = (y_true * y_pred).sum(dim=0)
-        s = (y_true + y_pred).sum(dim=0)
+        p = (beta2 + 1) * (true * pred).sum(dim=0)
+        s = (beta2 * true + pred).sum(dim=0)
 
-        f1 = (2 * p + smooth) / (s + smooth)
+        fb = (p + smooth) / (s + smooth)
 
-        return f1.mean()
+        return fb.mean()
 
-    return f1_score
+    return fb_score
+
+
+def acc_fn(binary=False):
+
+    def acc(pred, true):
+        if binary:
+            pred = (pred >= 0.5)
+        else:
+            pred = pred.argmax(dim=1)
+
+        result = (pred == true).float().mean()
+        return result
+
+    return acc

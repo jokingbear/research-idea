@@ -1,10 +1,9 @@
-from itertools import count
-
-import numpy as np
 import torch
-from torch.utils.data import DataLoader
-
+import numpy as np
 import plasma.training.utils as utils
+
+from torch.utils.data import DataLoader
+from itertools import count
 
 
 class StandardTrainer:
@@ -12,7 +11,7 @@ class StandardTrainer:
     def __init__(self, model, optimizer, loss, metrics=None,
                  x_device=None, x_type=torch.float, y_device=None, y_type=torch.long,
                  grad_accumulation=None):
-        self.model = model.train()
+        self.model = model
         self.optimizer = optimizer
         self.loss = loss
         self.metrics = metrics or []
@@ -27,9 +26,10 @@ class StandardTrainer:
 
         self.training = True
 
-    def fit(self, train, test=None, batch_size=32, val_batch_size=1,
+    def fit(self, train, test=None, batch_size=32, val_batch_size=None,
             workers=0, pin_memory=True, callbacks=None):
         callbacks = callbacks or []
+        val_batch_size = val_batch_size or batch_size
 
         train_sampler = train.get_sampler() if hasattr(train, "get_sampler") else None
         train_loader = DataLoader(train, batch_size=batch_size, sampler=train_sampler, shuffle=train_sampler is None,
@@ -43,7 +43,6 @@ class StandardTrainer:
         [c.on_train_begin(train_loader=train_loader, test_loader=test_loader) for c in callbacks]
         for e in count(start=0):
             print(f"epoch {e + 1}")
-
             [c.on_epoch_begin(e) for c in callbacks]
 
             train_logs = self.train_one_epoch(train_loader, callbacks)
@@ -61,32 +60,30 @@ class StandardTrainer:
     def train_one_epoch(self, train, callbacks):
         self.model.train()
         n = len(train)
-        metrics_names = ["loss"] + [m.__name__ for m in self.metrics]
-        running_metrics = np.zeros(shape=len(self.metrics) + 1)
+        running_metrics = np.zeros(1 + len(self.metrics))
+        metric_names = ["loss"] + [m.__name__ for m in self.metrics]
 
         with utils.get_tqdm()(total=n, desc="train") as pbar:
             for i, xy in enumerate(train):
                 x, y = utils.get_inputs_labels(xy, self.x_type, self.x_device, self.y_type, self.y_device)
                 [c.on_training_batch_begin(i, x, y) for c in callbacks]
 
-                loss, y_pred = self.train_one_batch(y, x)
+                loss, pred = self.train_one_batch(x, y)
 
                 with torch.no_grad():
-                    current_metrics = self.get_metrics(loss, y_pred, y, x)
-                    running_metrics += current_metrics
+                    running_metrics += [loss] + [m(pred, y) for m in self.metrics]
+                    logs = dict(zip(metric_names, running_metrics / (i + 1)))
 
-                    logs = dict(zip(metrics_names, running_metrics / (i + 1)))
-
-                    [c.on_training_batch_end(i, x, y, y_pred, logs) for c in callbacks]
+                    [c.on_training_batch_end(i, x, y, pred, logs) for c in callbacks]
 
                 pbar.set_postfix(logs)
                 pbar.update(1)
 
         return logs
 
-    def train_one_batch(self, y, x):
-        y_pred = self.model(x)
-        loss = self.loss(y_pred, y, inputs=x)
+    def train_one_batch(self, x, y):
+        pred = self.model(x)
+        loss = self.loss(pred, y)
         loss.backward()
 
         self.grad_step += 1
@@ -96,35 +93,30 @@ class StandardTrainer:
             self.optimizer.step()
             self.model.zero_grad()
 
-        return loss.detach(), y_pred.detach()
+        return loss.detach(), pred.detach()
 
     def evaluate_one_epoch(self, test, callbacks):
         self.model.eval()
         n = len(test)
-        metrics_names = ["val_loss"] + ["val_" + m.__name__ for m in self.metrics]
-        running_metrics = np.zeros(len(self.metrics) + 1)
 
+        preds = []
+        trues = []
         with utils.get_tqdm()(total=n, desc="evaluate") as pbar, torch.no_grad():
             for i, xy in enumerate(test):
                 x, y = utils.get_inputs_labels(xy, self.x_type, self.x_device, self.y_type, self.y_device)
                 [c.on_validation_batch_begin(i, x, y) for c in callbacks]
 
-                y_pred = self.model(*x)
-                loss = self.loss(y_pred, y, inputs=x)
+                pred = self.model(x)
+                preds.append(pred)
+                trues.append(y)
 
-                metrics = self.get_metrics(loss, y_pred, y, x)
-                running_metrics += metrics
                 pbar.update(1)
+                [c.on_validation_batch_end(i, x, y, pred) for c in callbacks]
 
-                [c.on_validation_batch_end(i, x, y, y_pred) for c in callbacks]
-
-            val_logs = dict(zip(metrics_names, running_metrics / n))
+            preds = torch.cat(preds, dim=0)
+            trues = torch.cat(trues, dim=0)
+            metric_logs = {m.__name__: float(m(preds, trues)) for m in self.metrics}
+            val_logs = {"loss": float(self.loss(preds, trues)), **metric_logs}
             pbar.set_postfix(val_logs)
 
         return val_logs
-
-    def get_metrics(self, loss, y_pred, y, x):
-        metrics = [float(m(y_pred, y, inputs=x)) for m in self.metrics]
-        metrics = [float(loss)] + metrics
-
-        return np.array(metrics)
