@@ -130,5 +130,4 @@ class AttentionRouting(nn.Module):
 
         return mean_att * embedding
 
-
 # TODO: check implementations

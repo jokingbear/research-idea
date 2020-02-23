@@ -38,7 +38,7 @@ class SpatialAttention(nn.Module):
         super().__init__()
 
         op = nn.Conv2d if rank == 2 else nn.Conv3d
-        
+
         self.att = nn.Sequential(*[
             op(in_channels, 1, kernel_size=1),
             nn.Sigmoid()

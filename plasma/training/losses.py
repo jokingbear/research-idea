@@ -49,7 +49,6 @@ def fb_loss_fn(beta=1, binary=False, smooth=1e-7):
 
 
 def weighted_bce(weights):
-
     def loss(pred, true):
         ln0 = weights[..., 0] * (1 - true) * (1 - pred + 1e-7).log()
         ln1 = weights[..., 1] * true * (pred + 1e-7).log()

@@ -1,9 +1,10 @@
-import torch
-import numpy as np
-import plasma.training.utils as utils
-
-from torch.utils.data import DataLoader
 from itertools import count
+
+import numpy as np
+import torch
+from torch.utils.data import DataLoader
+
+import plasma.training.utils as utils
 
 
 class StandardTrainer:

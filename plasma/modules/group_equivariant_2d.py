@@ -124,7 +124,7 @@ class GEMapping(nn.Module):
         self.bias = nn.Parameter(torch.zeros(groups * out_channels), requires_grad=True) if bias else None
 
         nn.init.kaiming_normal_(self.weight)
-    
+
     def forward(self, x):
         x = x.view(-1, self.in_channels, n_angle, *x.shape[-2:])
         con = torch.conv3d(x, self.weight, self.bias, groups=self.groups)
