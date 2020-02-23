@@ -9,7 +9,7 @@ sigma = 0.5
 gaussian_kernel_dict = {}
 
 
-class PrimaryGroupConv2d(nn.Module):
+class PrimaryGEConv2d(nn.Module):
 
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=True):
         super().__init__()

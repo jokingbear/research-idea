@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as func
 
+from plasma.modules.commons import GlobalAverage
+
 
 def dynamic_routing(x, groups, iters, bias):
     channels = x.shape[1] // groups
@@ -101,5 +103,40 @@ class EMRouting2d(nn.Module):
             con = torch.conv2d(x, weight, groups=self.groups)
 
             return em_routing(con, self.clusters, self.groups, self.iters, self.bias)
+
+
+class AttentionRouting(nn.Module):
+
+    def __init__(self, in_channels, out_channels, groups=32, iters=3):
+        super().__init__()
+
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.groups = groups
+        self.iters = iters
+
+        self.attention = nn.Sequential(*[
+            GlobalAverage(keepdims=True),
+            nn.Conv2d(groups * in_channels, groups * out_channels, kernel_size=1, groups=groups)
+        ])
+
+    def forward(self, x, embedding):
+        attention = self.attention(x).view(-1, self.groups, self.out_channels, 1, 1)
+
+        beta = torch.zeros([], device=x.device)
+
+        for i in range(self.iters):
+            alpha = torch.sigmoid(beta)
+            weighted_attention = alpha * attention
+            mean = weighted_attention.sum(dim=1, keepdim=True)
+
+            if i == self.iters - 1:
+                weighted_attention = mean.sigmoid()
+                embedding = embedding.view(-1, self.groups, self.out_channels, *embedding.shape[2:])
+
+                return (weighted_attention * embedding).sum(dim=1)
+
+            beta = beta + (mean * attention).sum(dim=2, keepdim=True)
+
 
 # TODO: check implementations
