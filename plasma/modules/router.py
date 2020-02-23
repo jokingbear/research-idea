@@ -9,8 +9,9 @@ def dynamic_routing(x, groups, iters, bias):
     channels = x.shape[1] // groups
     spatial = x.shape[2:]
     rank = len(spatial)
+
     x = x.view(-1, groups, channels, *spatial)
-    beta = 0
+    beta = torch.zeros([], device=x.device)
 
     for i in range(iters):
         alpha = torch.sigmoid(beta)
@@ -107,36 +108,27 @@ class EMRouting2d(nn.Module):
 
 class AttentionRouting(nn.Module):
 
-    def __init__(self, in_channels, out_channels, groups=32, iters=3):
+    def __init__(self, in_channels, out_channels, groups=32, iters=3, rank=2):
         super().__init__()
 
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.groups = groups
         self.iters = iters
+        self.rank = rank
+
+        con_op = nn.Conv2d if rank == 2 else nn.Conv3d
 
         self.attention = nn.Sequential(*[
-            GlobalAverage(keepdims=True),
-            nn.Conv2d(groups * in_channels, groups * out_channels, kernel_size=1, groups=groups)
+            GlobalAverage(rank, keepdims=True),
+            con_op(groups * in_channels, groups * out_channels, kernel_size=1, groups=groups)
         ])
 
     def forward(self, x, embedding):
-        attention = self.attention(x).view(-1, self.groups, self.out_channels, 1, 1)
+        atts = self.attention(x)
+        mean_att = dynamic_routing(atts, self.groups, self.iters, None).sigmoid()
 
-        beta = torch.zeros([], device=x.device)
-
-        for i in range(self.iters):
-            alpha = torch.sigmoid(beta)
-            weighted_attention = alpha * attention
-            mean = weighted_attention.sum(dim=1, keepdim=True)
-
-            if i == self.iters - 1:
-                weighted_attention = mean.sigmoid()
-                embedding = embedding.view(-1, self.groups, self.out_channels, *embedding.shape[2:])
-
-                return (weighted_attention * embedding).sum(dim=1)
-
-            beta = beta + (mean * attention).sum(dim=2, keepdim=True)
+        return mean_att * embedding
 
 
 # TODO: check implementations
