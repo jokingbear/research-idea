@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from plasma.modules import router, ChannelAttention
+from plasma.modules import router
 
 n_angle = 12
 sigma = 0.5
@@ -124,7 +124,7 @@ class GEMapping(nn.Module):
         self.bias = nn.Parameter(torch.zeros(groups * out_channels), requires_grad=True) if bias else None
 
         nn.init.kaiming_normal_(self.weight)
-    
+
     def forward(self, x):
         x = x.view(-1, self.in_channels, n_angle, *x.shape[-2:])
         con = torch.conv3d(x, self.weight, self.bias, groups=self.groups)
@@ -224,14 +224,6 @@ class GEDynamicRouting(nn.Module):
             con = torch.conv3d(x, w, groups=self.groups)
             final = router.dynamic_routing(con, self.groups, self.iters, self.bias)
             return final.view(-1, self.out_channels * n_angle, *x.shape[-2:])
-
-
-class GEAttention(ChannelAttention):
-
-    def forward(self, x):
-        x = x.view(x.shape[0], -1, n_angle, *x.shape[-2:])
-
-        return super().forward(x).view(x.shape[0], -1, *x.shape[-2:])
 
 
 def register_gaussian_kernel(kernel, radius, n_ring):

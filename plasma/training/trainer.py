@@ -1,9 +1,10 @@
-import torch
-import numpy as np
-import plasma.training.utils as utils
-
-from torch.utils.data import DataLoader
 from itertools import count
+
+import numpy as np
+import torch
+from torch.utils.data import DataLoader
+
+import plasma.training.utils as utils
 
 
 class StandardTrainer:
@@ -71,10 +72,12 @@ class StandardTrainer:
                 loss, pred = self.train_one_batch(x, y)
 
                 with torch.no_grad():
-                    running_metrics += [loss] + [m(pred, y) for m in self.metrics]
-                    logs = dict(zip(metric_names, running_metrics / (i + 1)))
+                    metrics = [float(loss)] + [float(m(pred, y)) for m in self.metrics]
+                    logs = dict(zip(metric_names, metrics))
 
                     [c.on_training_batch_end(i, x, y, pred, logs) for c in callbacks]
+                    running_metrics += metrics
+                    logs = dict(zip(metric_names, running_metrics / (i + 1)))
 
                 pbar.set_postfix(logs)
                 pbar.update(1)
@@ -115,8 +118,8 @@ class StandardTrainer:
 
             preds = torch.cat(preds, dim=0)
             trues = torch.cat(trues, dim=0)
-            metric_logs = {m.__name__: float(m(preds, trues)) for m in self.metrics}
-            val_logs = {"loss": float(self.loss(preds, trues)), **metric_logs}
+            metric_logs = {f"val_{m.__name__}": float(m(preds, trues)) for m in self.metrics}
+            val_logs = {"val_loss": float(self.loss(preds, trues)), **metric_logs}
             pbar.set_postfix(val_logs)
 
         return val_logs

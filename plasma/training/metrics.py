@@ -1,5 +1,4 @@
 import torch
-import torch.nn.functional as func
 
 
 def dice_coefficient_fn(input_rank=4, smooth=1e-7, binary=False, cast=False):
@@ -52,7 +51,6 @@ def fb_fn(beta=1, smooth=1e-7, binary=False, cast=False):
 
 
 def acc_fn(binary=False):
-
     def acc(pred, true):
         if binary:
             pred = (pred >= 0.5)
