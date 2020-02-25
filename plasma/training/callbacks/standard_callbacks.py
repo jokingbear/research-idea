@@ -180,36 +180,39 @@ class CSVLogger(Callback):
 
 class Tensorboard(Callback):
 
-    def __init__(self, log_dir, steps=50, flushes=60, input_shape=None, input_device=None):
+    def __init__(self, log_dir, steps=50, flushes=60, inputs=None):
         super().__init__()
 
         self.log_dir = log_dir
         self.steps = steps
         self.current_step = 0
         self.flushes = flushes
-        self.input_shape = input_shape
-        self.input_device = input_device or "cpu"
+        self.inputs = inputs
 
-        self.writer = None
+        self.train_writer = SummaryWriter(f"{self.log_dir}/train", flush_secs=self.flushes)
+        self.valid_writer = SummaryWriter(f"{self.log_dir}/valid", flush_secs=self.flushes)
 
     def on_train_begin(self, **train_configs):
-        self.writer = SummaryWriter(self.log_dir, flush_secs=self.flushes)
-
-        if self.input_shape:
-            input_shape = [1, *self.input_shape]
-            self.writer.add_graph(self.model, torch.ones(input_shape, dtype=torch.float, device=self.input_device))
+        if self.inputs is not None:
+            self.train_writer.add_graph(self.model, self.inputs)
 
     def on_training_batch_end(self, batch, x, y, pred, logs=None):
-        if self.current_step % self.steps == 0:
-            self.writer.add_scalars("iterations", logs, self.current_step)
-
         self.current_step += 1
 
+        if self.current_step == self.steps:
+            self.train_writer.add_scalars("iterations", logs, self.current_step)
+            self.current_step = 0
+
     def on_epoch_end(self, epoch, logs=None):
-        self.writer.add_scalars("epochs", logs, epoch + 1)
+        train_logs = {k: logs[k] for k in logs if "val" not in k}
+        self.train_writer.add_scalars("epochs", train_logs, epoch + 1)
+
+        val_logs = {k: logs[k] for k in logs if "val" in k}
+        self.valid_writer.add_scalars("epochs", val_logs, epoch + 1)
 
     def on_train_end(self):
-        self.writer = None
+        self.train_writer.close()
+        self.valid_writer.close()
 
 
 class TrainingScheduler(Callback):

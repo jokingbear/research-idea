@@ -10,12 +10,13 @@ from plasma.training.callbacks.base_class import Callback
 
 class LrFinder(Callback):
 
-    def __init__(self, min_lr, max_lr, epochs=3):
+    def __init__(self, min_lr, max_lr, epochs=3, use_plotly=True):
         super().__init__()
 
         self.min_lr = min_lr
         self.max_lr = max_lr
         self.epochs = epochs
+        self.use_plotly = use_plotly
 
         self.scheduler = None
         self.gamma = 0
@@ -50,14 +51,20 @@ class LrFinder(Callback):
             yield lr, logs[target]
 
     def plot_data(self, group=0, target="loss"):
-        import matplotlib.pyplot as plt
         lrs, targets = zip(*self.get_data(group, target))
 
-        plt.plot(lrs, targets)
-        plt.xlabel("lr")
-        plt.ylabel(target)
-        plt.title(f"lr vs {target}")
-        plt.show()
+        if self.use_plotly:
+            import plotly.graph_objects as go
+            fig = go.Figure(data=go.Scatter(x=lrs, y=targets))
+            fig.update_layout(title=f"lr vs {target}", xaxis_title="lr", yaxis_title=target)
+            fig.show("iframe")
+        else:
+            import matplotlib.pyplot as plt
+            plt.plot(lrs, targets)
+            plt.xlabel("lr")
+            plt.ylabel(target)
+            plt.title(f"lr vs {target}")
+            plt.show()
 
 
 class CLR(Callback):

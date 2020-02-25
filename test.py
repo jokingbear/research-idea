@@ -1,7 +1,6 @@
-from plasma.modules import *
+from torch.utils.tensorboard import SummaryWriter
 
-dr = AttentionRouting(8, 16, capsules=3)
-a = torch.ones(1, 8 * 32, 16, 16)
-b = torch.ones(1, 3 * 16, 16, 16)
 
-print(dr(a, b).shape)
+a = SummaryWriter("logs")
+
+a.add_custom_scalars()
