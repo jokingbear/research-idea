@@ -5,24 +5,24 @@ import torch.nn.functional as func
 from plasma.modules.commons import GlobalAverage
 
 
-def dynamic_routing(x, groups, iters, bias):
-    channels = x.shape[1] // groups
+def dynamic_routing(x, capsules, groups, iters, bias):
+    channels = x.shape[1] // capsules // groups
     spatial = x.shape[2:]
     rank = len(spatial)
 
-    x = x.view(-1, groups, channels, *spatial)
-    beta = torch.zeros([], device=x.device)
+    x = x.view(-1, groups, capsules, channels, *spatial)
+    beta = torch.zeros([1, 1, capsules, 1] + [1] * rank, device=x.device)
 
     for i in range(iters):
-        alpha = torch.sigmoid(beta)
+        alpha = torch.sigmoid(beta) if capsules == 1 else torch.softmax(beta, dim=2)
         v = (alpha * x).sum(dim=1, keepdim=True)
 
         if i == iters - 1:
-            v = v[:, 0, ...]
-            return v if bias is None else v + bias.view(-1, channels, *([1] * rank))
+            v = v.flatten(start_dim=1, end_dim=3)
+            return v if bias is None else v + bias.view(-1, capsules * channels, *([1] * rank))
 
-        v = func.normalize(v, dim=2)
-        beta = beta + torch.sum(v * x, dim=2, keepdim=True)
+        v = func.normalize(v, dim=3)
+        beta = beta + torch.sum(v * x, dim=3, keepdim=True)
 
 
 def em_routing(x, clusters, groups, iters, bias=None, epsilon=1e-7):
@@ -49,16 +49,17 @@ def em_routing(x, clusters, groups, iters, bias=None, epsilon=1e-7):
 
 class DynamicRouting2d(nn.Module):
 
-    def __init__(self, in_channels, out_channels, groups=32, iters=3, bias=True):
+    def __init__(self, in_channels, out_channels, capsules=1, groups=32, iters=3, bias=True):
         super().__init__()
 
         self.in_channels = in_channels
         self.out_channels = out_channels
+        self.capsules = capsules
         self.groups = groups
         self.iters = iters
 
-        self.weight = nn.Parameter(torch.zeros(out_channels, groups * in_channels, 1, 1), requires_grad=True)
-        self.bias = nn.Parameter(torch.zeros(out_channels), requires_grad=True) if bias else None
+        self.weight = nn.Parameter(torch.zeros(capsules * out_channels, groups * in_channels, 1, 1), requires_grad=True)
+        self.bias = nn.Parameter(torch.zeros(capsules * out_channels), requires_grad=True) if bias else None
 
         nn.init.kaiming_normal_(self.weight)
 
@@ -68,10 +69,10 @@ class DynamicRouting2d(nn.Module):
             return con
         else:
             weight = self.weight.view(-1, self.groups, self.in_channels, 1, 1)
-            weight = weight.transpose(0, 1).view(-1, self.in_channels, 1, 1)
+            weight = weight.transpose(0, 1).reshape(-1, self.in_channels, 1, 1)
             con = torch.conv2d(x, weight, groups=self.groups)
 
-            return dynamic_routing(con, self.groups, self.iters, self.bias)
+            return dynamic_routing(con, self.capsules, self.groups, self.iters, self.bias)
 
     def extra_repr(self):
         return f"in_channels={self.in_channels}, out_channels={self.out_channels}, groups={self.groups}, " \
@@ -100,7 +101,7 @@ class EMRouting2d(nn.Module):
             return con
         else:
             weight = self.weight.view(-1, self.groups, self.in_channels, 1, 1)
-            weight = weight.transpose(0, 1).view(-1, self.in_channels, 1, 1)
+            weight = weight.transpose(0, 1).reshape(-1, self.in_channels, 1, 1)
             con = torch.conv2d(x, weight, groups=self.groups)
 
             return em_routing(con, self.clusters, self.groups, self.iters, self.bias)
@@ -108,11 +109,12 @@ class EMRouting2d(nn.Module):
 
 class AttentionRouting(nn.Module):
 
-    def __init__(self, in_channels, out_channels, groups=32, iters=3, rank=2):
+    def __init__(self, in_channels, out_channels, capsules=1, groups=32, iters=3, rank=2):
         super().__init__()
 
         self.in_channels = in_channels
         self.out_channels = out_channels
+        self.capsules = capsules
         self.groups = groups
         self.iters = iters
         self.rank = rank
@@ -121,12 +123,12 @@ class AttentionRouting(nn.Module):
 
         self.attention = nn.Sequential(*[
             GlobalAverage(rank, keepdims=True),
-            con_op(groups * in_channels, groups * out_channels, kernel_size=1, groups=groups)
+            con_op(groups * in_channels, groups * capsules * out_channels, kernel_size=1, groups=groups)
         ])
 
     def forward(self, x, embedding):
         atts = self.attention(x)
-        mean_att = dynamic_routing(atts, self.groups, self.iters, None).sigmoid()
+        mean_att = dynamic_routing(atts, self.capsules, self.groups, self.iters, None).sigmoid()
 
         return mean_att * embedding
 
