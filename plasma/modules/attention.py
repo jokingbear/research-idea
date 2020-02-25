@@ -16,7 +16,7 @@ class ChannelAttention(nn.Module):
         op = nn.Conv2d if rank == 2 else nn.Conv3d
 
         self.attention = nn.Sequential(*[
-            GlobalAverage(rank),
+            GlobalAverage(rank, keepdims=True),
             op(in_channels * groups, groups * int(in_channels * ratio), kernel_size=1, groups=groups),
             nn.ReLU(inplace=True),
             op(groups * int(in_channels * ratio), groups * in_channels, kernel_size=1, groups=groups),
