@@ -2,10 +2,11 @@ import collections
 import csv
 import io
 import os
-
+import time
 import numpy as np
 import torch
 import torch.optim.lr_scheduler as schedulers
+
 from torch.utils.tensorboard import SummaryWriter
 
 from plasma.training.callbacks.base_class import Callback
@@ -189,8 +190,11 @@ class Tensorboard(Callback):
         self.flushes = flushes
         self.inputs = inputs
 
-        self.train_writer = SummaryWriter(f"{self.log_dir}/train", flush_secs=self.flushes)
-        self.valid_writer = SummaryWriter(f"{self.log_dir}/valid", flush_secs=self.flushes)
+        ts = time.time()
+        train_log = f"train_{ts}"
+        valid_log = f"valid_{ts}"
+        self.train_writer = SummaryWriter(f"{self.log_dir}/{train_log}", flush_secs=self.flushes)
+        self.valid_writer = SummaryWriter(f"{self.log_dir}/{valid_log}", flush_secs=self.flushes)
 
     def on_train_begin(self, **train_configs):
         if self.inputs is not None:

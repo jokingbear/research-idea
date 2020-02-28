@@ -1,6 +1,7 @@
 import torch
 
 from tqdm import tqdm, tqdm_notebook as tqdm_nb
+from torch.utils.data import DataLoader
 
 on_notebook = True
 default_device = "cpu"
@@ -38,3 +39,9 @@ def eval_model(model):
     model.eval()
 
     return torch.no_grad()
+
+
+def get_eval_data_loader(dataset, batch_size=32):
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, pin_memory=True, drop_last=False)
+
+    return loader
