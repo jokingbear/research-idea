@@ -64,10 +64,14 @@ def combine_loss(*losses, weights=None):
 
     def total_loss(pred, true):
         loss = 0
+        d = {}
 
         for ls, w in zip(losses, weights):
-            loss = loss + w * ls(pred, true)
+            ind_loss = ls(pred, true)
+            d[ls.__name__] = ind_loss
+            loss = loss + w * ind_loss
 
-        return loss
+        d["loss"] = loss
+        return d
 
     return total_loss
