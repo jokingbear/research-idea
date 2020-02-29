@@ -1,6 +1,7 @@
 import torch
-import plasma.training.utils as utils
+import numpy as np
 import pandas as pd
+import plasma.training.utils as utils
 
 from torch.utils.data import DataLoader
 from itertools import count
@@ -60,7 +61,7 @@ class StandardTrainer:
     def train_one_epoch(self, train, callbacks):
         self.model.train()
         n = len(train)
-        running_metrics = 0
+        running_metrics = np.zeros([])
 
         with utils.get_tqdm()(total=n, desc="train") as pbar:
             for i, xy in enumerate(train):
@@ -86,10 +87,10 @@ class StandardTrainer:
         loss = self.loss(pred, y)
 
         if isinstance(loss, dict):
+            loss_series = pd.Series({k: float(loss[k]) for k in loss})
             loss = loss["loss"]
-            loss_log = pd.Series({k: float(loss[k]) for k in loss})
         else:
-            loss_log = pd.Series({"loss": float(loss)})
+            loss_series = pd.Series({"loss": float(loss)})
 
         loss.backward()
 
@@ -100,15 +101,14 @@ class StandardTrainer:
             self.optimizer.step()
             self.model.zero_grad()
 
-        return loss_log, pred.detach()
+        return loss_series, pred.detach()
 
     def evaluate_one_epoch(self, test, callbacks):
         self.model.eval()
-        n = len(test)
 
         preds = []
         trues = []
-        with utils.get_tqdm()(total=n, desc="evaluate") as pbar, torch.no_grad():
+        with utils.get_tqdm()(total=len(test), desc="evaluate") as pbar, torch.no_grad():
             for i, xy in enumerate(test):
                 x, y = utils.get_inputs_labels(xy, self.x_type, self.x_device, self.y_type, self.y_device)
                 [c.on_validation_batch_begin(i, x, y) for c in callbacks]
