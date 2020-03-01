@@ -10,12 +10,13 @@ from plasma.training.callbacks.base_class import Callback
 
 class LrFinder(Callback):
 
-    def __init__(self, min_lr, max_lr, epochs=3):
+    def __init__(self, min_lr, max_lr, epochs=3, use_plotly=True):
         super().__init__()
 
         self.min_lr = min_lr
         self.max_lr = max_lr
         self.epochs = epochs
+        self.use_plotly = use_plotly
 
         self.scheduler = None
         self.gamma = 0
@@ -50,14 +51,20 @@ class LrFinder(Callback):
             yield lr, logs[target]
 
     def plot_data(self, group=0, target="loss"):
-        import matplotlib.pyplot as plt
         lrs, targets = zip(*self.get_data(group, target))
 
-        plt.plot(lrs, targets)
-        plt.xlabel("lr")
-        plt.ylabel(target)
-        plt.title(f"lr vs {target}")
-        plt.show()
+        if self.use_plotly:
+            import plotly.graph_objects as go
+            fig = go.Figure(data=go.Scatter(x=lrs, y=targets))
+            fig.update_layout(title=f"lr vs {target}", xaxis_title="lr", yaxis_title=target)
+            fig.show("iframe")
+        else:
+            import matplotlib.pyplot as plt
+            plt.plot(lrs, targets)
+            plt.xlabel("lr")
+            plt.ylabel(target)
+            plt.title(f"lr vs {target}")
+            plt.show()
 
 
 class CLR(Callback):
@@ -86,7 +93,7 @@ class CLR(Callback):
 
 class WarmRestart(Callback):
 
-    def __init__(self, min_lr, t0=10, factor=2, cycles=3, lr_muls=None, reset_state=False,
+    def __init__(self, min_lr, t0=10, factor=2, cycles=3, reset_state=False,
                  snapshot=True, directory="checkpoint", model_name=None):
         super().__init__()
 
@@ -94,8 +101,6 @@ class WarmRestart(Callback):
         self.t0 = t0
         self.factor = factor
         self.cycles = cycles
-        self.lr_muls = [1] * (cycles - 1) if lr_muls is None else \
-            lr_muls if type(lr_muls) in {list, tuple} else [lr_muls] * (cycles - 1)
         self.reset_state = reset_state
         self.snapshot = snapshot
         self.dir = directory
@@ -136,9 +141,6 @@ class WarmRestart(Callback):
 
                 opt_state = self.optimizer.state_dict()
                 torch.save(opt_state, f"{self.dir}/snapshot_{self.model_name}_cycle_{self.finished_cycles}.opt")
-
-            lr_mul = self.lr_muls[self.finished_cycles - 1]
-            self.base_lrs = [lr_mul * lr for lr in self.base_lrs]
 
             if self.reset_state:
                 self.optimizer.state = defaultdict(dict)

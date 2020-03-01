@@ -1,6 +1,7 @@
 import torch
 
 from tqdm import tqdm, tqdm_notebook as tqdm_nb
+from torch.utils.data import DataLoader
 
 on_notebook = True
 default_device = "cpu"

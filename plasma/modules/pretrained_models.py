@@ -3,13 +3,13 @@ from torchvision import models
 from plasma.modules import router
 
 
-def dynamic_routing_next50():
-    resnext = models.resnext50_32x4d(pretrained=True)
+def dynamic_routing_next50(pretrained=True):
+    resnext = models.resnext50_32x4d(pretrained=pretrained)
     return resnext.apply(replace_by_dynamic_routing)
 
 
-def dynamic_routing_next101():
-    resnext = models.resnext101_32x8d(pretrained=True)
+def dynamic_routing_next101(pretrained=True):
+    resnext = models.resnext101_32x8d(pretrained=pretrained)
     return resnext.apply(replace_by_dynamic_routing)
 
 

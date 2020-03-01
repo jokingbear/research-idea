@@ -1,10 +1,10 @@
-from itertools import count
-
-import numpy as np
 import torch
-from torch.utils.data import DataLoader
-
+import numpy as np
+import pandas as pd
 import plasma.training.utils as utils
+
+from torch.utils.data import DataLoader
+from itertools import count
 
 
 class StandardTrainer:
@@ -61,23 +61,21 @@ class StandardTrainer:
     def train_one_epoch(self, train, callbacks):
         self.model.train()
         n = len(train)
-        running_metrics = np.zeros(1 + len(self.metrics))
-        metric_names = ["loss"] + [m.__name__ for m in self.metrics]
+        running_metrics = np.zeros([])
 
         with utils.get_tqdm()(total=n, desc="train") as pbar:
             for i, xy in enumerate(train):
                 x, y = utils.get_inputs_labels(xy, self.x_type, self.x_device, self.y_type, self.y_device)
                 [c.on_training_batch_begin(i, x, y) for c in callbacks]
 
-                loss, pred = self.train_one_batch(x, y)
+                losses, pred = self.train_one_batch(x, y)
 
                 with torch.no_grad():
-                    metrics = [float(loss)] + [float(m(pred, y)) for m in self.metrics]
-                    logs = dict(zip(metric_names, metrics))
+                    metrics = pd.concat([losses, self.calculate_metrics(pred, y)])
+                    running_metrics = running_metrics + metrics
+                    logs = running_metrics / (i + 1)
 
                     [c.on_training_batch_end(i, x, y, pred, logs) for c in callbacks]
-                    running_metrics += metrics
-                    logs = dict(zip(metric_names, running_metrics / (i + 1)))
 
                 pbar.set_postfix(logs)
                 pbar.update(1)
@@ -87,6 +85,13 @@ class StandardTrainer:
     def train_one_batch(self, x, y):
         pred = self.model(x)
         loss = self.loss(pred, y)
+
+        if isinstance(loss, dict):
+            loss_series = pd.Series({k: float(loss[k]) for k in loss})
+            loss = loss["loss"]
+        else:
+            loss_series = pd.Series({"loss": float(loss)})
+
         loss.backward()
 
         self.grad_step += 1
@@ -96,15 +101,14 @@ class StandardTrainer:
             self.optimizer.step()
             self.model.zero_grad()
 
-        return loss.detach(), pred.detach()
+        return loss_series, pred.detach()
 
     def evaluate_one_epoch(self, test, callbacks):
         self.model.eval()
-        n = len(test)
 
         preds = []
         trues = []
-        with utils.get_tqdm()(total=n, desc="evaluate") as pbar, torch.no_grad():
+        with utils.get_tqdm()(total=len(test), desc="evaluate") as pbar, torch.no_grad():
             for i, xy in enumerate(test):
                 x, y = utils.get_inputs_labels(xy, self.x_type, self.x_device, self.y_type, self.y_device)
                 [c.on_validation_batch_begin(i, x, y) for c in callbacks]
@@ -118,8 +122,27 @@ class StandardTrainer:
 
             preds = torch.cat(preds, dim=0)
             trues = torch.cat(trues, dim=0)
-            metric_logs = {f"val_{m.__name__}": float(m(preds, trues)) for m in self.metrics}
-            val_logs = {"val_loss": float(self.loss(preds, trues)), **metric_logs}
+
+            metrics = self.calculate_metrics(preds, trues, "val_")
+            losses = self.get_series(self.loss(preds, trues), "val_loss")
+
+            val_logs = pd.concat([losses, metrics])
             pbar.set_postfix(val_logs)
 
         return val_logs
+
+    def calculate_metrics(self, preds, trues, prefix=""):
+        series = []
+        for m in self.metrics:
+            values = m(preds, trues)
+            series.append(self.get_series(values, prefix + m.__name__))
+
+        series = pd.concat(series, verify_integrity=True)
+
+        return series
+
+    def get_series(self, values, name=None):
+        d = {k: float(values[k]) for k in values} if isinstance(values, dict) else {name or "loss": float(values)}
+        series = pd.Series(d)
+
+        return series
