@@ -109,7 +109,7 @@ class EMRouting2d(nn.Module):
 
 class AttentionRouting(nn.Module):
 
-    def __init__(self, in_channels, out_channels, capsules=1, groups=32, iters=3, rank=2):
+    def __init__(self, in_channels, out_channels, capsules=1, groups=32, iters=3, ratio=1, rank=2):
         super().__init__()
 
         self.in_channels = in_channels
@@ -123,13 +123,15 @@ class AttentionRouting(nn.Module):
 
         self.attention = nn.Sequential(*[
             GlobalAverage(rank, keepdims=True),
-            con_op(groups * in_channels, groups * capsules * out_channels, kernel_size=1, groups=groups)
+            con_op(groups * in_channels, groups * int(in_channels * ratio), kernel_size=1, groups=groups),
+            nn.ReLU(inplace=True),
+            con_op(groups * int(in_channels * groups), groups * capsules * out_channels, kernel_size=1, groups=groups)
         ])
 
-    def forward(self, x, embedding):
-        atts = self.attention(x)
+    def forward(self, embedding, x):
+        atts = self.attention(embedding)
         mean_att = dynamic_routing(atts, self.capsules, self.groups, self.iters, None).sigmoid()
 
-        return mean_att * embedding
+        return mean_att * x
 
 # TODO: check implementations
