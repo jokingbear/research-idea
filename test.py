@@ -1,6 +1,4 @@
-from torch.utils.tensorboard import SummaryWriter
+from plasma.modules import *
 
 
-a = SummaryWriter("logs")
-
-a.add_custom_scalars()
+a = attention_next50()
