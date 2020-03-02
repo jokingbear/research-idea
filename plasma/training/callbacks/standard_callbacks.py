@@ -201,18 +201,18 @@ class Tensorboard(Callback):
             self.train_writer.add_graph(self.model, self.inputs)
 
     def on_training_batch_end(self, batch, x, y, pred, logs=None):
+        if self.current_step % self.steps == 0:
+            for k in logs:
+                self.train_writer.add_scalar(f"train/{k}", logs[k], batch)
+
         self.current_step += 1
 
-        if self.current_step == self.steps:
-            self.train_writer.add_scalars("iterations", logs, self.current_step)
-            self.current_step = 0
-
     def on_epoch_end(self, epoch, logs=None):
-        train_logs = {k: logs[k] for k in logs if "val" not in k}
-        self.train_writer.add_scalars("epochs", train_logs, epoch + 1)
-
-        val_logs = {k: logs[k] for k in logs if "val" in k}
-        self.valid_writer.add_scalars("epochs", val_logs, epoch + 1)
+        for k in logs:
+            if "val" not in k:
+                self.train_writer.add_scalar(k, logs[k], epoch)
+            else:
+                self.valid_writer.add_scalar(k[4:], logs[k], epoch)
 
     def on_train_end(self):
         self.train_writer.close()
