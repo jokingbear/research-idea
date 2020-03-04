@@ -72,10 +72,11 @@ class StandardTrainer:
 
                 with torch.no_grad():
                     metrics = pd.concat([losses, self.calculate_metrics(pred, y)])
-                    running_metrics = running_metrics + metrics
-                    logs = running_metrics / (i + 1)
+                    logs = metrics
 
                     [c.on_training_batch_end(i, x, y, pred, logs) for c in callbacks]
+                    running_metrics = running_metrics + metrics
+                    logs = running_metrics / (i + 1)
 
                 pbar.set_postfix(logs)
                 pbar.update(1)
