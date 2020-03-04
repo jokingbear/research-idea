@@ -19,13 +19,13 @@ class CutMix(Callback):
         h, w = x.shape[-2:]
         r_x = np.random.randint(0, w)
         r_y = np.random.randint(0, h)
-        r_w = np.sqrt(1 - lmbda)
-        r_h = np.sqrt(1 - lmbda)
+        r_w = w * np.sqrt(1 - lmbda)
+        r_h = h * np.sqrt(1 - lmbda)
 
-        x1 = np.round(np.clip(r_x - r_w / 2, a_min=0))
-        x2 = np.round(np.clip(r_x + r_w / 2, a_max=w))
-        y1 = np.round(np.clip(r_y - r_h / 2, a_min=0))
-        y2 = np.round(np.clip(r_y + r_h / 2, a_max=h))
+        x1 = np.round(np.clip(r_x - r_w / 2, a_min=0, a_max=None)).astype(int)
+        x2 = np.round(np.clip(r_x + r_w / 2, a_min=None, a_max=w)).astype(int)
+        y1 = np.round(np.clip(r_y - r_h / 2, a_min=0, a_max=None)).astype(int)
+        y2 = np.round(np.clip(r_y + r_h / 2, a_min=None, a_max=h)).astype(int)
 
         lmbda = 1 - (x2 - x1) * (y2 - y1) / h / w
         x[..., y1:y2, x1:x2] = shuffled_x[..., y1:y2, x1:x2]
