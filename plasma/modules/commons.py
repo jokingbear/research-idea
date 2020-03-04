@@ -38,11 +38,16 @@ class Identity(nn.Module):
 
 class ImagenetNormalization(nn.Module):
 
-    def __init__(self):
+    def __init__(self, from_gray=True):
         super().__init__()
 
+        self.from_gray = from_gray
         self.mean = nn.Parameter(torch.tensor([0.485, 0.456, 0.406]), requires_grad=False)
         self.std = nn.Parameter(torch.tensor([0.229, 0.224, 0.225]), requires_grad=False)
 
     def forward(self, x):
-        return (x - self.mean) / self.std
+        x = x.repeat(1, 3, 1, 1) if self.from_gray else x
+        mean = self.mean.view(1, 3, 1, 1)
+        std = self.std.view(1, 3, 1, 1)
+
+        return (x - mean) / std

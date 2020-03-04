@@ -27,6 +27,6 @@ check/
 
 iframe_figures/
 
-.vector_cache
+.vector_cache/
 
 *.npy
