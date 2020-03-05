@@ -28,7 +28,7 @@ class StandardTrainer:
         self.training = True
 
     def fit(self, train, test=None, batch_size=32, val_batch_size=None,
-            workers=0, pin_memory=True, callbacks=None):
+            workers=0, pin_memory=True, callbacks=None, evaluate_on_batch=False):
         callbacks = callbacks or []
         val_batch_size = val_batch_size or batch_size
 
@@ -48,7 +48,7 @@ class StandardTrainer:
 
             train_logs = self.train_one_epoch(train_loader, callbacks)
 
-            val_logs = self.evaluate_one_epoch(test_loader, callbacks) if test is not None else {}
+            val_logs = self.evaluate_one_epoch(test_loader, callbacks, evaluate_on_batch) if test is not None else {}
 
             logs = {**train_logs, **val_logs}
 
@@ -104,28 +104,39 @@ class StandardTrainer:
 
         return loss_series, pred.detach()
 
-    def evaluate_one_epoch(self, test, callbacks):
+    def evaluate_one_epoch(self, test, callbacks, on_batch):
         self.model.eval()
 
         preds = []
         trues = []
+        metrics = np.zeros([])
+        losses = np.zeros([])
         with utils.get_tqdm()(total=len(test), desc="evaluate") as pbar, torch.no_grad():
             for i, xy in enumerate(test):
                 x, y = utils.get_inputs_labels(xy, self.x_type, self.x_device, self.y_type, self.y_device)
                 [c.on_validation_batch_begin(i, x, y) for c in callbacks]
 
                 pred = self.model(x)
-                preds.append(pred)
-                trues.append(y)
+
+                if on_batch:
+                    metrics = metrics + self.calculate_metrics(pred, y, "val_")
+                    losses = losses + self.get_series(self.loss(pred, y), "val_loss")
+                else:
+                    preds.append(pred)
+                    trues.append(y)
 
                 pbar.update(1)
                 [c.on_validation_batch_end(i, x, y, pred) for c in callbacks]
 
-            preds = torch.cat(preds, dim=0)
-            trues = torch.cat(trues, dim=0)
+            if on_batch:
+                metrics = metrics / len(test)
+                losses = losses / len(test)
+            else:
+                preds = torch.cat(preds, dim=0)
+                trues = torch.cat(trues, dim=0)
 
-            metrics = self.calculate_metrics(preds, trues, "val_")
-            losses = self.get_series(self.loss(preds, trues), "val_loss")
+                metrics = self.calculate_metrics(preds, trues, "val_")
+                losses = self.get_series(self.loss(preds, trues), "val_loss")
 
             val_logs = pd.concat([losses, metrics])
             pbar.set_postfix(val_logs)
