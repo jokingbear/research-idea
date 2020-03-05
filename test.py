@@ -1,6 +1,3 @@
-from torch.utils.tensorboard import SummaryWriter
+import numpy as np
 
-
-a = SummaryWriter("logs")
-
-a.add_custom_scalars()
+np.random.binomial(1, p=0.3)
