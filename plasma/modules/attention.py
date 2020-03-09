@@ -1,4 +1,5 @@
 import torch.nn as nn
+import torch
 
 from plasma.modules.commons import GlobalAverage
 
@@ -36,3 +37,36 @@ class SEAttention(nn.Module):
             att = att + spatial_att
 
         return att
+
+
+class CBAM(nn.Module):
+
+    def __init__(self, in_channels, ratio=1/16):
+        super().__init__()
+
+        self.spatial_avg = nn.AdaptiveAvgPool2d(1)
+        self.spatial_max = nn.AdaptiveMaxPool2d(1)
+
+        self.channel_attention = nn.Sequential(*[
+            nn.Conv2d(in_channels, int(in_channels * ratio), kernel_size=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(int(in_channels * ratio), in_channels, kernel_size=1)
+        ])
+
+        self.spatial_attention = nn.Sequential(*[
+            nn.Conv2d(2, 1, kernel_size=7),
+            nn.Sigmoid()
+        ])
+
+    def forward(self, x):
+        spatial_avg = self.spatial_avg(x)
+        spatial_max = self.spatial_max(x)
+        channel_attention = self.channel_attention(spatial_max) + self.channel_attention(spatial_avg)
+        channel_attention = channel_attention.sigmoid()
+
+        x = channel_attention * x
+        spatial_attention = torch.cat([x.max(dim=1, keepdim=True), x.mean(dim=1, keepdim=True)], dim=1)
+        spatial_attention = self.spatial_attention(spatial_attention)
+        x = spatial_attention * x
+
+        return x
