@@ -51,3 +51,17 @@ class ImagenetNormalization(nn.Module):
         std = self.std.view(1, 3, 1, 1)
 
         return (x - mean) / std
+
+
+class Frozen(nn.Module):
+
+    def __init__(self, module):
+        super().__init__()
+
+        self.module = module
+
+        for p in module.parameters():
+            p.requires_grad = False
+
+    def forward(self, x):
+        return self.module.eval()(x)

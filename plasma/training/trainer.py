@@ -120,7 +120,7 @@ class StandardTrainer:
 
                 if on_batch:
                     metrics = metrics + self.calculate_metrics(pred, y, "val_")
-                    losses = losses + self.get_series(self.loss(pred, y), "val_loss")
+                    losses = losses + self.get_series(self.loss(pred, y), "val_")
                 else:
                     preds.append(pred)
                     trues.append(y)
@@ -136,25 +136,27 @@ class StandardTrainer:
                 trues = torch.cat(trues, dim=0)
 
                 metrics = self.calculate_metrics(preds, trues, "val_")
-                losses = self.get_series(self.loss(preds, trues), "val_loss")
+                losses = self.get_series(self.loss(preds, trues), "val_")
 
             val_logs = pd.concat([losses, metrics])
             pbar.set_postfix(val_logs)
 
         return val_logs
 
-    def calculate_metrics(self, preds, trues, prefix=""):
+    def calculate_metrics(self, preds, trues, prefix=None):
         series = []
         for m in self.metrics:
             values = m(preds, trues)
-            series.append(self.get_series(values, prefix + m.__name__))
+            series.append(self.get_series(values, prefix, m.__name__))
 
         series = pd.concat(series, verify_integrity=True)
 
         return series
 
-    def get_series(self, values, name=None):
-        d = {k: float(values[k]) for k in values} if isinstance(values, dict) else {name or "loss": float(values)}
+    def get_series(self, values, prefix=None, name=None):
+        prefix = prefix or ""
+        d = {prefix + k: float(values[k]) for k in values} if isinstance(values, dict) \
+            else {prefix + (name or "loss"): float(values)}
         series = pd.Series(d)
 
         return series
