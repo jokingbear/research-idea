@@ -132,8 +132,17 @@ class StandardTrainer:
                 metrics = metrics / len(test)
                 losses = losses / len(test)
             else:
-                preds = torch.cat(preds, dim=0)
-                trues = torch.cat(trues, dim=0)
+                if torch.is_tensor(preds):
+                    preds = torch.cat(preds, dim=0)
+                else:
+                    col = len(preds[0])
+                    preds = [torch.cat([p[c] for p in preds], dim=0) for c in range(col)]
+
+                if torch.is_tensor(trues):
+                    trues = torch.cat(trues, dim=0)
+                else:
+                    col = len(trues[0])
+                    trues = [torch.cat([p[c] for p in preds], dim=0) for c in range(col)]
 
                 metrics = self.calculate_metrics(preds, trues, "val_")
                 losses = self.get_series(self.loss(preds, trues), "val_")
