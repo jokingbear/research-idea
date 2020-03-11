@@ -55,13 +55,20 @@ class ImagenetNormalization(nn.Module):
 
 class Frozen(nn.Module):
 
-    def __init__(self, module):
+    def __init__(self, module, use_eval=True):
         super().__init__()
 
         self.module = module
+        self.use_eval = use_eval
 
         for p in module.parameters():
             p.requires_grad = False
 
     def forward(self, x):
-        return self.module.eval()(x)
+        if self.use_eval:
+            self.module.eval()
+
+        return self.module(x)
+
+    def extra_repr(self):
+        return f"use_eval={self.use_eval}"
