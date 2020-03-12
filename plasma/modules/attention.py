@@ -54,7 +54,7 @@ class CBAM(nn.Module):
         ])
 
         self.spatial_attention = nn.Sequential(*[
-            nn.Conv2d(2, 1, kernel_size=7),
+            nn.Conv2d(2, 1, kernel_size=7, padding=3),
             nn.Sigmoid()
         ])
 
@@ -65,7 +65,7 @@ class CBAM(nn.Module):
         channel_attention = channel_attention.sigmoid()
 
         x = channel_attention * x
-        spatial_attention = torch.cat([x.max(dim=1, keepdim=True), x.mean(dim=1, keepdim=True)], dim=1)
+        spatial_attention = torch.cat([x.max(dim=1, keepdim=True)[0], x.mean(dim=1, keepdim=True)], dim=1)
         spatial_attention = self.spatial_attention(spatial_attention)
         x = spatial_attention * x
 

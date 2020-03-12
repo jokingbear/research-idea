@@ -132,13 +132,13 @@ class StandardTrainer:
                 metrics = metrics / len(test)
                 losses = losses / len(test)
             else:
-                if torch.is_tensor(preds):
+                if torch.is_tensor(preds[0]):
                     preds = torch.cat(preds, dim=0)
                 else:
                     col = len(preds[0])
                     preds = [torch.cat([p[c] for p in preds], dim=0) for c in range(col)]
 
-                if torch.is_tensor(trues):
+                if torch.is_tensor(trues[0]):
                     trues = torch.cat(trues, dim=0)
                 else:
                     col = len(trues[0])
