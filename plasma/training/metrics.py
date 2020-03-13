@@ -1,12 +1,13 @@
 import torch
 
 
-def dice_coefficient_fn(input_rank=4, smooth=1e-7, binary=False, cast=False):
-    assert input_rank >= 3, "input_rank must be bigger than 2"
-
-    axes = list(range(2, input_rank))
+def dice_coefficient_fn(smooth=1e-7, binary=False, cast=False, batch_wise=False):
 
     def dice_coefficient(pred, true):
+        pred = pred.flatten(start_dim=2)
+        true = true.flatten(start_dim=2)
+        true = true[:, 1:, ...] if not binary else true
+
         if cast:
             if binary:
                 pred = (pred >= 0.5).type(torch.float)
@@ -15,7 +16,7 @@ def dice_coefficient_fn(input_rank=4, smooth=1e-7, binary=False, cast=False):
                 pred = pred.argmax(dim=1)
                 pred = torch.stack([pred == i for i in range(1, n_class)], dim=1)
 
-        true = true[:, 1:, ...] if not binary else true
+        axes = -1 if batch_wise else [0, -1]
 
         p = 2 * (true * pred).sum(dim=axes)
         s = (true + pred).sum(dim=axes)

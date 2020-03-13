@@ -1,3 +1,6 @@
+import numpy as np
+
+
 def focal_loss_fn(gamma=2, binary=False):
     def focal_loss(pred, true):
         if binary:
@@ -12,13 +15,16 @@ def focal_loss_fn(gamma=2, binary=False):
     return focal_loss
 
 
-def dice_loss_fn(rank=2, smooth=1e-7, binary=False):
-    axes = tuple(range(2, 2 + rank))
-
+def dice_loss_fn(smooth=1e-7, binary=False, batch_wise=False):
     def dice_loss(pred, true):
+        pred = pred.flatten(start_dim=2)
+        true = true.flatten(start_dim=2)
+
         if not binary:
             true = true[:, 1:, ...]
             pred = pred[:, 1:, ...]
+
+        axes = -1 if batch_wise else [0, -1]
 
         p = 2 * (true * pred).sum(dim=axes)
         s = (true + pred).sum(dim=axes)
@@ -48,15 +54,23 @@ def fb_loss_fn(beta=1, binary=False, smooth=1e-7):
     return fb_loss
 
 
-def weighted_bce(weights):
-    def loss(pred, true):
-        ln0 = weights[..., 0] * (1 - true) * (1 - pred + 1e-7).log()
-        ln1 = weights[..., 1] * true * (pred + 1e-7).log()
+def weighted_bce(weights, smooth=None):
+    def wbce(pred, true):
+        ln0 = (1 - pred + 1e-7).log()
+        ln1 = (pred + 1e-7).log()
+
+        if smooth is not None:
+            sm = np.random.uniform(smooth, 1)
+            ln0 = weights[..., 0] * (1 - true) * (sm * ln0 + (1 - sm) * ln1)
+            ln1 = weights[..., 1] * true * (sm * ln1 + (1 - sm) * ln0)
+        else:
+            ln0 = weights[..., 0] * (1 - true) * ln0
+            ln1 = weights[..., 1] * true * ln1
 
         ln = ln0 + ln1
         return -ln.mean()
 
-    return loss
+    return wbce
 
 
 def combine_loss(*losses, weights=None):
