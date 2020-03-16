@@ -1,7 +1,7 @@
 import torch
+import torch.utils.data as data
 
 from tqdm import tqdm, tqdm_notebook as tqdm_nb
-from torch.utils.data import DataLoader
 
 on_notebook = True
 default_device = "cpu"
@@ -39,3 +39,15 @@ def eval_model(model):
     model.eval()
 
     return torch.no_grad()
+
+
+def iterate_numpies(*arr, batch_size=32):
+    n = arr[0].shape[0]
+
+    n_iter = n // batch_size
+    if n % batch_size != 0:
+        n_iter += 1
+    
+    for p in range(n_iter):
+        result = [a[p * batch_size:(p + 1) * batch_size] for a in arr]
+        yield result[0] if len(result) == 1 else result

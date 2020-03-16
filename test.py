@@ -34,13 +34,6 @@ class ResCap(nn.Module):
         self.layer3 = encoder.layer3
         self.layer4 = encoder.layer4
 
-        self.classifier = nn.Sequential(*[
-            Conv_BN_ReLU(2048, 2048),
-            GlobalAverage(),
-            nn.Linear(2048, 1),
-            nn.Sigmoid()
-        ])
-
         if iters > 1:
             self.encoder.apply(apply_iters)
 
@@ -49,20 +42,20 @@ class ResCap(nn.Module):
         self.up8x = nn.Upsample(scale_factor=8, mode="bilinear", align_corners=True)
         self.up16x = nn.Upsample(scale_factor=16, mode="bilinear", align_corners=True)
 
-        self.decoder4 = Conv_BN_ReLU(2048, 64, attention=True)  # 16 x 16
-        self.decoder3 = Conv_BN_ReLU(1024 + 64, 64, attention=True)   # 32 x 32
-        self.decoder2 = Conv_BN_ReLU(512 + 64, 64, attention=True)   # 64 x 64
-        self.decoder1 = Conv_BN_ReLU(256 + 64, 64, attention=True)    # 128 x 128
+        self.decoder4 = Conv_BN_ReLU(2048, 64, attention=False)  # 16 x 16
+        self.decoder3 = Conv_BN_ReLU(1024 + 64, 64, attention=False)   # 32 x 32
+        self.decoder2 = Conv_BN_ReLU(512 + 64, 64, attention=False)   # 64 x 64
+        self.decoder1 = Conv_BN_ReLU(256 + 64, 64, attention=False)    # 128 x 128
         self.mask = nn.Sequential(*[
             nn.Conv2d(64 * 4, 1, kernel_size=3),
             nn.Sigmoid()
         ])
 
     def forward(self, x):
-        prob, cons = self.forward_classification(x)
+        cons = self.forward_classification(x)
         mask = self.forward_segmentation(*cons)
 
-        return prob, mask
+        return mask
 
     def forward_classification(self, x):
         con0 = self.layer0(x)
@@ -71,8 +64,7 @@ class ResCap(nn.Module):
         con3 = self.layer3(con2)
         con4 = self.layer4(con3)
 
-        prob = self.classifier(con4)
-        return prob, [con1, con2, con3, con4]
+        return con1, con2, con3, con4
 
     def forward_segmentation(self, skip1, skip2, skip3, skip4):
         up4 = self.up2x(skip4)
