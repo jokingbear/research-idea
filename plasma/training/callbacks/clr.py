@@ -174,21 +174,30 @@ class WarmRestart(Callback):
 
 class SuperConvergence(Callback):
 
-    def __init__(self, max_lr, epochs):
+    def __init__(self, epochs, snapshot=True, directory="checkpoint", name=None):
         super().__init__()
 
-        self.max_lr = max_lr
         self.epochs = epochs
+        self.snapshot = snapshot
+        self.dir = directory
+        self.name = name or "model"
         self.scheduler = None
 
     def on_train_begin(self, **train_configs):
         n = len(train_configs["train_loader"])
+        max_lr = max([g["lr"] for g in self.optimizer.param_groups()])
 
-        self.scheduler = opts.lr_scheduler.OneCycleLR(self.optimizer, self.max_lr,
-                                                      epochs=self.epochs, steps_per_epoch=n)
+        self.scheduler = opts.lr_scheduler.OneCycleLR(self.optimizer, max_lr, epochs=self.epochs, steps_per_epoch=n)
+
+        if os.path.exists(self.dir) and self.snapshot:
+            os.mkdir(self.dir)
 
     def on_training_batch_end(self, batch, x, y, pred, logs=None):
         self.scheduler.step()
 
     def on_epoch_end(self, epoch, logs=None):
         self.trainer.training = epoch + 1 < self.epochs
+
+        if not self.trainer.training:
+            w = self.model.state_dict()
+            torch.save(w, f"{self.dir}/{self.model}.model")
