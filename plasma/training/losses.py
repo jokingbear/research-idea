@@ -1,8 +1,18 @@
 import numpy as np
+import torch
 
 
-def focal_loss_fn(gamma=2, binary=False):
+def _assert_inputs(pred, true):
+    assert pred.shape == true.shape, f"predition shape {pred.shape} is not the same as label shape {true.shape}"
+
+
+def focal_loss_fn(gamma=2, binary=False, one_hot_n_class=None):
     def focal_loss(pred, true):
+        if one_hot_n_class is not None:
+            true = torch.stack([true == i for i in range(one_hot_n_class)], dim=1)
+
+        _assert_inputs(pred, true)
+
         if binary:
             prob = true * pred + (1 - true) * (1 - pred)
         else:
@@ -15,37 +25,21 @@ def focal_loss_fn(gamma=2, binary=False):
     return focal_loss
 
 
-def dice_loss_fn(smooth=1e-7, binary=False, batch_wise=False):
-    def dice_loss(pred, true):
-        pred = pred.flatten(start_dim=2)
-        true = true.flatten(start_dim=2)
-
-        if not binary:
-            true = true[:, 1:, ...]
-            pred = pred[:, 1:, ...]
-
-        axes = -1 if batch_wise else [0, -1]
-
-        p = 2 * (true * pred).sum(dim=axes)
-        s = (true + pred).sum(dim=axes)
-
-        dice = (p + smooth) / (s + smooth)
-
-        return (1 - dice).mean()
-
-    return dice_loss
-
-
-def fb_loss_fn(beta=1, binary=False, smooth=1e-7):
+def fb_loss_fn(beta=1, axes=(0,), binary=False, one_hot_n_class=None, smooth=1e-7):
     beta2 = beta ** 2
 
     def fb_loss(pred, true):
+        if one_hot_n_class is not None:
+            true = torch.stack([true == i for i in range(one_hot_n_class)], dim=1)
+
         if not binary:
             true = true[:, 1:, ...]
             pred = pred[:, 1:, ...]
 
-        p = (beta2 + 1) * (true * pred).sum(dim=0)
-        s = (beta2 * true + pred).sum(dim=0)
+        _assert_inputs(pred, true)
+
+        p = (beta2 + 1) * (true * pred).sum(dim=axes)
+        s = (beta2 * true + pred).sum(dim=axes)
 
         fb = (p + smooth) / (s + smooth)
 
@@ -56,6 +50,8 @@ def fb_loss_fn(beta=1, binary=False, smooth=1e-7):
 
 def weighted_bce(weights, smooth=None):
     def wbce(pred, true):
+        _assert_inputs(pred, true)
+
         ln0 = (1 - pred + 1e-7).log()
         ln1 = (pred + 1e-7).log()
 

@@ -36,8 +36,7 @@ class StandardTrainer:
         train_loader = DataLoader(train, batch_size=batch_size, sampler=train_sampler, shuffle=train_sampler is None,
                                   drop_last=True, num_workers=workers, pin_memory=pin_memory)
 
-        test_sampler = test.get_sampler() if hasattr(test, "get_sampler") else None
-        test_loader = DataLoader(test, batch_size=val_batch_size, sampler=test_sampler, drop_last=False,
+        test_loader = DataLoader(test, batch_size=val_batch_size, shuffle=False, drop_last=False,
                                  num_workers=workers, pin_memory=pin_memory) if test is not None else None
 
         [c.set_trainer(self) for c in callbacks]
@@ -72,11 +71,12 @@ class StandardTrainer:
 
                 with torch.no_grad():
                     metrics = pd.concat([losses, self.calculate_metrics(pred, y)])
-                    logs = metrics
+                    logs = metrics.copy()
 
                     [c.on_training_batch_end(i, x, y, pred, logs) for c in callbacks]
                     running_metrics = running_metrics + metrics
-                    logs = running_metrics / (i + 1)
+                    logs = logs.copy()
+                    logs.update(running_metrics / (i + 1))
 
                 pbar.set_postfix(logs)
                 pbar.update(1)
