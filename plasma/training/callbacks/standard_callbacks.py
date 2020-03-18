@@ -181,7 +181,7 @@ class CSVLogger(Callback):
 
 class Tensorboard(Callback):
 
-    def __init__(self, log_dir, steps=50, flushes=60, inputs=None):
+    def __init__(self, log_dir, steps=50, flushes=2, inputs=None):
         super().__init__()
 
         self.log_dir = log_dir
@@ -202,13 +202,13 @@ class Tensorboard(Callback):
 
     def on_training_batch_end(self, batch, x, y, pred, logs=None):
         if self.current_step % self.steps == 0:
-            for k in logs:
-                self.train_writer.add_scalar(f"train/{k}", logs[k], batch)
+            for k in logs.keys():
+                self.train_writer.add_scalar(f"train/{k}", logs[k], self.current_step)
 
         self.current_step += 1
 
     def on_epoch_end(self, epoch, logs=None):
-        for k in logs:
+        for k in logs.keys():
             if "val" not in k:
                 self.train_writer.add_scalar(k, logs[k], epoch)
             else:
