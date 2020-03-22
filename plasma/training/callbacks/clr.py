@@ -185,11 +185,11 @@ class SuperConvergence(Callback):
 
     def on_train_begin(self, **train_configs):
         n = len(train_configs["train_loader"])
-        max_lr = max([g["lr"] for g in self.optimizer.param_groups()])
+        max_lr = [g["lr"] for g in self.optimizer.param_groups]
 
         self.scheduler = opts.lr_scheduler.OneCycleLR(self.optimizer, max_lr, epochs=self.epochs, steps_per_epoch=n)
 
-        if os.path.exists(self.dir) and self.snapshot:
+        if not os.path.exists(self.dir) and self.snapshot:
             os.mkdir(self.dir)
 
     def on_training_batch_end(self, batch, x, y, pred, logs=None):
@@ -200,4 +200,4 @@ class SuperConvergence(Callback):
 
         if not self.trainer.training:
             w = self.model.state_dict()
-            torch.save(w, f"{self.dir}/{self.model}.model")
+            torch.save(w, f"{self.dir}/{self.name}.model")
