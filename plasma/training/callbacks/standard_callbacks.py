@@ -5,6 +5,7 @@ import os
 import time
 import numpy as np
 import torch
+import torch.nn as nn
 import torch.optim.lr_scheduler as schedulers
 
 from torch.utils.tensorboard import SummaryWriter
@@ -91,7 +92,9 @@ class ModelCheckpoint(Callback):
 
         if is_save:
             print("saving model to ", self.file_path) if self.verbose else None
-            torch.save(self.model.state_dict(), self.file_path + ".model")
+            model_dict = self.model.module.state_dict() if isinstance(self.model, nn.DataParallel) \
+                else self.model.state_dict()
+            torch.save(model_dict, self.file_path + ".model")
             torch.save(self.optimizer.state_dict(), self.file_path + ".opt")
 
             self.running_monitor_val = monitor_val

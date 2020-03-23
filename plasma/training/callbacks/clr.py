@@ -3,6 +3,7 @@ from collections import defaultdict
 
 import numpy as np
 import torch
+import torch.nn as nn
 import torch.optim as opts
 
 from plasma.training.callbacks.base_class import Callback
@@ -108,7 +109,8 @@ class CLR(Callback):
             cycle = self.cycle_step // self.cycle_rate
 
             print("saving snapshot of cycle ", cycle)
-            model_dict = self.model.state_dict()
+            model_dict = self.model.module.state_dict() if isinstance(self.model, nn.DataParallel) \
+                else self.model.state_dict()
             opt_dict = self.optimizer.state_dict()
 
             torch.save(model_dict, f"{self.dir}/snapshot_cycle_{cycle}.model")
@@ -160,7 +162,8 @@ class WarmRestart(Callback):
 
             print("starting cycle ", self.finished_cycles + 1) if self.finished_cycles != self.cycles else None
             if self.snapshot:
-                model_state = self.model.state_dict()
+                model_state = self.model.module.state_dict() if isinstance(self.model, nn.DataParallel) \
+                    else self.model.state_dict()
                 torch.save(model_state, f"{self.dir}/snapshot_{self.model_name}_cycle_{self.finished_cycles}.model")
 
                 opt_state = self.optimizer.state_dict()
@@ -199,5 +202,5 @@ class SuperConvergence(Callback):
         self.trainer.training = epoch + 1 < self.epochs
 
         if not self.trainer.training:
-            w = self.model.state_dict()
+            w = self.model.module.state_dict() if isinstance(self.model, nn.DataParallel) else self.model.state_dict()
             torch.save(w, f"{self.dir}/{self.name}.model")
