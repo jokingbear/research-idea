@@ -1,5 +1,9 @@
-import pandas as pd
+import torch.nn as nn
+
+from plasma.modules import *
+from torchvision import models
 
 
-df = pd.read_csv("train.csv")
-df["Pneumothorax"].value_counts()
+a = models.resnext50_32x4d()
+
+Frozen.freeze(a, nn.BatchNorm2d)
