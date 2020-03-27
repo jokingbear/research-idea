@@ -72,3 +72,11 @@ class Frozen(nn.Module):
 
     def extra_repr(self):
         return f"use_eval={self.use_eval}"
+
+    @staticmethod
+    def freeze(model, module_type, use_val=True):
+        for name, child in model.named_children():
+            if isinstance(child, module_type):
+                setattr(model, name, Frozen(child, use_val))
+            else:
+                Frozen.freeze(child, module_type, use_val)
