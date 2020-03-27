@@ -1,5 +1,6 @@
 import torch
-import torch.utils.data as data
+import torch.onnx as onnx
+import onnxruntime as runtime
 
 from tqdm import tqdm, tqdm_notebook as tqdm_nb
 
@@ -51,3 +52,34 @@ def iterate_numpies(*arr, batch_size=32):
     for p in range(n_iter):
         result = [a[p * batch_size:(p + 1) * batch_size] for a in arr]
         yield result[0] if len(result) == 1 else result
+
+
+def save_onnx(path, model, *input_shapes, device="cpu"):
+    model = model.eval()
+    args = [torch.ones([1, *shape], requires_grad=True, device=device) for shape in input_shapes]
+    outputs = model(*args)
+
+    if torch.is_tensor(outputs):
+        outputs = [outputs]
+
+    input_names = [f"input_{i}" for i, _ in enumerate(args)]
+    output_names = [f"output_{i}" for i, _ in enumerate(outputs)]
+
+    onnx.export(model, tuple(args), path,
+                export_params=True, verbose=True, do_constant_folding=True,
+                input_names=input_names,
+                output_names=output_names,
+                dynamic_axes={n: {0: "batch_size"} for n in input_names + output_names},
+                opset_version=10,)
+
+
+def load_onnx(path, output_names=None):
+    session = runtime.InferenceSession(path)
+
+    def predict(*args):
+        args = {f"input_{i}": a for i, a in enumerate(args)}
+        preds = session.run(output_names, args)
+
+        return preds
+
+    return predict
