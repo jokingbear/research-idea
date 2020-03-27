@@ -1,8 +1,10 @@
 conda install matplotlib pandas seaborn scikit-learn imageio h5py tqdm plotly
 conda install nodejs jupyterlab ipywidgets
 conda install pytorch torchvision cudatoolkit=10.1 -c pytorch
-conda install tensorflow
+conda install tensorboard
+conda install -c conda-forge imgaug
 conda install albumentations -c albumentations
+conda install -c conda-forge conda-pack
 
 -------------------------------------------------------------
 
