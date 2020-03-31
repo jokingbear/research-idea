@@ -36,7 +36,7 @@ class Identity(nn.Module):
         return x
 
 
-class ImagenetNormalization(nn.Module):
+class ImagenetNorm(nn.Module):
 
     def __init__(self, from_gray=True):
         super().__init__()
@@ -51,6 +51,9 @@ class ImagenetNormalization(nn.Module):
         std = self.std.view(1, 3, 1, 1)
 
         return (x - mean) / std
+
+    def extra_repr(self):
+        return f"from_gray={self.from_gray}"
 
 
 class Frozen(nn.Module):

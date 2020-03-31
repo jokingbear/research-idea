@@ -1,9 +1,8 @@
-import torch.nn as nn
+import torchvision.models as models
 
 from plasma.modules import *
-from torchvision import models
 
 
-a = models.resnext50_32x4d()
+a = torch.hub.load('facebookresearch/semi-supervised-ImageNet1K-models', 'resnext101_32x16d_swsl')
 
-Frozen.freeze(a, nn.BatchNorm2d)
+torch.save(a.state_dict(), "resnext101_32x16_swsl.model")
