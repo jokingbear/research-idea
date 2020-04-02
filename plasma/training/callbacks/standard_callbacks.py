@@ -93,14 +93,15 @@ class ModelCheckpoint(Callback):
 
         if is_save:
             print("saving model to ", self.file_path) if self.verbose else None
-            model_dict = self.model.module.state_dict() if isinstance(self.model, nn.DataParallel) \
-                else self.model.state_dict()
-            if self.overwrite:
-                torch.save(model_dict, self.file_path + ".model")
-                torch.save(self.optimizer.state_dict(), self.file_path + ".opt")
-            else:
-                torch.save(model_dict, f"{self.file_path}_{epoch}.model")
-                torch.save(model_dict, f"{self.file_path}_{epoch}.opt")
+            model_dict = self.model.state_dict()
+            optim_dict = self.optimizer.state_dict()
+            path = self.file_path
+
+            if not self.overwrite:
+                path = f"{path}_{epoch}"
+
+            torch.save(model_dict, path + ".model")
+            torch.save(optim_dict, path + ".optim")
 
             self.running_monitor_val = monitor_val
 

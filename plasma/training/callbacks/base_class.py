@@ -1,3 +1,5 @@
+import torch.nn as nn
+
 from plasma.training.trainer import StandardTrainer as Trainer
 
 
@@ -34,6 +36,9 @@ class Callback:
         pass
 
     def set_trainer(self, trainer: Trainer):
-        self.model = trainer.model
-        self.optimizer = trainer.optimizer
+        model = trainer.model
+        optim = trainer.optimizer
+
+        self.model = model.module if isinstance(model, nn.DataParallel) else model
+        self.optimizer = optim
         self.trainer = trainer
