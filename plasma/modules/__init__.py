@@ -6,4 +6,3 @@ from plasma.modules.hierarchical_graph import GraphLinear, GraphSequential
 from plasma.modules.pretrained_models import dynamic_routing_next50, dynamic_routing_next101, apply_iters, \
     attention_next50
 from plasma.modules.router import DynamicRouting2d, EMRouting2d, AttentionRouting
-from plasma.modules import tta
