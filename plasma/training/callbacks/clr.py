@@ -132,7 +132,7 @@ class SuperConvergence(Callback):
         self.epochs = epochs
         self.snapshot = snapshot
         self.dir = directory
-        self.name = name or "model"
+        self.name = name or "super_convergence"
         self.scheduler = None
 
     def on_train_begin(self, **train_configs):
@@ -152,4 +152,4 @@ class SuperConvergence(Callback):
 
         if not self.trainer.training:
             model_dict = self.model.state_dict()
-            torch.save(model_dict, f"{self.dir}/super_convergence.model")
+            torch.save(model_dict, f"{self.dir}/{self.name}.model")
