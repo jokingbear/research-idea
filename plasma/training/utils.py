@@ -71,15 +71,3 @@ def save_onnx(path, model, *input_shapes, device="cpu"):
                 output_names=output_names,
                 dynamic_axes={n: {0: "batch_size"} for n in input_names + output_names},
                 opset_version=10,)
-
-
-def load_onnx(path, output_names=None):
-    session = runtime.InferenceSession(path)
-
-    def predict(*args):
-        args = {f"input_{i}": a for i, a in enumerate(args)}
-        preds = session.run(output_names, args)
-
-        return preds
-
-    return predict
