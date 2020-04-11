@@ -72,13 +72,14 @@ class EarlyStopping(Callback):
 class ModelCheckpoint(Callback):
 
     def __init__(self, file_path, monitor="val_loss", mode="min",
-                 save_best_only=True, verbose=1):
+                 save_best_only=True, overwrite=True, verbose=1):
         super().__init__()
 
         self.file_path = file_path
         self.monitor = monitor
         self.mode = mode
         self.save_best_only = save_best_only
+        self.overwrite = overwrite
         self.verbose = verbose
         self.running_monitor_val = np.inf if mode == "min" else -np.inf
 
@@ -92,10 +93,15 @@ class ModelCheckpoint(Callback):
 
         if is_save:
             print("saving model to ", self.file_path) if self.verbose else None
-            model_dict = self.model.module.state_dict() if isinstance(self.model, nn.DataParallel) \
-                else self.model.state_dict()
-            torch.save(model_dict, self.file_path + ".model")
-            torch.save(self.optimizer.state_dict(), self.file_path + ".opt")
+            model_dict = self.model.state_dict()
+            optim_dict = self.optimizer.state_dict()
+            path = self.file_path
+
+            if not self.overwrite:
+                path = f"{path}_{epoch}"
+
+            torch.save(model_dict, path + ".model")
+            torch.save(optim_dict, path + ".optim")
 
             self.running_monitor_val = monitor_val
 

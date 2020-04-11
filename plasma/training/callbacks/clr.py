@@ -3,7 +3,6 @@ from collections import defaultdict
 
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.optim as opts
 
 from plasma.training.callbacks.base_class import Callback
@@ -68,55 +67,6 @@ class LrFinder(Callback):
             plt.show()
 
 
-class CLR(Callback):
-
-    def __init__(self, min_lr, max_lr, cycle_rate=2, reduce_lr_each_cycle=False,
-                 snapshot=True, directory="checkpoint", model_name=None):
-        super().__init__()
-
-        self.min_lr = min_lr
-        self.max_lr = max_lr
-
-        assert cycle_rate % 2 == 0, "cycle_rate must be divisible by 2"
-        self.cycle_rate = cycle_rate
-        self.reduce_lr_each_cycle = reduce_lr_each_cycle
-        self.clr = None
-        self.snapshot = snapshot
-        self.dir = directory
-        self.model_name = model_name or "model"
-        self.cycle_step = 0
-
-    def on_train_begin(self, train_loader, **train_configs):
-        iterations = len(train_loader)
-
-        self.clr = opts.lr_scheduler.CyclicLR(self.optimizer, self.min_lr, self.max_lr,
-                                              step_size_up=iterations * self.cycle_rate // 2,
-                                              mode="triangular2" if self.reduce_lr_each_cycle else "triangular")
-
-        if not os.path.exists(self.dir) and self.snapshot:
-            os.mkdir(self.dir)
-
-    def on_training_batch_end(self, batch, x, y, pred, logs=None):
-        for i, g in enumerate(self.optimizer.param_groups()):
-            logs[f"lr_{i}"] = g["lr"]
-
-        self.clr.step()
-
-    def on_epoch_end(self, epoch, logs=None):
-        self.cycle_step += 1
-
-        if self.cycle_step % self.cycle_rate == 0 and self.snapshot:
-            cycle = self.cycle_step // self.cycle_rate
-
-            print("saving snapshot of cycle ", cycle)
-            model_dict = self.model.module.state_dict() if isinstance(self.model, nn.DataParallel) \
-                else self.model.state_dict()
-            opt_dict = self.optimizer.state_dict()
-
-            torch.save(model_dict, f"{self.dir}/snapshot_cycle_{cycle}.model")
-            torch.save(opt_dict, f"{self.dir}/snapshot_cycle_{cycle}.opt")
-
-
 class WarmRestart(Callback):
 
     def __init__(self, min_lr, t0=10, factor=2, cycles=3, reset_state=False,
@@ -162,12 +112,11 @@ class WarmRestart(Callback):
 
             print("starting cycle ", self.finished_cycles + 1) if self.finished_cycles != self.cycles else None
             if self.snapshot:
-                model_state = self.model.module.state_dict() if isinstance(self.model, nn.DataParallel) \
-                    else self.model.state_dict()
-                torch.save(model_state, f"{self.dir}/snapshot_{self.model_name}_cycle_{self.finished_cycles}.model")
+                model_dict = self.model.state_dict()
+                optim_dict = self.optimizer.state_dict()
 
-                opt_state = self.optimizer.state_dict()
-                torch.save(opt_state, f"{self.dir}/snapshot_{self.model_name}_cycle_{self.finished_cycles}.opt")
+                torch.save(model_dict, f"{self.dir}/snapshot_{self.model_name}_cycle_{self.finished_cycles}.model")
+                torch.save(optim_dict, f"{self.dir}/snapshot_{self.model_name}_cycle_{self.finished_cycles}.optim")
 
             if self.reset_state:
                 self.optimizer.state = defaultdict(dict)
@@ -183,7 +132,7 @@ class SuperConvergence(Callback):
         self.epochs = epochs
         self.snapshot = snapshot
         self.dir = directory
-        self.name = name or "model"
+        self.name = name or "super_convergence"
         self.scheduler = None
 
     def on_train_begin(self, **train_configs):
@@ -202,5 +151,5 @@ class SuperConvergence(Callback):
         self.trainer.training = epoch + 1 < self.epochs
 
         if not self.trainer.training:
-            w = self.model.module.state_dict() if isinstance(self.model, nn.DataParallel) else self.model.state_dict()
-            torch.save(w, f"{self.dir}/{self.name}.model")
+            model_dict = self.model.state_dict()
+            torch.save(model_dict, f"{self.dir}/{self.name}.model")

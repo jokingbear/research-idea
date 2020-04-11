@@ -36,47 +36,21 @@ class Identity(nn.Module):
         return x
 
 
-class ImagenetNormalization(nn.Module):
+class ImagenetNorm(nn.Module):
 
-    def __init__(self, from_gray=True):
+    def __init__(self, from_raw=True):
         super().__init__()
 
-        self.from_gray = from_gray
+        self.from_raw = from_raw
         self.mean = nn.Parameter(torch.tensor([0.485, 0.456, 0.406]), requires_grad=False)
         self.std = nn.Parameter(torch.tensor([0.229, 0.224, 0.225]), requires_grad=False)
 
-    def forward(self, x):
-        x = x.repeat(1, 3, 1, 1) if self.from_gray else x
+    def forward(self, x: torch.Tensor):
+        x = x / 255 if self.from_raw else x
         mean = self.mean.view(1, 3, 1, 1)
         std = self.std.view(1, 3, 1, 1)
 
         return (x - mean) / std
 
-
-class Frozen(nn.Module):
-
-    def __init__(self, module, use_eval=True):
-        super().__init__()
-
-        self.module = module
-        self.use_eval = use_eval
-
-        for p in module.parameters():
-            p.requires_grad = False
-
-    def forward(self, x):
-        if self.use_eval:
-            self.module.eval()
-
-        return self.module(x)
-
     def extra_repr(self):
-        return f"use_eval={self.use_eval}"
-
-    @staticmethod
-    def freeze(model, module_type, use_val=True):
-        for name, child in model.named_children():
-            if isinstance(child, module_type):
-                setattr(model, name, Frozen(child, use_val))
-            else:
-                Frozen.freeze(child, module_type, use_val)
+        return f"from_raw={self.from_raw}"

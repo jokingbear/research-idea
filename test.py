@@ -1,9 +1,9 @@
-import torch.nn as nn
+import torch
 
 from plasma.modules import *
-from torchvision import models
 
+a = torch.ones(1, 3, 5, 5, dtype=torch.int) * 255
 
-a = models.resnext50_32x4d()
+b = ImagenetNorm(from_gray=False)(a)
 
-Frozen.freeze(a, nn.BatchNorm2d)
+from albumentations import RandomBrightnessContrast
