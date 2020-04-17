@@ -1,9 +1,8 @@
-import torch
-
 from plasma.modules import *
 
-a = torch.ones(1, 3, 5, 5, dtype=torch.int) * 255
 
-b = ImagenetNorm(from_gray=False)(a)
+a = torch.ones(5, 8, 8, 8)
+e = torch.ones(5, 12)
 
-from albumentations import RandomBrightnessContrast
+norm = GraphAdaBatchNorm(5, 12, nn.BatchNorm2d(8))
+b = norm(a, e)
