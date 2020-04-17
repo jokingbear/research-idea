@@ -23,13 +23,26 @@ class StandardDataset(data.Dataset):
         pass
 
     def get_sampler(self):
-        return CustomSampler(self)
+        return RandomSampler(self)
 
 
-class CustomSampler(data.RandomSampler):
+class RandomSampler(data.RandomSampler):
 
     def __init__(self, dataset):
         super().__init__(dataset, replacement=False)
+
+        self.dataset = dataset
+
+    def __iter__(self):
+        self.dataset.sample()
+
+        return super().__iter__()
+
+
+class SequentialSampler(data.SequentialSampler):
+
+    def __init__(self, dataset):
+        super().__init__(dataset)
 
         self.dataset = dataset
 

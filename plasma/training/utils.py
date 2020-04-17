@@ -1,6 +1,5 @@
 import torch
 import torch.onnx as onnx
-import onnxruntime as runtime
 
 from tqdm import tqdm, tqdm_notebook as tqdm_nb
 
