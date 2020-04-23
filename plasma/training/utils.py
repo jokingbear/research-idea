@@ -1,6 +1,8 @@
 import torch
 import torch.onnx as onnx
 
+import numpy as np
+
 from tqdm import tqdm, tqdm_notebook as tqdm_nb
 
 on_notebook = True
@@ -17,9 +19,9 @@ def to_device(xs, dtype=None, device=None):
     dtype = dtype or default_type
 
     if type(xs) in {list, tuple}:
-        return [x.type(dtype).to(device) for x in xs]
+        return [x.to(device).type(dtype) for x in xs]
     else:
-        x = xs.type(dtype).to(device)
+        x = xs.to(device).type(dtype)
         return x
 
 
@@ -35,22 +37,10 @@ def get_inputs_labels(xy, x_type, x_device, y_type, y_device):
         return x, x
 
 
-def eval_model(model):
-    model.eval()
+def eval_models(*models):
+    [m.eval() for m in models]
 
     return torch.no_grad()
-
-
-def iterate_numpies(*arr, batch_size=32):
-    n = arr[0].shape[0]
-
-    n_iter = n // batch_size
-    if n % batch_size != 0:
-        n_iter += 1
-    
-    for p in range(n_iter):
-        result = [a[p * batch_size:(p + 1) * batch_size] for a in arr]
-        yield result[0] if len(result) == 1 else result
 
 
 def save_onnx(path, model, *input_shapes, device="cpu"):
@@ -70,3 +60,17 @@ def save_onnx(path, model, *input_shapes, device="cpu"):
                 output_names=output_names,
                 dynamic_axes={n: {0: "batch_size"} for n in input_names + output_names},
                 opset_version=10,)
+
+
+def get_batch_iterator(arr, batch_size=32):
+    arr = np.array(arr)
+
+    n = len(arr) // batch_size
+    mod = len(arr) % batch_size
+
+    iterations = n
+
+    if mod != 0:
+        iterations += 1
+
+    return [arr[i * batch_size:(i + 1) * batch_size] for i in range(iterations)]
