@@ -1,8 +1,8 @@
-from plasma.modules import *
+import numpy as np
+
+from plasma.training import utils
 
 
-a = torch.ones(5, 8, 8, 8)
-e = torch.ones(5, 12)
+a = np.arange(1, 100)
 
-norm = GraphAdaBatchNorm(5, 12, nn.BatchNorm2d(8))
-b = norm(a, e)
+loader = utils.get_batch_iterator(a)

@@ -54,3 +54,9 @@ class ImagenetNorm(nn.Module):
 
     def extra_repr(self):
         return f"from_raw={self.from_raw}"
+
+
+class Normalization(nn.Module):
+
+    def forward(self, x):
+        return x / 127.5 - 1
