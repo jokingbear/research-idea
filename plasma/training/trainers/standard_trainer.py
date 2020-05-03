@@ -142,7 +142,7 @@ class StandardTrainer:
                     trues = torch.cat(trues, dim=0)
                 else:
                     col = len(trues[0])
-                    trues = [torch.cat([p[c] for p in preds], dim=0) for c in range(col)]
+                    trues = [torch.cat([p[c] for p in trues], dim=0) for c in range(col)]
 
                 metrics = self.calculate_metrics(preds, trues, "val_")
                 losses = self.get_series(self.loss(preds, trues), "val_")
