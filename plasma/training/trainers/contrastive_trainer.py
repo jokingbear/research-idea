@@ -60,13 +60,13 @@ class ContrastiveTrainer:
                 x1, x2 = utils.get_inputs_labels(x, self.x_type, self.x_device, self.x_type, self.x_device)
                 [c.on_training_batch_begin(i, x1, x2) for c in callbacks]
 
-                losses = self.train_one_batch(x1, x2)
+                loss = self.train_one_batch(x1, x2)
 
                 with torch.no_grad():
-                    logs = losses.copy()
+                    logs = loss.copy()
 
                     [c.on_training_batch_end(i, x1, x2, None, logs) for c in callbacks]
-                    running_metrics = running_metrics + losses
+                    running_metrics = running_metrics + loss
                     logs = logs.copy()
                     logs.update(running_metrics / (i + 1))
 
