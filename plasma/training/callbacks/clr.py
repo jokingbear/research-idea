@@ -153,3 +153,31 @@ class SuperConvergence(Callback):
         if not self.trainer.training:
             model_dict = self.model.state_dict()
             torch.save(model_dict, f"{self.dir}/{self.name}.model")
+
+
+class Warmup(Callback):
+
+    def __init__(self, epochs, min_lr=1e-5):
+        super().__init__()
+
+        self.epochs = epochs
+        self.min_lr = min_lr
+
+        self.max_lrs = []
+        self.total_steps = 0
+        self.step = 0
+
+    def on_train_begin(self, **train_configs):
+        self.max_lrs = [pg["lr"] for pg in self.optimizer.param_groups]
+        self.total_steps = self.epochs * len(train_configs["train_loader"])
+
+    def on_training_batch_begin(self, batch, x, y):
+        self.step += 1
+
+    def on_training_batch_end(self, batch, x, y, pred, logs=None):
+        min_lr = self.min_lr
+        for max_lr, pg in zip(self.max_lrs, self.optimizer.param_groups):
+            pg["lr"] = min_lr + (max_lr - min_lr) / self.total_steps * self.step
+
+    def on_epoch_end(self, epoch, logs=None):
+        self.trainer.training = epoch + 1 < self.epochs
