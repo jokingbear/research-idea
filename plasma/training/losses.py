@@ -100,10 +100,10 @@ def contrastive_loss_fn(t=0.1, normalize=True, ep=1e12):
             arg2 = func.normalize(arg2)
 
         arg = torch.cat([arg1, arg2], dim=0)
-        s = func.linear(arg, arg)
-        diag_s = s.diag().diag()
+        scores = func.linear(arg, arg)
+        diag_scores = scores.diag().diag()
         identity = torch.ones(arg1.shape[0] * 2, device=arg1.device).diag()
-        normalized_s = s - diag_s - ep * identity
+        normalized_s = scores - diag_scores - ep * identity
         normalized_s = normalized_s / t
 
         label1 = torch.arange(0, arg1.shape[0], dtype=torch.long, device=arg1.device)

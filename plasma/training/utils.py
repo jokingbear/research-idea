@@ -62,15 +62,27 @@ def save_onnx(path, model, *input_shapes, device="cpu"):
                 opset_version=10,)
 
 
-def get_batch_iterator(arr, batch_size=32):
-    arr = np.array(arr)
+def get_batch_iterator(*arrs, batch_size=32):
+    arrs = [np.array(arr) for arr in arrs]
+    n = min([arr.shape[0] for arr in arrs])
 
-    n = len(arr) // batch_size
-    mod = len(arr) % batch_size
-
-    iterations = n
+    iterations = n // batch_size
+    mod = n % batch_size
 
     if mod != 0:
         iterations += 1
 
-    return [arr[i * batch_size:(i + 1) * batch_size] for i in range(iterations)]
+    if len(arrs) == 1:
+        return [arrs[0][i * batch_size:(i + 1) * batch_size] for i in range(iterations)]
+    else:
+        return [[arr[i * batch_size:(i + 1) * batch_size] for arr in arrs] for i in range(iterations)]
+
+
+def get_class_balance_weight(counts):
+    total = counts.values[0, 0] + counts.values[0, 1]
+    beta = 1 - 1 / total
+
+    weights = (1 - beta) / (1 - beta ** counts)
+    normalized_weights = weights / weights.value[:, 0, np.newaxis]
+
+    return normalized_weights
