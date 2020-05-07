@@ -1,6 +1,6 @@
 import torch.nn as nn
 
-from plasma.training.standard_trainer import StandardTrainer as Trainer
+from plasma.training.trainers import Trainer
 
 
 class Callback:
