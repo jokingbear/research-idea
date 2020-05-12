@@ -28,7 +28,7 @@ class StandardTrainer:
         self.training = True
 
     def fit(self, train, test=None, batch_size=32, val_batch_size=None,
-            workers=0, pin_memory=True, callbacks=None, evaluate_on_batch=False):
+            workers=0, pin_memory=True, callbacks=None, start_epoch=1, evaluate_on_batch=False):
         callbacks = callbacks or []
         val_batch_size = val_batch_size or batch_size
 
@@ -41,8 +41,8 @@ class StandardTrainer:
 
         [c.set_trainer(self) for c in callbacks]
         [c.on_train_begin(train_loader=train_loader, test_loader=test_loader) for c in callbacks]
-        for e in count(start=0):
-            print(f"epoch {e + 1}")
+        for e in count(start=start_epoch):
+            print(f"epoch {e}")
             [c.on_epoch_begin(e) for c in callbacks]
 
             train_logs = self.train_one_epoch(train_loader, callbacks)

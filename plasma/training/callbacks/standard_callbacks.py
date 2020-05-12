@@ -4,13 +4,12 @@ import io
 import os
 import time
 import numpy as np
+
 import torch
-import torch.nn as nn
 import torch.optim.lr_scheduler as schedulers
 
 from torch.utils.tensorboard import SummaryWriter
-
-from plasma.training.callbacks.base_class import Callback
+from .base_class import Callback
 
 
 class ReduceLROnPlateau(Callback):

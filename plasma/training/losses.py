@@ -58,7 +58,7 @@ def weighted_bce(weights, smooth=None):
         ln1 = (pred + 1e-7).log()
 
         if smooth is not None:
-            sm = np.random.uniform(smooth, 1)
+            sm = np.random.uniform(1 - smooth, 1)
             ln0 = weights[..., 0] * (1 - true) * (sm * ln0 + (1 - sm) * ln1)
             ln1 = weights[..., 1] * true * (sm * ln1 + (1 - sm) * ln0)
         else:
@@ -76,7 +76,7 @@ def get_class_balance_weight(counts):
     beta = 1 - 1 / total
 
     weights = (1 - beta) / (1 - beta ** counts)
-    normalized_weights = weights / weights.value[:, 0, np.newaxis]
+    normalized_weights = weights / weights.values[:, 0, np.newaxis]
 
     return normalized_weights
 

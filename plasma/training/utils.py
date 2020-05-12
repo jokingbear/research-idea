@@ -37,8 +37,8 @@ def get_inputs_labels(xy, x_type, x_device, y_type, y_device):
         return x, x
 
 
-def eval_models(*models):
-    [m.eval() for m in models]
+def eval_modules(*modules):
+    [m.eval() for m in modules]
 
     return torch.no_grad()
 
