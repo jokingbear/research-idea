@@ -19,7 +19,7 @@ class StandardDataset(data.Dataset):
     def get_item(self, idx):
         pass
 
-    def sample(self):
+    def reset(self):
         pass
 
     def get_sampler(self):
@@ -34,7 +34,7 @@ class RandomSampler(data.RandomSampler):
         self.dataset = dataset
 
     def __iter__(self):
-        self.dataset.sample()
+        self.dataset.reset()
 
         return super().__iter__()
 
@@ -47,6 +47,6 @@ class SequentialSampler(data.SequentialSampler):
         self.dataset = dataset
 
     def __iter__(self):
-        self.dataset.sample()
+        self.dataset.reset()
 
         return super().__iter__()
