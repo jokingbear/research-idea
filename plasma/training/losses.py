@@ -71,6 +71,16 @@ def weighted_bce(weights, smooth=None):
     return wbce
 
 
+def get_class_balance_weight(counts):
+    total = counts.values[0, 0] + counts.values[0, 1]
+    beta = 1 - 1 / total
+
+    weights = (1 - beta) / (1 - beta ** counts)
+    normalized_weights = weights / weights.value[:, 0, np.newaxis]
+
+    return normalized_weights
+
+
 def combine_loss(*losses, weights=None):
     weights = weights or [1] * len(losses)
 

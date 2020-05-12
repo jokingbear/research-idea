@@ -76,13 +76,3 @@ def get_batch_iterator(*arrs, batch_size=32):
         return [arrs[0][i * batch_size:(i + 1) * batch_size] for i in range(iterations)]
     else:
         return [[arr[i * batch_size:(i + 1) * batch_size] for arr in arrs] for i in range(iterations)]
-
-
-def get_class_balance_weight(counts):
-    total = counts.values[0, 0] + counts.values[0, 1]
-    beta = 1 - 1 / total
-
-    weights = (1 - beta) / (1 - beta ** counts)
-    normalized_weights = weights / weights.value[:, 0, np.newaxis]
-
-    return normalized_weights
