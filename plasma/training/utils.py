@@ -1,6 +1,7 @@
 import torch
 import torch.onnx as onnx
-import onnxruntime as runtime
+
+import numpy as np
 
 from tqdm import tqdm, tqdm_notebook as tqdm_nb
 
@@ -18,9 +19,9 @@ def to_device(xs, dtype=None, device=None):
     dtype = dtype or default_type
 
     if type(xs) in {list, tuple}:
-        return [x.type(dtype).to(device) for x in xs]
+        return [x.to(device).type(dtype) for x in xs]
     else:
-        x = xs.type(dtype).to(device)
+        x = xs.to(device).type(dtype)
         return x
 
 
@@ -36,22 +37,10 @@ def get_inputs_labels(xy, x_type, x_device, y_type, y_device):
         return x, x
 
 
-def eval_model(model):
-    model.eval()
+def eval_models(*models):
+    [m.eval() for m in models]
 
     return torch.no_grad()
-
-
-def iterate_numpies(*arr, batch_size=32):
-    n = arr[0].shape[0]
-
-    n_iter = n // batch_size
-    if n % batch_size != 0:
-        n_iter += 1
-    
-    for p in range(n_iter):
-        result = [a[p * batch_size:(p + 1) * batch_size] for a in arr]
-        yield result[0] if len(result) == 1 else result
 
 
 def save_onnx(path, model, *input_shapes, device="cpu"):
@@ -71,3 +60,29 @@ def save_onnx(path, model, *input_shapes, device="cpu"):
                 output_names=output_names,
                 dynamic_axes={n: {0: "batch_size"} for n in input_names + output_names},
                 opset_version=10,)
+
+
+def get_batch_iterator(*arrs, batch_size=32):
+    arrs = [np.array(arr) for arr in arrs]
+    n = min([arr.shape[0] for arr in arrs])
+
+    iterations = n // batch_size
+    mod = n % batch_size
+
+    if mod != 0:
+        iterations += 1
+
+    if len(arrs) == 1:
+        return [arrs[0][i * batch_size:(i + 1) * batch_size] for i in range(iterations)]
+    else:
+        return [[arr[i * batch_size:(i + 1) * batch_size] for arr in arrs] for i in range(iterations)]
+
+
+def get_class_balance_weight(counts):
+    total = counts.values[0, 0] + counts.values[0, 1]
+    beta = 1 - 1 / total
+
+    weights = (1 - beta) / (1 - beta ** counts)
+    normalized_weights = weights / weights.value[:, 0, np.newaxis]
+
+    return normalized_weights

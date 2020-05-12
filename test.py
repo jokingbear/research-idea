@@ -1,9 +1,9 @@
 import torch
 
-from plasma.modules import *
+from plasma.training import losses
 
-a = torch.ones(1, 3, 5, 5, dtype=torch.int) * 255
 
-b = ImagenetNorm(from_gray=False)(a)
+a = torch.randn(5, 8, device="cuda:0")
 
-from albumentations import RandomBrightnessContrast
+closs = losses.contrastive_loss_fn()
+closs(a, a)
