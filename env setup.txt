@@ -1,6 +1,6 @@
 conda install matplotlib pandas seaborn scikit-learn imageio tqdm plotly
 conda install nodejs jupyterlab ipywidgets
-conda install pytorch torchvision cudatoolkit=10.2 -c pytorch
+conda install pytorch torchvision torchtext cudatoolkit=10.2 -c pytorch
 conda install tensorboard
 pip install albumentations
 
