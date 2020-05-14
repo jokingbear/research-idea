@@ -1,9 +1,12 @@
 import torch
+import torch.hub as hub
 
 from plasma.training import losses
+from torchvision import models
 
 
-a = torch.randn(5, 8, device="cuda:0")
+#model = hub.load('facebookresearch/WSL-Images', 'resnext101_32x16d_wsl').cuda(0)
+model = models.densenet121().cuda()
 
-closs = losses.contrastive_loss_fn()
-closs(a, a)
+a = torch.ones(48, 3, 256, 256, device="cuda:0")
+model(a)
