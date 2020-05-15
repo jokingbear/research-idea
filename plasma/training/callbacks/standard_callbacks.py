@@ -198,9 +198,8 @@ class Tensorboard(Callback):
         self.flushes = flushes
         self.inputs = inputs
 
-        ts = time.time()
-        train_log = f"train_{ts}"
-        valid_log = f"valid_{ts}"
+        train_log = f"train"
+        valid_log = f"valid"
         self.train_writer = SummaryWriter(f"{self.log_dir}/{train_log}", flush_secs=self.flushes)
         self.valid_writer = SummaryWriter(f"{self.log_dir}/{valid_log}", flush_secs=self.flushes)
 
