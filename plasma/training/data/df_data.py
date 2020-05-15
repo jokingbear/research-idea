@@ -19,7 +19,7 @@ class PandasDataset(StandardDataset):
         return len(self.df)
 
     def get_item(self, idx):
-        row = self.df.loc[idx]
+        row = self.df.iloc[idx]
         img = self.reader(row[self.img_column])
 
         if self.augmentations is not None:
