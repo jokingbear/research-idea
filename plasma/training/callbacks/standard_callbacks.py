@@ -189,12 +189,12 @@ class CSVLogger(Callback):
 
 class Tensorboard(Callback):
 
-    def __init__(self, log_dir, steps=50, flushes=2, inputs=None):
+    def __init__(self, log_dir, steps=50, flushes=2, inputs=None, current_step=0):
         super().__init__()
 
         self.log_dir = log_dir
         self.steps = steps
-        self.current_step = 0
+        self.current_step = current_step
         self.flushes = flushes
         self.inputs = inputs
 
