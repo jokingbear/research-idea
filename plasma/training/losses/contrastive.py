@@ -5,7 +5,7 @@ import torch.nn.functional as func
 from .utils import _assert_inputs
 
 
-def contrastive_loss_fn(t=0.1, normalize=True, ep=1e12):
+def contrastive_loss_fn(t=0.1, normalize=True, ep=1e12, return_acc=True):
     entropy_loss = nn.CrossEntropyLoss()
 
     def contrastive_loss(arg1, arg2):
@@ -26,6 +26,14 @@ def contrastive_loss_fn(t=0.1, normalize=True, ep=1e12):
         label0 = arg1.shape[0] + label1
         label = torch.cat([label0, label1], dim=0)
 
-        return entropy_loss(normalized_s, label)
+        loss = entropy_loss(normalized_s, label)
+
+        if return_acc:
+            pick = normalized_s.argmax(dim=1)
+            acc = (pick == label).float().mean()
+
+            return {"loss": loss, "acc": acc}
+
+        return loss
 
     return contrastive_loss
