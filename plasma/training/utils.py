@@ -1,5 +1,6 @@
 import torch
 import torch.onnx as onnx
+import torch.utils.data as data
 
 import numpy as np
 
@@ -76,3 +77,21 @@ def get_batch_iterator(*arrs, batch_size=32):
         return [arrs[0][i * batch_size:(i + 1) * batch_size] for i in range(iterations)]
     else:
         return [[arr[i * batch_size:(i + 1) * batch_size] for arr in arrs] for i in range(iterations)]
+
+
+def get_loader(*arrs, mapper=None, batch_size=32, pin_memory=True, workers=None):
+    n = min([len(a) for a in arrs])
+    workers = workers or batch_size // 2
+    mapper = mapper or (lambda *args: args[0] if len(args) == 1 else args)
+
+    class Data(data.Dataset):
+
+        def __len__(self):
+            return n
+
+        def __getitem__(self, idx):
+            items = [a[idx] for a in arrs]
+
+            return mapper(*items)
+
+    return data.DataLoader(Data(), batch_size, pin_memory=pin_memory, num_workers=workers)
