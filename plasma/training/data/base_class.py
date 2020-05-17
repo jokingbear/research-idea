@@ -1,6 +1,7 @@
 from abc import abstractmethod
 
 from torch.utils import data
+from .loader import PrefetchLoader
 
 
 class StandardDataset(data.Dataset):
@@ -24,6 +25,13 @@ class StandardDataset(data.Dataset):
 
     def get_sampler(self):
         return RandomSampler(self)
+
+    def get_torch_loader(self, batch_size=32, workers=8, pin=True, drop_last=True):
+        return data.DataLoader(self, batch_size, sampler=self.get_sampler(), num_workers=workers,
+                               pin_memory=pin, drop_last=drop_last)
+
+    def get_prefetch_loader(self, batch_size, shuffle=True, drop_last=True, prefetch_batch=2, pool=8):
+        return PrefetchLoader(self, batch_size, shuffle, drop_last, prefetch_batch, pool)
 
 
 class RandomSampler(data.RandomSampler):
