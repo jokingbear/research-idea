@@ -23,7 +23,7 @@ def focal_loss_fn(gamma=2, binary=False, one_hot_n_class=None):
     return focal_loss
 
 
-def fb_loss_fn(beta=1, axes=(0,), binary=False, one_hot_n_class=None, smooth=1e-7, return_score=False):
+def fb_loss_fn(beta=1, axes=(0,), binary=False, one_hot_n_class=None, smooth=1e-7):
     beta2 = beta ** 2
 
     def fb_loss(pred, true):
@@ -40,10 +40,6 @@ def fb_loss_fn(beta=1, axes=(0,), binary=False, one_hot_n_class=None, smooth=1e-
         s = (beta2 * true + pred).sum(dim=axes)
 
         fb = (p + smooth) / (s + smooth)
-        loss = (1 - fb).mean()
-
-        if return_score:
-            return {"loss": loss, f"f{beta}_score": fb.mean()}
 
         return (1 - fb).mean()
 
