@@ -54,7 +54,7 @@ def get_batch_iterator(*arrs, batch_size=32):
         return [[arr[i * batch_size:(i + 1) * batch_size] for arr in arrs] for i in range(iterations)]
 
 
-def get_loader(*arrs, mapper=None, batch_size=32, pin_memory=True, workers=None):
+def get_loader(*arrs, mapper=None, batch_size=32, pin_memory=True, workers=20):
     n = min([len(a) for a in arrs])
     workers = workers or batch_size // 2
     mapper = mapper or (lambda *args: args[0] if len(args) == 1 else args)
@@ -67,6 +67,11 @@ def get_loader(*arrs, mapper=None, batch_size=32, pin_memory=True, workers=None)
         def __getitem__(self, idx):
             items = [a[idx] for a in arrs]
 
-            return mapper(*items)
+            if mapper is not None:
+                return mapper(*items)
+            elif len(items) == 1:
+                return items[0]
+
+            return items
 
     return data.DataLoader(Data(), batch_size, pin_memory=pin_memory, num_workers=workers)

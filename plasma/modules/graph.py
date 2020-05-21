@@ -38,7 +38,7 @@ def get_label_correlation(df, columns, return_count=True):
 
     for c1 in columns:
         for c2 in columns:
-            counts.loc[c1, c2] = len((df[c1] == 1) & (df[c2] == 1))
+            counts.loc[c1, c2] = len(df[(df[c1] == 1) & (df[c2] == 1)])
 
     correlation = counts / np.diag(counts)[:, np.newaxis]
 

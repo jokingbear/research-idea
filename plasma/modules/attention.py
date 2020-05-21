@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from plasma.modules.commons import GlobalAverage
+from .commons import GlobalAverage
 
 
 class SEAttention(nn.Module):
