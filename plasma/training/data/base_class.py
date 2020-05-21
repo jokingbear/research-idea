@@ -19,11 +19,15 @@ class StandardDataset(data.Dataset):
     def get_item(self, idx):
         pass
 
-    def sample(self):
+    def reset(self):
         pass
 
     def get_sampler(self):
         return RandomSampler(self)
+
+    def get_torch_loader(self, batch_size=32, workers=8, pin=True, drop_last=True):
+        return data.DataLoader(self, batch_size, sampler=self.get_sampler(), num_workers=workers,
+                               pin_memory=pin, drop_last=drop_last)
 
 
 class RandomSampler(data.RandomSampler):
@@ -34,7 +38,7 @@ class RandomSampler(data.RandomSampler):
         self.dataset = dataset
 
     def __iter__(self):
-        self.dataset.sample()
+        self.dataset.reset()
 
         return super().__iter__()
 
@@ -47,6 +51,6 @@ class SequentialSampler(data.SequentialSampler):
         self.dataset = dataset
 
     def __iter__(self):
-        self.dataset.sample()
+        self.dataset.reset()
 
         return super().__iter__()

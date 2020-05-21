@@ -2,15 +2,13 @@ import collections
 import csv
 import io
 import os
-import time
 import numpy as np
+
 import torch
-import torch.nn as nn
 import torch.optim.lr_scheduler as schedulers
 
 from torch.utils.tensorboard import SummaryWriter
-
-from plasma.training.callbacks.base_class import Callback
+from .base_class import Callback
 
 
 class ReduceLROnPlateau(Callback):
@@ -190,18 +188,17 @@ class CSVLogger(Callback):
 
 class Tensorboard(Callback):
 
-    def __init__(self, log_dir, steps=50, flushes=2, inputs=None):
+    def __init__(self, log_dir, steps=50, flushes=2, inputs=None, current_step=0):
         super().__init__()
 
         self.log_dir = log_dir
         self.steps = steps
-        self.current_step = 0
+        self.current_step = current_step
         self.flushes = flushes
         self.inputs = inputs
 
-        ts = time.time()
-        train_log = f"train_{ts}"
-        valid_log = f"valid_{ts}"
+        train_log = f"train"
+        valid_log = f"valid"
         self.train_writer = SummaryWriter(f"{self.log_dir}/{train_log}", flush_secs=self.flushes)
         self.valid_writer = SummaryWriter(f"{self.log_dir}/{valid_log}", flush_secs=self.flushes)
 
@@ -236,4 +233,4 @@ class TrainingScheduler(Callback):
         self.epochs = epochs
 
     def on_epoch_end(self, epoch, logs=None):
-        self.trainer.training = epoch + 1 < self.epochs
+        self.trainer.training = epoch + 1 <= self.epochs

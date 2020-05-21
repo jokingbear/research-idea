@@ -1,44 +1,20 @@
 import torch
 import torch.onnx as onnx
+import torch.utils.data as data
 
 import numpy as np
 
 from tqdm import tqdm, tqdm_notebook as tqdm_nb
 
 on_notebook = True
-default_device = "cpu"
-default_type = torch.float
 
 
-def get_tqdm():
-    return tqdm_nb if on_notebook else tqdm
+def get_tqdm(total, desc):
+    return tqdm_nb(total=total, desc=desc) if on_notebook else tqdm(total=total, desc=desc)
 
 
-def to_device(xs, dtype=None, device=None):
-    device = device or default_device
-    dtype = dtype or default_type
-
-    if type(xs) in {list, tuple}:
-        return [x.to(device).type(dtype) for x in xs]
-    else:
-        x = xs.to(device).type(dtype)
-        return x
-
-
-def get_inputs_labels(xy, x_type, x_device, y_type, y_device):
-    if type(xy) in {tuple, list}:
-        x = to_device(xy[0], dtype=x_type, device=x_device)
-        y = to_device(xy[1], dtype=y_type, device=y_device)
-
-        return x, y
-    else:
-        x = to_device(xy, dtype=x_type, device=x_device)
-
-        return x, x
-
-
-def eval_models(*models):
-    [m.eval() for m in models]
+def eval_modules(*modules):
+    [m.eval() for m in modules]
 
     return torch.no_grad()
 
@@ -78,11 +54,19 @@ def get_batch_iterator(*arrs, batch_size=32):
         return [[arr[i * batch_size:(i + 1) * batch_size] for arr in arrs] for i in range(iterations)]
 
 
-def get_class_balance_weight(counts):
-    total = counts.values[0, 0] + counts.values[0, 1]
-    beta = 1 - 1 / total
+def get_loader(*arrs, mapper=None, batch_size=32, pin_memory=True, workers=None):
+    n = min([len(a) for a in arrs])
+    workers = workers or batch_size // 2
+    mapper = mapper or (lambda *args: args[0] if len(args) == 1 else args)
 
-    weights = (1 - beta) / (1 - beta ** counts)
-    normalized_weights = weights / weights.value[:, 0, np.newaxis]
+    class Data(data.Dataset):
 
-    return normalized_weights
+        def __len__(self):
+            return n
+
+        def __getitem__(self, idx):
+            items = [a[idx] for a in arrs]
+
+            return mapper(*items)
+
+    return data.DataLoader(Data(), batch_size, pin_memory=pin_memory, num_workers=workers)
