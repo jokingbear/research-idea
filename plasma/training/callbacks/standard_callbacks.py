@@ -2,7 +2,6 @@ import collections
 import csv
 import io
 import os
-import time
 import numpy as np
 
 import torch
@@ -234,4 +233,4 @@ class TrainingScheduler(Callback):
         self.epochs = epochs
 
     def on_epoch_end(self, epoch, logs=None):
-        self.trainer.training = epoch + 1 < self.epochs
+        self.trainer.training = epoch + 1 <= self.epochs
