@@ -57,7 +57,6 @@ def get_batch_iterator(*arrs, batch_size=32):
 def get_loader(*arrs, mapper=None, batch_size=32, pin_memory=True, workers=20):
     n = min([len(a) for a in arrs])
     workers = workers or batch_size // 2
-    mapper = mapper or (lambda *args: args[0] if len(args) == 1 else args)
 
     class Data(data.Dataset):
 
