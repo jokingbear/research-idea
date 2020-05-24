@@ -21,10 +21,17 @@ class ContrastiveTrainer:
         self.training = True
 
     def fit(self, train_loader, test_loader=None, callbacks=None, start_epoch=1, evaluate_on_batch=False):
+        assert start_epoch > 0, "start epoch must be positive"
         callbacks = callbacks or []
 
         [c.set_trainer(self) for c in callbacks]
-        [c.on_train_begin(train_loader=train_loader, test_loader=test_loader) for c in callbacks]
+
+        train_configs = {
+            "train_loader": train_loader,
+            "test_loader": test_loader,
+            "start_epoch": start_epoch,
+        }
+        [c.on_train_begin(**train_configs) for c in callbacks]
         for e in count(start=start_epoch):
             print(f"epoch {e}")
             [c.on_epoch_begin(e) for c in callbacks]
