@@ -2,12 +2,12 @@ import collections
 import csv
 import io
 import os
-import numpy as np
 
+import numpy as np
 import torch
 import torch.optim.lr_scheduler as schedulers
-
 from torch.utils.tensorboard import SummaryWriter
+
 from .base_class import Callback
 
 

@@ -42,7 +42,7 @@ class SEAttention(nn.Module):
 
 class CBAM(nn.Module):
 
-    def __init__(self, in_channels, ratio=1/16):
+    def __init__(self, in_channels, ratio=1 / 16):
         super().__init__()
 
         self.spatial_avg = nn.AdaptiveAvgPool2d(1)

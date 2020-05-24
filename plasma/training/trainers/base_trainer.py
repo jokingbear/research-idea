@@ -1,13 +1,13 @@
-import torch
-import torch.nn as nn
+from abc import abstractmethod
+from itertools import count
+from typing import List, Tuple
 
 import numpy as np
 import pandas as pd
+import torch
+import torch.nn as nn
 
-from abc import abstractmethod
-from itertools import count
 from ..utils import get_tqdm, eval_modules
-from typing import List, Tuple
 
 
 class BaseTrainer:

@@ -1,10 +1,11 @@
 import os
+from collections import defaultdict
+
 import numpy as np
 import torch
 import torch.optim as opts
 
 from .base_class import Callback
-from collections import defaultdict
 
 
 class LrFinder(Callback):

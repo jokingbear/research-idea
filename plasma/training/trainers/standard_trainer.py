@@ -1,12 +1,10 @@
 from typing import Tuple
 
-import torch
-import numpy as np
 import pandas as pd
+import torch
 
-from itertools import count
-from .utils import get_inputs_labels, get_dict
 from .base_trainer import BaseTrainer
+from .utils import get_inputs_labels, get_dict
 
 
 class StandardTrainer(BaseTrainer):

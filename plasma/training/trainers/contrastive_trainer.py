@@ -1,13 +1,10 @@
 from typing import Tuple
 
-import torch
 import numpy as np
-import pandas as pd
+import torch
 
-from itertools import count
-from .utils import get_dict, get_inputs_labels
-from ..utils import get_tqdm
 from .base_trainer import BaseTrainer
+from .utils import get_dict, get_inputs_labels
 
 
 class ContrastiveTrainer(BaseTrainer):
@@ -28,7 +25,7 @@ class ContrastiveTrainer(BaseTrainer):
         inverse_idc = [new for _, new in sorted(mapping_idc, key=lambda kv: kv[0])]
 
         aug1 = self.models[0](inputs)
-        aug2 = self.models[1](targets[shuffle_idc])[inverse_idc]
+        aug2 = self.models[0](targets[shuffle_idc])[inverse_idc]
 
         loss = self.loss(aug1, aug2)
 

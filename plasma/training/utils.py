@@ -1,9 +1,7 @@
+import numpy as np
 import torch
 import torch.onnx as onnx
 import torch.utils.data as data
-
-import numpy as np
-
 from tqdm import tqdm, tqdm_notebook as tqdm_nb
 
 on_notebook = True
@@ -35,7 +33,7 @@ def save_onnx(path, model, *input_shapes, device="cpu"):
                 input_names=input_names,
                 output_names=output_names,
                 dynamic_axes={n: {0: "batch_size"} for n in input_names + output_names},
-                opset_version=10,)
+                opset_version=10, )
 
 
 def get_batch_iterator(*arrs, batch_size=32):

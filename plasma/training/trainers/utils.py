@@ -1,4 +1,3 @@
-import pandas as pd
 import torch
 
 default_device = "cpu"
