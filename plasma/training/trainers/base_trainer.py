@@ -36,12 +36,12 @@ class BaseTrainer:
             [c.on_epoch_begin(e) for c in callbacks]
 
             train_logs = self.train_one_epoch(e, train_loader, callbacks)
-            val_logs = pd.Series({})
+            val_logs = {}
 
             if valid_loader is not None:
                 val_logs = self.evaluate_one_epoch(valid_loader, callbacks, evaluate_on_batch)
 
-            logs = val_logs.combine_first(train_logs)
+            logs = val_logs.copy().update(train_logs)
 
             [c.on_epoch_end(e, logs) for c in callbacks]
 
@@ -49,16 +49,15 @@ class BaseTrainer:
                 break
         [c.on_train_end() for c in callbacks]
 
-    def train_one_epoch(self, epoch, train_loader, callbacks) -> pd.Series:
+    def train_one_epoch(self, epoch, train_loader, callbacks):
         running_metrics = np.zeros([])
 
         with get_tqdm(len(train_loader), "train") as pbar:
             for i, data in enumerate(train_loader):
-                [m.train() for m in self.models]
-
                 inputs, targets = self.extract_data(data)
                 [c.on_training_batch_begin(epoch, i, inputs, targets) for c in callbacks]
 
+                [m.train().zero_grad() for m in self.models]
                 loss_dict, caches = self.train_one_batch(inputs, targets)
 
                 with torch.no_grad():
@@ -75,9 +74,9 @@ class BaseTrainer:
                 pbar.set_postfix(logs)
                 pbar.update()
 
-        return logs
+        return logs.to_dict()
 
-    def evaluate_one_epoch(self, test_loader, epoch=0, callbacks=()) -> pd.Series:
+    def evaluate_one_epoch(self, test_loader, epoch=0, callbacks=()):
         eval_caches = []
 
         with get_tqdm(len(test_loader), "eval") as pbar, eval_modules(self.models):
@@ -111,10 +110,6 @@ class BaseTrainer:
         pass
 
     @abstractmethod
-    def get_preds_trues(self, inputs, targets):
-        pass
-
-    @abstractmethod
     def get_train_measures(self, inputs, targets, loss_dict, cache) -> dict:
         pass
 
@@ -123,5 +118,5 @@ class BaseTrainer:
         pass
 
     @abstractmethod
-    def get_eval_logs(self, eval_caches) -> pd.Series:
+    def get_eval_logs(self, eval_caches) -> dict:
         pass
