@@ -1,4 +1,4 @@
-from .attention import SEAttention, CBAM, SAModule
+from .attentions import SEAttention, CBAM, SAModule
 from .commons import *
 from .graph import GraphLinear, GraphSequential
 from .group_equivariant_2d import GEBatchNorm2d, PrimaryGEConv2d, GEConv2d, GEMapping, GEToPlane
