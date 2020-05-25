@@ -45,7 +45,7 @@ class ContrastiveTrainer(BaseTrainer):
 
     def get_eval_cache(self, inputs, targets):
         aug1 = self.models[0](inputs)
-        aug2 = self.models[1](targets)
+        aug2 = self.models[0](targets)
 
         return aug1, aug2
 

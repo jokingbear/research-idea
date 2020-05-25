@@ -237,4 +237,4 @@ class TrainingScheduler(Callback):
         self.epochs = epochs
 
     def on_epoch_end(self, epoch, logs=None):
-        self.trainer.training = epoch + 1 <= self.epochs
+        self.trainer.training = epoch < self.epochs

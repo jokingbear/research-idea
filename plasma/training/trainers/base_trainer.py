@@ -41,7 +41,7 @@ class BaseTrainer:
             if valid_loader is not None:
                 val_logs = self.evaluate_one_epoch(valid_loader, e, callbacks)
 
-            logs = val_logs.copy().update(train_logs)
+            logs = {**train_logs, **val_logs}
 
             [c.on_epoch_end(e, logs) for c in callbacks]
 
@@ -74,7 +74,7 @@ class BaseTrainer:
                 pbar.set_postfix(logs)
                 pbar.update()
 
-        return logs.to_dict()
+        return logs
 
     def evaluate_one_epoch(self, test_loader, epoch=0, callbacks=()):
         eval_caches = []
@@ -114,7 +114,7 @@ class BaseTrainer:
         pass
 
     @abstractmethod
-    def get_eval_cache(self, inputs, targets):
+    def get_eval_cache(self, inputs, targets) -> object:
         pass
 
     @abstractmethod

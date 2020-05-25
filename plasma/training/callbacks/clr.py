@@ -138,7 +138,7 @@ class SuperConvergence(Callback):
 
     def on_train_begin(self, **train_configs):
         n = len(train_configs["train_loader"])
-        max_lr = [g["lr"] for g in self.optimizers.param_groups]
+        max_lr = [g["lr"] for g in self.optimizers[0].param_groups]
 
         self.scheduler = opts.lr_scheduler.OneCycleLR(self.optimizers[0], max_lr, epochs=self.epochs, steps_per_epoch=n)
 
@@ -149,7 +149,7 @@ class SuperConvergence(Callback):
         self.scheduler.step()
 
     def on_epoch_end(self, epoch, logs=None):
-        self.trainer.training = epoch + 1 < self.epochs
+        self.trainer.training = epoch < self.epochs
 
         if not self.trainer.training:
             model_dict = self.models[0].state_dict()
