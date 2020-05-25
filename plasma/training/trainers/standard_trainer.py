@@ -43,7 +43,7 @@ class StandardTrainer(BaseTrainer):
 
         measures = loss_dict
         for m in self.metrics:
-            m_value = self.metrics(preds, targets)
+            m_value = m(preds, targets)
             m_dict = get_dict(m_value, name=m.__name__)
             measures.update(m_dict)
 
@@ -53,15 +53,15 @@ class StandardTrainer(BaseTrainer):
         return self.models[0](inputs), targets
 
     def get_eval_logs(self, eval_caches) -> pd.Series:
-        preds, trues = eval_caches[0]
+        preds, trues = eval_caches
 
         loss = self.loss(preds, trues)
-        loss_dict = get_dict(loss, prefix="val", name="loss")
+        loss_dict = get_dict(loss, prefix="val_", name="loss")
 
         measures = loss_dict
         for m in self.metrics:
-            m_value = self.metrics(preds, trues)
-            m_dict = get_dict(m_value, prefix="val", name=m.__name__)
+            m_value = m(preds, trues)
+            m_dict = get_dict(m_value, prefix="val_", name=m.__name__)
             measures.update(m_dict)
 
         return measures

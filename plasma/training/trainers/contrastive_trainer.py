@@ -53,4 +53,4 @@ class ContrastiveTrainer(BaseTrainer):
         aug1, aug2 = eval_caches
 
         loss = self.loss(aug1, aug2)
-        return get_dict(loss, prefix="val", name="loss")
+        return get_dict(loss, prefix="val_", name="loss")

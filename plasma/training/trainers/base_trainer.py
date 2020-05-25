@@ -39,7 +39,7 @@ class BaseTrainer:
             val_logs = {}
 
             if valid_loader is not None:
-                val_logs = self.evaluate_one_epoch(valid_loader, callbacks, evaluate_on_batch)
+                val_logs = self.evaluate_one_epoch(valid_loader, e, callbacks)
 
             logs = val_logs.copy().update(train_logs)
 
@@ -79,27 +79,27 @@ class BaseTrainer:
     def evaluate_one_epoch(self, test_loader, epoch=0, callbacks=()):
         eval_caches = []
 
-        with get_tqdm(len(test_loader), "eval") as pbar, eval_modules(self.models):
+        with get_tqdm(len(test_loader), "eval") as pbar, eval_modules(*self.models):
             for i, data in enumerate(test_loader):
                 inputs, targets = self.extract_data(data)
-                [c.on_validation_batch_begin(epoch, i, inputs, inputs) for c in callbacks]
+                [c.on_validation_batch_begin(epoch, i, inputs, targets) for c in callbacks]
 
                 caches = self.get_eval_cache(inputs, targets)
                 eval_caches.append(caches)
 
-                pbar.update(1)
+                pbar.update()
                 [c.on_validation_batch_end(epoch, i, inputs, targets, caches) for c in callbacks]
 
-        if torch.is_tensor(eval_caches[0]):
-            eval_caches = torch.cat(eval_caches, dim=0)
-        else:
-            n_pred = len(eval_caches[0])
-            eval_caches = [torch.cat([c[i] for c in eval_caches], dim=0) for i in range(n_pred)]
+            if torch.is_tensor(eval_caches[0]):
+                eval_caches = torch.cat(eval_caches, dim=0)
+            else:
+                n_pred = len(eval_caches[0])
+                eval_caches = [torch.cat([c[i] for c in eval_caches], dim=0) for i in range(n_pred)]
 
-        logs = self.get_eval_logs(eval_caches)
+            logs = self.get_eval_logs(eval_caches)
 
-        pbar.set_postfix(logs)
-        return logs
+            pbar.set_postfix(logs)
+            return logs
 
     @abstractmethod
     def extract_data(self, batch_data):
