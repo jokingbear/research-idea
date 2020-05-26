@@ -19,7 +19,7 @@ class BaseTrainer:
         self.metrics = metrics or []
         self.training = True
 
-    def fit(self, train_loader, valid_loader=None, callbacks=None, start_epoch=1, evaluate_on_batch=False):
+    def fit(self, train_loader, valid_loader=None, callbacks=None, start_epoch=1):
         assert start_epoch > 0, "start epoch must be positive"
         callbacks = callbacks or []
 
@@ -114,7 +114,7 @@ class BaseTrainer:
         pass
 
     @abstractmethod
-    def get_eval_cache(self, inputs, targets) -> object:
+    def get_eval_cache(self, inputs, targets):
         pass
 
     @abstractmethod
