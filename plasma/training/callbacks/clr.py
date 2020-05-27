@@ -96,13 +96,13 @@ class WarmRestart(Callback):
             os.mkdir(self.dir)
 
     def on_epoch_begin(self, epoch):
-        self.current_epoch += 1
-
         min_lr = self.min_lr
         for max_lr, g in zip(self.base_lrs, self.optimizers[0].param_groups):
             g["lr"] = min_lr + 0.5 * (max_lr - min_lr) * (1 + np.cos(self.current_epoch / self.max_epoch * np.pi))
 
     def on_epoch_end(self, epoch, logs=None):
+        self.current_epoch += 1
+
         for i, g in enumerate(self.optimizers[0].param_groups):
             logs[f"lr {i}"] = g["lr"]
 

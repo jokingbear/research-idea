@@ -56,7 +56,7 @@ class StandardTrainer(BaseTrainer):
         preds, trues = eval_caches
 
         loss = self.loss(preds, trues)
-        loss_dict = get_dict(loss, prefix="val_", name="loss")
+        loss_dict = get_dict(loss, prefix="val ", name="loss")
 
         measures = loss_dict
         for m in self.metrics:
