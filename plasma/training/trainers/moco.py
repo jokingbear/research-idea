@@ -47,6 +47,7 @@ class MoCoTrainer(BaseTrainer):
             queries = func.normalize(queries, dim=1)
             keys = func.normalize(keys, dim=1)
 
+        # B x 1
         trues = (queries * keys).sum(dim=1, keepdim=True)
 
         if self.queue is None:
@@ -54,8 +55,10 @@ class MoCoTrainer(BaseTrainer):
             self.queue_pointer = 0
             self.queue = func.normalize(queue, dim=1)
 
+        # B x qsize
         falses = func.linear(queries, self.queue)
 
+        # B x (1 + qsize)
         logits = torch.cat([trues, falses], dim=1) / self.t
         labels = torch.zeros(logits.shape[0], device=logits.device)
 
@@ -65,7 +68,7 @@ class MoCoTrainer(BaseTrainer):
         self._update_key_encoder()
         self._update_queue(keys)
 
-        return get_dict(loss)
+        return get_dict(loss), None
 
     def get_train_measures(self, inputs, targets, loss_dict, cache) -> dict:
         return loss_dict
