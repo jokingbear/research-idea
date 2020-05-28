@@ -13,7 +13,7 @@ from .base_class import Callback
 
 class ReduceLROnPlateau(Callback):
 
-    def __init__(self, monitor="val_loss", patience=5, mode="min", factor=0.1, verbose=1):
+    def __init__(self, monitor="val loss", patience=5, mode="min", factor=0.1, verbose=1):
         super().__init__()
 
         self.monitor = monitor
@@ -36,7 +36,7 @@ class ReduceLROnPlateau(Callback):
 
 class EarlyStopping(Callback):
 
-    def __init__(self, monitor="val_loss", patience=10, mode="min", verbose=1):
+    def __init__(self, monitor="val loss", patience=10, mode="min", verbose=1):
         super().__init__()
 
         self.monitor = monitor
@@ -69,7 +69,7 @@ class EarlyStopping(Callback):
 
 class ModelCheckpoint(Callback):
 
-    def __init__(self, file_path, monitor="val_loss", mode="min",
+    def __init__(self, file_path, monitor="val loss", mode="min",
                  save_best_only=True, overwrite=True, verbose=1):
         super().__init__()
 
@@ -102,7 +102,7 @@ class ModelCheckpoint(Callback):
                 torch.save(model_dict, f"{path}.model_{i}")
 
             for i, opt in enumerate(self.optimizers):
-                optim_dict = self.optimizers.state_dict()
+                optim_dict = opt.state_dict()
                 torch.save(optim_dict, f"{path}.opt_{i}")
 
             self.running_monitor_val = monitor_val

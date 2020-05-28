@@ -60,13 +60,15 @@ class MoCoTrainer(BaseTrainer):
 
         # B x (1 + qsize)
         logits = torch.cat([trues, falses], dim=1) / self.t
-        labels = torch.zeros(logits.shape[0], device=logits.device)
+        labels = torch.zeros(logits.shape[0], dtype=torch.long, device=logits.device)
 
         loss = self.loss(logits, labels)
         loss.backward()
         self.optimizers[0].step()
-        self._update_key_encoder()
-        self._update_queue(keys)
+
+        with torch.no_grad():
+            self._update_key_encoder()
+            self._update_queue(keys)
 
         return get_dict(loss), None
 
@@ -102,7 +104,6 @@ class MoCoTrainer(BaseTrainer):
         self.queue_pointer = (pointer + batch_size) % self.qsize
 
     def _update_key_encoder(self):
-        with torch.no_grad():
-            momentum = self.momentum
-            for param_q, param_k in zip(self.models[0].parameters(), self.models[1].parameters()):
-                param_k.data = momentum * param_k.data + (1 - momentum) * param_q.data
+        momentum = self.momentum
+        for param_q, param_k in zip(self.models[0].parameters(), self.models[1].parameters()):
+            param_k.data = momentum * param_k.data + (1 - momentum) * param_q.data
