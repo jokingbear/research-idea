@@ -18,7 +18,7 @@ class MoCoTrainer(BaseTrainer):
         assert isinstance(key_encoder, nn.DataParallel), "key encoder needs to be data parallel"
 
         loss = nn.CrossEntropyLoss()
-        metrics = [contrastive_loss_fn(t=t)]
+        metrics = [contrastive_loss_fn(t=t, normalize=normalize)]
 
         super().__init__([query_encoder, key_encoder], [optimizer], loss, metrics)
 
