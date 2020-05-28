@@ -1,8 +1,7 @@
+import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
-
-import pandas as pd
-import numpy as np
 
 
 class GraphSequential(nn.Module):
@@ -38,7 +37,7 @@ def get_label_correlation(df, columns, return_count=True):
 
     for c1 in columns:
         for c2 in columns:
-            counts.loc[c1, c2] = len((df[c1] == 1) & (df[c2] == 1))
+            counts.loc[c1, c2] = len(df[(df[c1] == 1) & (df[c2] == 1)])
 
     correlation = counts / np.diag(counts)[:, np.newaxis]
 

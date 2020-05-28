@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+import torch.nn.functional as func
 
-from plasma.modules.commons import GlobalAverage
+from .commons import GlobalAverage
 
 
 class SEAttention(nn.Module):
@@ -42,7 +42,7 @@ class SEAttention(nn.Module):
 
 class CBAM(nn.Module):
 
-    def __init__(self, in_channels, ratio=1/16):
+    def __init__(self, in_channels, ratio=1 / 16):
         super().__init__()
 
         self.spatial_avg = nn.AdaptiveAvgPool2d(1)
@@ -96,7 +96,7 @@ class SAModule(nn.Module):
         conv2_proj = self.conv2(feat_map).view(batch_size, -1, width * height)
 
         relation_map = torch.bmm(conv1_proj, conv2_proj)
-        attention = F.softmax(relation_map, dim=-1)
+        attention = func.softmax(relation_map, dim=-1)
 
         conv3_proj = self.conv3(feat_map).view(batch_size, -1, width * height)
 

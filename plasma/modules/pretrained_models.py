@@ -1,6 +1,6 @@
 import torch.nn as nn
-
 from torchvision import models
+
 from plasma.modules import router
 
 
@@ -33,7 +33,6 @@ def replace_by_dynamic_routing(module):
 
 
 def replace_by_attention_routing(module):
-
     class AttentionBottleneck(nn.Module):
 
         def __init__(self, bottleneck: models.resnet.Bottleneck):

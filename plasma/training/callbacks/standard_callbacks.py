@@ -2,18 +2,18 @@ import collections
 import csv
 import io
 import os
-import numpy as np
 
+import numpy as np
 import torch
 import torch.optim.lr_scheduler as schedulers
-
 from torch.utils.tensorboard import SummaryWriter
+
 from .base_class import Callback
 
 
 class ReduceLROnPlateau(Callback):
 
-    def __init__(self, monitor="val_loss", patience=5, mode="min", factor=0.1, verbose=1):
+    def __init__(self, monitor="val loss", patience=5, mode="min", factor=0.1, verbose=1):
         super().__init__()
 
         self.monitor = monitor
@@ -24,11 +24,11 @@ class ReduceLROnPlateau(Callback):
         self.scheduler = None
 
     def on_train_begin(self, **train_configs):
-        self.scheduler = schedulers.ReduceLROnPlateau(self.optimizer, mode=self.mode, factor=self.factor,
+        self.scheduler = schedulers.ReduceLROnPlateau(self.optimizers[0], mode=self.mode, factor=self.factor,
                                                       patience=self.patience - 1, verbose=bool(self.verbose))
 
     def on_epoch_end(self, epoch, logs=None):
-        for i, param_group in enumerate(self.optimizer.param_groups):
+        for i, param_group in enumerate(self.optimizers[0].param_groups):
             logs[f"group {i} lr"] = param_group["lr"]
 
         self.scheduler.step(logs[self.monitor], epoch + 1)
@@ -36,7 +36,7 @@ class ReduceLROnPlateau(Callback):
 
 class EarlyStopping(Callback):
 
-    def __init__(self, monitor="val_loss", patience=10, mode="min", verbose=1):
+    def __init__(self, monitor="val loss", patience=10, mode="min", verbose=1):
         super().__init__()
 
         self.monitor = monitor
@@ -69,7 +69,7 @@ class EarlyStopping(Callback):
 
 class ModelCheckpoint(Callback):
 
-    def __init__(self, file_path, monitor="val_loss", mode="min",
+    def __init__(self, file_path, monitor="val loss", mode="min",
                  save_best_only=True, overwrite=True, verbose=1):
         super().__init__()
 
@@ -91,15 +91,19 @@ class ModelCheckpoint(Callback):
 
         if is_save:
             print("saving model to ", self.file_path) if self.verbose else None
-            model_dict = self.model.state_dict()
-            optim_dict = self.optimizer.state_dict()
+
             path = self.file_path
 
             if not self.overwrite:
                 path = f"{path}_{epoch}"
 
-            torch.save(model_dict, path + ".model")
-            torch.save(optim_dict, path + ".optim")
+            for i, m in enumerate(self.models):
+                model_dict = m.state_dict()
+                torch.save(model_dict, f"{path}.model_{i}")
+
+            for i, opt in enumerate(self.optimizers):
+                optim_dict = opt.state_dict()
+                torch.save(optim_dict, f"{path}.opt_{i}")
 
             self.running_monitor_val = monitor_val
 
@@ -197,16 +201,16 @@ class Tensorboard(Callback):
         self.flushes = flushes
         self.inputs = inputs
 
-        train_log = f"train"
-        valid_log = f"valid"
+        train_log = "train"
+        valid_log = "valid"
         self.train_writer = SummaryWriter(f"{self.log_dir}/{train_log}", flush_secs=self.flushes)
         self.valid_writer = SummaryWriter(f"{self.log_dir}/{valid_log}", flush_secs=self.flushes)
 
     def on_train_begin(self, **train_configs):
         if self.inputs is not None:
-            self.train_writer.add_graph(self.model, self.inputs)
+            self.train_writer.add_graph(self.models, self.inputs)
 
-    def on_training_batch_end(self, batch, x, y, pred, logs=None):
+    def on_training_batch_end(self, epoch, step, inputs, targets, caches, logs=None):
         if self.current_step % self.steps == 0:
             for k in logs.keys():
                 self.train_writer.add_scalar(f"train/{k}", logs[k], self.current_step)
@@ -233,4 +237,4 @@ class TrainingScheduler(Callback):
         self.epochs = epochs
 
     def on_epoch_end(self, epoch, logs=None):
-        self.trainer.training = epoch + 1 <= self.epochs
+        self.trainer.training = epoch < self.epochs

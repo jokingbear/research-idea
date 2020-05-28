@@ -1,10 +1,11 @@
 import os
+from collections import defaultdict
+
 import numpy as np
 import torch
 import torch.optim as opts
 
 from .base_class import Callback
-from collections import defaultdict
 
 
 class LrFinder(Callback):
@@ -25,13 +26,13 @@ class LrFinder(Callback):
         epochs = self.epochs
         iterations = len(train_configs["train_loader"])
 
-        for g in self.optimizer.param_groups:
+        for g in self.optimizers[0].param_groups:
             g["lr"] = self.min_lr
 
         self.gamma = (self.max_lr - self.min_lr) / (epochs * iterations)
 
-    def on_training_batch_end(self, batch, x, y, pred, logs=None):
-        for i, g in enumerate(self.optimizer.param_groups):
+    def on_training_batch_end(self, epoch, step, inputs, targets, caches, logs=None):
+        for i, g in enumerate(self.optimizers[0].param_groups):
             if i in self.history:
                 self.history[i].append((g["lr"], logs))
             else:
@@ -68,7 +69,7 @@ class LrFinder(Callback):
 
 class WarmRestart(Callback):
 
-    def __init__(self, min_lr, t0=10, factor=2, cycles=3, reset_state=False,
+    def __init__(self, min_lr=1e-6, t0=10, factor=2, cycles=3, reset_state=False,
                  snapshot=True, directory="checkpoint", model_name=None):
         super().__init__()
 
@@ -88,20 +89,21 @@ class WarmRestart(Callback):
         self.max_epoch = t0
 
     def on_train_begin(self, **train_configs):
-        self.base_lrs = [g["lr"] for g in self.optimizer.param_groups]
+        self.base_lrs = [g["lr"] for g in self.optimizers[0].param_groups]
+        self.current_epoch = train_configs["start_epoch"] - 1
 
         if not os.path.exists(self.dir) and self.snapshot:
             os.mkdir(self.dir)
 
     def on_epoch_begin(self, epoch):
-        self.current_epoch += 1
-
         min_lr = self.min_lr
-        for max_lr, g in zip(self.base_lrs, self.optimizer.param_groups):
+        for max_lr, g in zip(self.base_lrs, self.optimizers[0].param_groups):
             g["lr"] = min_lr + 0.5 * (max_lr - min_lr) * (1 + np.cos(self.current_epoch / self.max_epoch * np.pi))
 
     def on_epoch_end(self, epoch, logs=None):
-        for i, g in enumerate(self.optimizer.param_groups):
+        self.current_epoch += 1
+
+        for i, g in enumerate(self.optimizers[0].param_groups):
             logs[f"lr {i}"] = g["lr"]
 
         if self.current_epoch == self.max_epoch:
@@ -111,14 +113,14 @@ class WarmRestart(Callback):
 
             print("starting cycle ", self.finished_cycles + 1) if self.finished_cycles != self.cycles else None
             if self.snapshot:
-                model_dict = self.model.state_dict()
-                optim_dict = self.optimizer.state_dict()
+                model_dict = self.models[0].state_dict()
+                optim_dict = self.optimizers[0].state_dict()
 
                 torch.save(model_dict, f"{self.dir}/snapshot_{self.model_name}_cycle_{self.finished_cycles}.model")
                 torch.save(optim_dict, f"{self.dir}/snapshot_{self.model_name}_cycle_{self.finished_cycles}.optim")
 
             if self.reset_state:
-                self.optimizer.state = defaultdict(dict)
+                self.optimizers[0].state = defaultdict(dict)
 
         self.trainer.training = self.finished_cycles < self.cycles
 
@@ -136,47 +138,19 @@ class SuperConvergence(Callback):
 
     def on_train_begin(self, **train_configs):
         n = len(train_configs["train_loader"])
-        max_lr = [g["lr"] for g in self.optimizer.param_groups]
+        max_lr = [g["lr"] for g in self.optimizers[0].param_groups]
 
-        self.scheduler = opts.lr_scheduler.OneCycleLR(self.optimizer, max_lr, epochs=self.epochs, steps_per_epoch=n)
+        self.scheduler = opts.lr_scheduler.OneCycleLR(self.optimizers[0], max_lr, epochs=self.epochs, steps_per_epoch=n)
 
         if not os.path.exists(self.dir) and self.snapshot:
             os.mkdir(self.dir)
 
-    def on_training_batch_end(self, batch, x, y, pred, logs=None):
+    def on_training_batch_end(self, epoch, step, inputs, targets, caches, logs=None):
         self.scheduler.step()
 
     def on_epoch_end(self, epoch, logs=None):
-        self.trainer.training = epoch + 1 < self.epochs
+        self.trainer.training = epoch < self.epochs
 
         if not self.trainer.training:
-            model_dict = self.model.state_dict()
+            model_dict = self.models[0].state_dict()
             torch.save(model_dict, f"{self.dir}/{self.name}.model")
-
-
-class Warmup(Callback):
-
-    def __init__(self, epochs, min_lr=1e-5):
-        super().__init__()
-
-        self.epochs = epochs
-        self.min_lr = min_lr
-
-        self.max_lrs = []
-        self.total_steps = 0
-        self.step = 0
-
-    def on_train_begin(self, **train_configs):
-        self.max_lrs = [pg["lr"] for pg in self.optimizer.param_groups]
-        self.total_steps = self.epochs * len(train_configs["train_loader"])
-
-    def on_training_batch_begin(self, batch, x, y):
-        self.step += 1
-
-    def on_training_batch_end(self, batch, x, y, pred, logs=None):
-        min_lr = self.min_lr
-        for max_lr, pg in zip(self.max_lrs, self.optimizer.param_groups):
-            pg["lr"] = min_lr + (max_lr - min_lr) / self.total_steps * self.step
-
-    def on_epoch_end(self, epoch, logs=None):
-        self.trainer.training = epoch + 1 < self.epochs

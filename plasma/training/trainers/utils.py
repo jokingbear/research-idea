@@ -1,4 +1,3 @@
-import pandas as pd
 import torch
 
 default_device = "cpu"
@@ -28,10 +27,11 @@ def get_inputs_labels(xy, x_type, x_device, y_type, y_device):
         return x, x
 
 
-def get_series(values, prefix=None, name=None):
+def get_dict(values, prefix=None, name=None):
     prefix = prefix or ""
+    name = name or "loss"
+
     d = {prefix + k: float(values[k]) for k in values} if isinstance(values, dict) \
         else {prefix + (name or "loss"): float(values)}
-    series = pd.Series(d)
 
-    return series
+    return d
