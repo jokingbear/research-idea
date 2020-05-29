@@ -88,12 +88,9 @@ class MoCoTrainer(BaseTrainer):
         return get_dict(logs, prefix="val ")
 
     def _shuffle_indices(self, batch_size):
-        idc = np.arange(0, batch_size)
-        batch_per_device = batch_size // self.devices
-
-        step = np.random.randint(1, self.devices) * batch_per_device
-        shuffled_idc = (idc + step) % batch_size
-        inversed_idc = (idc - step + batch_size) % batch_size
+        shuffled_idc = np.random.choice(batch_size, size=batch_size, replace=False)
+        mapping_idc = sorted([(old, new) for new, old in enumerate(shuffled_idc)], key=lambda kv: kv[0])
+        inversed_idc = [new for _, new in mapping_idc]
 
         return shuffled_idc, inversed_idc
 
