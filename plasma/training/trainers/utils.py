@@ -31,7 +31,9 @@ def get_dict(values, prefix=None, name=None):
     prefix = prefix or ""
     name = name or "loss"
 
-    d = {prefix + k: float(values[k]) for k in values} if isinstance(values, dict) \
-        else {prefix + (name or "loss"): float(values)}
+    if isinstance(values, dict):
+        d = {prefix + k: float(values[k]) for k in values}
+    else:
+        d = {prefix + name: float(values)}
 
     return d
