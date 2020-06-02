@@ -2,7 +2,9 @@ import numpy as np
 import torch
 import torch.onnx as onnx
 import torch.utils.data as data
-from tqdm import tqdm, tqdm_notebook as tqdm_nb
+
+from tqdm import tqdm
+from tqdm.notebook import tqdm as tqdm_nb
 
 on_notebook = True
 
