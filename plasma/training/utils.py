@@ -71,4 +71,5 @@ def get_loader(*arrs, mapper=None, batch_size=32, pin_memory=True, workers=20):
 
             return items
 
-    return data.DataLoader(Data(), batch_size, pin_memory=pin_memory, num_workers=workers)
+    return data.DataLoader(Data(), batch_size, shuffle=False, drop_last=False,
+                           pin_memory=pin_memory, num_workers=workers)

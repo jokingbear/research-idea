@@ -52,7 +52,7 @@ class StandardTrainer(BaseTrainer):
     def get_eval_cache(self, inputs, targets):
         return self.models[0](inputs), targets
 
-    def get_eval_logs(self, eval_caches) -> pd.Series:
+    def get_eval_logs(self, eval_caches):
         preds, trues = eval_caches
 
         loss = self.loss(preds, trues)
