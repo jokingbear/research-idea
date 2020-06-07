@@ -7,7 +7,7 @@ import numpy as np
 from typing import Tuple
 from .base_trainer import BaseTrainer
 from ..losses import contrastive_loss_fn
-from .utils import get_inputs_labels, get_dict
+from .utils import get_batch_tensors, get_dict
 
 
 class MoCoTrainer(BaseTrainer):
@@ -34,7 +34,7 @@ class MoCoTrainer(BaseTrainer):
         self.queue_pointer = None
 
     def extract_data(self, batch_data):
-        return get_inputs_labels(batch_data, self.x_type, self.x_device, self.x_type, self.x_device)
+        return get_batch_tensors(batch_data, self.x_type, self.x_device, self.x_type, self.x_device)
 
     def train_one_batch(self, inputs, targets) -> Tuple[dict, object]:
         queries = self.models[0](inputs)

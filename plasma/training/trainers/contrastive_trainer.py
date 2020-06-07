@@ -4,7 +4,7 @@ import numpy as np
 import torch
 
 from .base_trainer import BaseTrainer
-from .utils import get_dict, get_inputs_labels
+from .utils import get_dict, get_batch_tensors
 
 
 class ContrastiveTrainer(BaseTrainer):
@@ -17,7 +17,7 @@ class ContrastiveTrainer(BaseTrainer):
         self.x_type = x_type
 
     def extract_data(self, batch_data):
-        return get_inputs_labels(batch_data, self.x_type, self.x_device, self.x_type, self.x_device)
+        return get_batch_tensors(batch_data, self.x_type, self.x_device, self.x_type, self.x_device)
 
     def train_one_batch(self, inputs, targets) -> Tuple[dict, object]:
         shuffle_idc = np.random.choice(targets.shape[0], size=targets.shape[0], replace=False)

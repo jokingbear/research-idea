@@ -4,7 +4,7 @@ import pandas as pd
 import torch
 
 from .base_trainer import BaseTrainer
-from .utils import get_inputs_labels, get_dict
+from .utils import get_batch_tensors, get_dict
 
 
 class StandardTrainer(BaseTrainer):
@@ -21,7 +21,7 @@ class StandardTrainer(BaseTrainer):
         self.training = True
 
     def extract_data(self, batch_data):
-        return get_inputs_labels(batch_data, self.x_type, self.x_device, self.y_type, self.y_device)
+        return get_batch_tensors(batch_data, self.x_type, self.x_device, self.y_type, self.y_device)
 
     def train_one_batch(self, inputs, targets) -> Tuple[dict, object]:
         preds = self.models[0](inputs)
