@@ -9,6 +9,8 @@ class PandasDataset(StandardDataset):
     def __init__(self, df: pd.DataFrame, img_column, class_columns, img_reader=np.load, augmentations=None):
         super().__init__()
 
+        assert isinstance(class_columns, list), "class_columns must be a list"
+
         self.df = df.copy().reset_index(drop=True)
         self.img_column = img_column
         self.class_columns = class_columns
@@ -26,7 +28,7 @@ class PandasDataset(StandardDataset):
             img = self.augmentations(image=img)["image"]
 
         if self.class_columns is not None:
-            classes = row[self.class_columns]
+            classes = row[self.class_columns].values
 
             return img, classes
 
