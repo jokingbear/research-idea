@@ -235,6 +235,11 @@ class TrainingScheduler(Callback):
         super().__init__()
 
         self.epochs = epochs
+        self.runned = 0
+
+    def on_train_begin(self, **train_configs):
+        self.runned = train_configs["start_epoch"] - 1
 
     def on_epoch_end(self, epoch, logs=None):
-        self.trainer.training = epoch < self.epochs
+        self.runned += 1
+        self.trainer.training = self.runned < self.epochs

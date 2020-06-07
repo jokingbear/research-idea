@@ -7,7 +7,7 @@ import numpy as np
 from typing import Tuple
 from .base_trainer import BaseTrainer
 from ..losses import contrastive_loss_fn
-from .utils import get_inputs_labels, get_dict
+from .utils import get_batch_tensors, get_dict
 
 
 class MoCoTrainer(BaseTrainer):
@@ -34,7 +34,7 @@ class MoCoTrainer(BaseTrainer):
         self.queue_pointer = None
 
     def extract_data(self, batch_data):
-        return get_inputs_labels(batch_data, self.x_type, self.x_device, self.x_type, self.x_device)
+        return get_batch_tensors(batch_data, self.x_type, self.x_device, self.x_type, self.x_device)
 
     def train_one_batch(self, inputs, targets) -> Tuple[dict, object]:
         queries = self.models[0](inputs)
@@ -88,12 +88,9 @@ class MoCoTrainer(BaseTrainer):
         return get_dict(logs, prefix="val ")
 
     def _shuffle_indices(self, batch_size):
-        idc = np.arange(0, batch_size)
-        batch_per_device = batch_size // self.devices
-
-        step = np.random.randint(1, self.devices) * batch_per_device
-        shuffled_idc = (idc + step) % batch_size
-        inversed_idc = (idc - step + batch_size) % batch_size
+        shuffled_idc = np.random.choice(batch_size, size=batch_size, replace=False)
+        mapping_idc = sorted([(old, new) for new, old in enumerate(shuffled_idc)], key=lambda kv: kv[0])
+        inversed_idc = [new for _, new in mapping_idc]
 
         return shuffled_idc, inversed_idc
 

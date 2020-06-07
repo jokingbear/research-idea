@@ -2,7 +2,9 @@ import numpy as np
 import torch
 import torch.onnx as onnx
 import torch.utils.data as data
-from tqdm import tqdm, tqdm_notebook as tqdm_nb
+
+from tqdm import tqdm
+from tqdm.notebook import tqdm as tqdm_nb
 
 on_notebook = True
 
@@ -71,4 +73,5 @@ def get_loader(*arrs, mapper=None, batch_size=32, pin_memory=True, workers=20):
 
             return items
 
-    return data.DataLoader(Data(), batch_size, pin_memory=pin_memory, num_workers=workers)
+    return data.DataLoader(Data(), batch_size, shuffle=False, drop_last=False,
+                           pin_memory=pin_memory, num_workers=workers)

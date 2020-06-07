@@ -15,14 +15,16 @@ def to_device(xs, dtype=None, device=None):
         return x
 
 
-def get_inputs_labels(xy, x_type, x_device, y_type, y_device):
-    if type(xy) in {tuple, list}:
-        x = to_device(xy[0], dtype=x_type, device=x_device)
-        y = to_device(xy[1], dtype=y_type, device=y_device)
+def get_batch_tensors(batch_values, x_type, x_device, y_type, y_device):
+    if type(batch_values) in {tuple, list}:
+        x = to_device(batch_values[0], dtype=x_type, device=x_device)
+        y = to_device(batch_values[1], dtype=y_type, device=y_device)
 
         return x, y
+    elif isinstance(batch_values, dict):
+        return {k: get_batch_tensors(batch_values[k], x_type, x_device, y_type, y_device) for k in batch_values}
     else:
-        x = to_device(xy, dtype=x_type, device=x_device)
+        x = to_device(batch_values, dtype=x_type, device=x_device)
 
         return x, x
 
@@ -31,7 +33,9 @@ def get_dict(values, prefix=None, name=None):
     prefix = prefix or ""
     name = name or "loss"
 
-    d = {prefix + k: float(values[k]) for k in values} if isinstance(values, dict) \
-        else {prefix + (name or "loss"): float(values)}
+    if isinstance(values, dict):
+        d = {prefix + k: float(values[k]) for k in values}
+    else:
+        d = {prefix + name: float(values)}
 
     return d
