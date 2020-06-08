@@ -69,7 +69,7 @@ class LrFinder(Callback):
 
 class WarmRestart(Callback):
 
-    def __init__(self, min_lr=1e-6, t0=10, factor=2, cycles=3, reset_state=False,
+    def __init__(self, min_lr=0, t0=10, factor=2, cycles=3, reset_state=False,
                  snapshot=True, directory="checkpoint", model_name=None):
         super().__init__()
 
