@@ -1,1 +1,5 @@
-from .hub_main import load, list_entries, list_specs
+from .hub_main import Hub
+
+
+def get_hub(path, default_file="hubconfig"):
+    return get_hub(path, default_file)

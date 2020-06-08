@@ -4,36 +4,28 @@ from importlib import import_module
 from .utils import get_base
 
 
-default_file = "hubconfig"
+class Hub:
 
+    def __init__(self, path, default_file):
+        base = get_base(path)
+        self.module = import_module(f"{base}.{default_file}")
 
-def load(path, method_name, *args, **kwargs):
-    base = get_base(path)
+    def load(self, entry_name, *args, **kwargs):
+        function = getattr(self.module, entry_name)
 
-    module = import_module(f"{base}.{default_file}")
-    method = getattr(module, method_name)
+        assert insp.isfunction(function), f"{function} is not a function"
 
-    assert insp.ismethod(method), f"{method} is not a method"
+        return function(*args, **kwargs)
 
-    return method(*args, **kwargs)
+    def list_entries(self):
+        function_names = [name for name, _ in insp.getmembers(self.module, insp.isfunction)]
 
+        return function_names
 
-def list_entries(path):
-    base = get_base(path)
+    def list_specs(self, entry_name):
+        function = getattr(self.module, entry_name)
 
-    module = import_module(f"{base}.{default_file}")
-    method_names = [name for name, _ in insp.getmembers(module, insp.ismethod)]
+        assert insp.isfunction(function), f"{function} is not a method"
 
-    return method_names
-
-
-def list_specs(path, method_name):
-    base = get_base(path)
-
-    module = import_module(f"{base}.{default_file}")
-    method = getattr(module, method_name)
-
-    assert insp.ismethod(method), f"{method} is not a method"
-
-    spec = insp.getfullargspec(method)
-    print(spec)
+        spec = insp.getfullargspec(function)
+        return spec
