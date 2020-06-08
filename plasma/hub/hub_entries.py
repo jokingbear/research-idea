@@ -4,7 +4,7 @@ from importlib import import_module
 from .utils import get_base
 
 
-class Hub:
+class HubEntries:
 
     def __init__(self, path, default_file):
         base = get_base(path)
