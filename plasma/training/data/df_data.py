@@ -6,7 +6,7 @@ from .base_class import StandardDataset
 
 class PandasDataset(StandardDataset):
 
-    def __init__(self, df: pd.DataFrame, img_column, class_columns, img_reader=np.load, augmentations=None):
+    def __init__(self, df: pd.DataFrame, img_column, class_columns, img_reader=np.load, cast_label=np.uint8):
         super().__init__()
 
         assert isinstance(class_columns, list), "class_columns must be a list"
@@ -15,7 +15,7 @@ class PandasDataset(StandardDataset):
         self.img_column = img_column
         self.class_columns = class_columns
         self.reader = img_reader
-        self.augmentations = augmentations
+        self.cast_label = cast_label
 
     def get_len(self):
         return len(self.df)
@@ -24,11 +24,8 @@ class PandasDataset(StandardDataset):
         row = self.df.iloc[idx]
         img = self.reader(row[self.img_column])
 
-        if self.augmentations is not None:
-            img = self.augmentations(image=img)["image"]
-
         if self.class_columns is not None:
-            classes = row[self.class_columns].values
+            classes = row[self.class_columns].values.astype(self.cast_label)
 
             return img, classes
 

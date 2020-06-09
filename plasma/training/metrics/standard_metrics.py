@@ -11,7 +11,7 @@ def acc_fn(binary=False):
     return acc
 
 
-def fb_loss_fn(beta=1, axes=(0,), binary=False, smooth=1e-7):
+def fb_fn(beta=1, axes=(0,), binary=False, smooth=1e-7, mean=True):
     beta2 = beta ** 2
 
     def fb_score(pred, true):
@@ -24,6 +24,6 @@ def fb_loss_fn(beta=1, axes=(0,), binary=False, smooth=1e-7):
 
         fb = (p + smooth) / (s + smooth)
 
-        return fb.mean()
+        return fb.mean() if mean else fb
 
     return fb_score
