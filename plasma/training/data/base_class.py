@@ -5,6 +5,11 @@ from torch.utils import data
 
 class StandardDataset(data.Dataset):
 
+    def __init__(self):
+        super(StandardDataset, self).__init__()
+
+        self.sampler = None
+
     def __len__(self):
         return self.get_len()
 
@@ -22,11 +27,10 @@ class StandardDataset(data.Dataset):
     def reset(self):
         pass
 
-    def get_sampler(self):
-        return RandomSampler(self)
+    def get_torch_loader(self, batch_size=32, workers=20, pin=True, drop_last=True):
+        sampler = self.sampler or RandomSampler(self)
 
-    def get_torch_loader(self, batch_size=32, workers=8, pin=True, drop_last=True):
-        return data.DataLoader(self, batch_size, sampler=self.get_sampler(), num_workers=workers,
+        return data.DataLoader(self, batch_size, sampler=sampler, num_workers=workers,
                                pin_memory=pin, drop_last=drop_last)
 
 

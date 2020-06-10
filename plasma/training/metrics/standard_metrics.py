@@ -24,6 +24,6 @@ def fb_fn(beta=1, axes=(0,), binary=False, smooth=1e-7, mean=True):
 
         fb = (p + smooth) / (s + smooth)
 
-        return fb.mean() if mean else fb
+        return {f"f{beta2}_score": fb.mean() if mean else fb}
 
     return fb_score
