@@ -17,15 +17,15 @@ class HubEntries:
 
         return function(*args, **kwargs)
 
-    def list_entries(self):
+    def list(self):
         function_names = [name for name, _ in insp.getmembers(self.module, insp.isfunction)]
 
         return function_names
 
-    def list_specs(self, entry_name):
+    def inspect(self, entry_name):
         function = getattr(self.module, entry_name)
 
-        assert insp.isfunction(function), f"{function} is not a method"
+        assert insp.isfunction(function), f"{function} is not a function"
 
         spec = insp.getfullargspec(function)
         return spec
