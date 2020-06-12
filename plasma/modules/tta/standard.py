@@ -39,12 +39,12 @@ class Zoom(nn.Module):
 
 class Compose(nn.Module):
 
-    def __init__(self, main_module, *ttas):
+    def __init__(self, main_module, aug_modules):
         super().__init__()
 
-        assert len(ttas) > 0, "must have at least 1 tta"
+        assert len(aug_modules) > 0, "must have at least 1 augmentation module"
 
-        self.aug_modules = nn.ModuleList(ttas)
+        self.aug_modules = nn.ModuleList(aug_modules)
         self.main_module = main_module
 
     def forward(self, x):
