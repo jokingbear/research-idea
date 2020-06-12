@@ -9,7 +9,9 @@ def to_device(xs, dtype=None, device=None):
     dtype = dtype or default_type
 
     if type(xs) in {list, tuple}:
-        return [x.to(device).type(dtype) for x in xs]
+        return [to_device(x, dtype, device) for x in xs]
+    elif isinstance(xs, dict):
+        return {k: to_device(xs[k], dtype, device) for k in xs}
     else:
         x = xs.to(device).type(dtype)
         return x
@@ -21,8 +23,6 @@ def get_batch_tensors(batch_values, x_type, x_device, y_type, y_device):
         y = to_device(batch_values[1], dtype=y_type, device=y_device)
 
         return x, y
-    elif isinstance(batch_values, dict):
-        return {k: get_batch_tensors(batch_values[k], x_type, x_device, y_type, y_device) for k in batch_values}
     else:
         x = to_device(batch_values, dtype=x_type, device=x_device)
 

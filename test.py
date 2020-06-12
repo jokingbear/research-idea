@@ -1,4 +1,2 @@
-import torch.hub as hub
+from plasma.modules import tta
 
-
-hub.load("jokingbear/MaskCheX:develop", "custom_vgg", tmp=5)

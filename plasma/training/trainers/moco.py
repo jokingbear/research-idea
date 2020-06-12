@@ -44,8 +44,8 @@ class MoCoTrainer(BaseTrainer):
             keys = self.models[1](targets[shuffled_idc])[inversed_idc]
 
         if self.normalize:
-            queries = func.normalize(queries, dim=1)
-            keys = func.normalize(keys, dim=1)
+            queries = func.normalize(queries, p=2, dim=1)
+            keys = func.normalize(keys, p=2, dim=1)
 
         # B x 1
         trues = (queries * keys).sum(dim=1, keepdim=True)

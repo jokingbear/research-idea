@@ -80,7 +80,7 @@ class WarmRestart(Callback):
         self.reset_state = reset_state
         self.snapshot = snapshot
         self.dir = directory
-        self.model_name = model_name or "model"
+        self.model_name = model_name or "warm"
 
         self.base_lrs = None
         self.scheduler = None
