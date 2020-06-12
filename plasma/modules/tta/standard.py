@@ -24,12 +24,12 @@ class Zoom(nn.Module):
         h, w = x.shape[-2:]
 
         if self.scale > 0:
-            zoom_h = np.round(h * self.scale)
-            zoom_w = np.round(w * self.scale)
+            zoom_h = int(np.round(h * self.scale))
+            zoom_w = int(np.round(w * self.scale))
             x = x[..., zoom_h:-zoom_h, zoom_w:-zoom_w]
         else:
-            pad_h = -np.round(h * self.scale)
-            pad_w = -np.round(w * self.scale)
+            pad_h = -int(np.round(h * self.scale))
+            pad_w = -int(np.round(w * self.scale))
             x = func.pad(x, [pad_w] * 2 + [pad_h] * 2)
 
         return func.interpolate(x, size=(h, w), mode=self.interpolation, align_corners=True)
