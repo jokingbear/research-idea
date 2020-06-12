@@ -40,11 +40,12 @@ class Zoom(nn.Module):
 
 class Compose(nn.Module):
 
-    def __init__(self, main_module, *ttas):
+    def __init__(self, main_module, *ttas, dim=0):
         super().__init__()
 
         assert len(ttas) > 0, "must have at least 1 tta"
 
+        self.dim = dim
         self.ttas = nn.ModuleList(ttas)
         self.main_module = main_module
 
@@ -55,4 +56,7 @@ class Compose(nn.Module):
             aug = aug_module(x)
             results.append(self.main_module(aug))
 
-        return torch.stack(results, dim=0)
+        return torch.stack(results, dim=self.dim)
+
+    def extra_repr(self) -> str:
+        return f"dim={self.dim}"
