@@ -1,8 +1,7 @@
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as func
-
-import numpy as np
 
 
 class HorizontalFlip(nn.Module):
@@ -40,23 +39,16 @@ class Zoom(nn.Module):
 
 class Compose(nn.Module):
 
-    def __init__(self, main_module, *ttas, dim=0):
+    def __init__(self, main_module, *ttas):
         super().__init__()
 
         assert len(ttas) > 0, "must have at least 1 tta"
 
-        self.dim = dim
-        self.ttas = nn.ModuleList(ttas)
+        self.aug_modules = nn.ModuleList(ttas)
         self.main_module = main_module
 
     def forward(self, x):
-        results = [self.main_module(x)]
-
-        for aug_module in self.ttas:
-            aug = aug_module(x)
-            results.append(self.main_module(aug))
-
-        return torch.stack(results, dim=self.dim)
-
-    def extra_repr(self) -> str:
-        return f"dim={self.dim}"
+        x = [x] + [aug_module(x) for aug_module in self.aug_modules]
+        x = torch.stack(x, dim=1).flatten(start_dim=0, end_dim=1)
+        results = self.main_module(x)
+        return results.view(-1, 1 + len(self.aug_modules), *results.shape[1:])
