@@ -40,6 +40,7 @@ class MinEdgeCrop(DualTransform):
             else:
                 img = img[:, -min_edge:]
 
+        assert img.shape[0] == img.shape[1], f"height and width must be the same, currently {img.shape[:2]}"
         return cv2.resize(img, (self.size, self.size), interpolation=self.interpolation)
 
     def get_params(self):
