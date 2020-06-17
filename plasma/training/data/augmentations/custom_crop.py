@@ -11,9 +11,6 @@ class MinEdgeCrop(DualTransform):
     def apply_to_keypoint(self, keypoint, **params):
         raise NotImplementedError("no implementation for bbox")
 
-    def get_transform_init_args_names(self):
-        return super().get_transform_init_args_names()
-
     def apply_to_bbox(self, bbox, **params):
         raise NotImplementedError("no implementation for bbox")
 
