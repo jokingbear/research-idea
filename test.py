@@ -1,4 +1,4 @@
 from torchvision import models
 
 
-models.segmentation.DeepLabV3
+models.segmentation.deeplabv3_resnet50()

@@ -10,7 +10,14 @@ from .base_class import Callback
 
 class LrFinder(Callback):
 
-    def __init__(self, min_lr, max_lr, epochs=3, use_plotly=True):
+    def __init__(self, min_lr=1e-5, max_lr=1, epochs=1, use_plotly=True):
+        """
+        Callback for finding task specific learning rate
+        :param min_lr: learning rate lower bound
+        :param max_lr: learning rate upper bound
+        :param epochs: number of epoch to run
+        :param use_plotly: use plotly in plot_data method
+        """
         super().__init__()
 
         self.min_lr = min_lr

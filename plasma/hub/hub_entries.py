@@ -11,6 +11,14 @@ class HubEntries:
         self.module = import_module(f"{base}.{default_file}")
 
     def load(self, entry_name, *args, **kwargs):
+        """
+        load a function from entry file
+
+        :param entry_name: function name
+        :param args: args to input into the function
+        :param kwargs: kwargs to input into the function
+        :return:
+        """
         function = getattr(self.module, entry_name)
 
         assert insp.isfunction(function), f"{function} is not a function"
