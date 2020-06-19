@@ -1,3 +1,4 @@
+import cv2
 import numpy as np
 
 from albumentations import DualTransform
@@ -15,6 +16,14 @@ class MinEdgeCrop(DualTransform):
         raise NotImplementedError("no implementation for bbox")
 
     def apply(self, img, position="center"):
+        """
+        crop image base on min size
+        :param img: image to be cropped
+        :param position: where to crop the image
+        :return: cropped image
+        """
+        assert position in {"center", "left", "right"}, "position must either be: left, center or right"
+
         h, w = img.shape[:2]
 
         assert h % 2 == 0 and w % 2 == 0, "height and width must be even"
@@ -54,3 +63,36 @@ class MinEdgeCrop(DualTransform):
 
     def get_params_dependent_on_targets(self, params):
         pass
+
+
+class MinEdgeResize(DualTransform):
+
+    def __init__(self, size, interpolation=cv2.INTER_LINEAR, always_apply=False, p=0.5):
+        super().__init__(always_apply, p)
+
+        self.size = size
+        self.interpolation = interpolation
+
+    def apply(self, img, **params):
+        """
+        resize image based on its min edge
+        :param img: image to be resized
+        :param params: not used
+        :return: resized image
+        """
+        h, w = img.shape[:2]
+
+        if len(img.shape) == 2:
+            c_pad = [(0, 0)]
+        else:
+            c_pad = []
+
+        img = np.pad(img, [(0, 0), (0, 0), *c_pad])
+        min_edge = min(h, w)
+
+        size = self.size
+        new_h = np.round(h / min_edge * size)
+        new_w = np.round(w / min_edge * size)
+        img = cv2.resize(img, (new_w, new_h), interpolation=self.interpolation)
+
+        return img
