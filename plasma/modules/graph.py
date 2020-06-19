@@ -33,6 +33,13 @@ class GraphLinear(nn.Linear):
 
 
 def get_label_correlation(df, columns, return_count=True):
+    """
+    Calculate correlation of columns from data frame
+    :param df: pandas dataframe
+    :param columns: colunms to calculate correlation
+    :param return_count: return occurrence count
+    :return: correlation and counts
+    """
     counts = pd.DataFrame(columns=columns, index=columns)
 
     for c1 in columns:
@@ -48,12 +55,18 @@ def get_label_correlation(df, columns, return_count=True):
 
 
 def get_adjacency_matrix(smooth_corr, neighbor_ratio=0.2):
+    """
+    Get adjacency matrix from smoothed correlation
+    :param smooth_corr: smoothed correlation matrix as dataframe
+    :param neighbor_ratio: how strong neighbor nodes affect main nodes
+    :return: adjacency matrix as dataframe
+    """
     identiy = np.identity(smooth_corr.shape[0])
     reweight = smooth_corr - identiy
-    reweight = reweight * neighbor_ratio / (1 - neighbor_ratio) / (reweight.values.sum(axis=0, keepdims=True) + 1e-6)
+    reweight = reweight * neighbor_ratio / (1 - neighbor_ratio) / (reweight.values.sum(axis=0, keepdims=True) + 1e-8)
     reweight = reweight + identiy
 
     D = reweight.values.sum(axis=1) ** (-0.5)
     D = np.diag(D)
     normalized = D @ reweight.values.transpose() @ D
-    return normalized
+    return pd.DataFrame(normalized, index=smooth_corr.index, columns=smooth_corr.columns)
