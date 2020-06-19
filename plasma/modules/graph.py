@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
+import torch.nn.functional as func
 
 
 class GraphSequential(nn.Module):
@@ -30,6 +31,39 @@ class GraphLinear(nn.Linear):
         prop = torch.matmul(self.correlation_matrix, x)
 
         return super().forward(prop)
+
+
+class GCN(nn.Module):
+
+    def __init__(self, embeddings, correlations, out_features):
+        super().__init__()
+
+        self.out_features = out_features
+        correlations = torch.tensor(correlations, dtype=torch.float)
+        correlations = nn.Parameter(correlations, requires_grad=False)
+
+        self.graph = GraphSequential(embeddings, *[
+            GraphLinear(embeddings.shape[-1], out_features // 2, correlations),
+            nn.LeakyReLU(0.2, inplace=True),
+            GraphLinear(out_features // 2, out_features, correlations)
+        ])
+
+        self.bias = nn.Parameter(torch.zeros(embeddings.shape[0]), requires_grad=True)
+
+    def forward(self, x):
+        embeddings = self.graph()
+        logits = func.linear(x, embeddings, self.bias)
+
+        return logits
+
+    def export_linear(self):
+        linear = nn.Linear(self.out_features, self.graph.embedding.shape[0])
+
+        with torch.no_grad():
+            linear.weight.data = self.graph()
+            linear.bias.data = self.bias
+
+        return linear
 
 
 def get_label_correlation(df, columns, return_count=True):
