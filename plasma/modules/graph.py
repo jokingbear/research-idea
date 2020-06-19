@@ -8,6 +8,10 @@ import torch.nn.functional as func
 class GraphSequential(nn.Module):
 
     def __init__(self, node_embedding, *args):
+        """
+        :param node_embedding: embedding extracted from text, either numpy or torch tensor
+        :param args: additional torch module for transformation
+        """
         super().__init__()
 
         if not torch.is_tensor(node_embedding):
@@ -23,7 +27,15 @@ class GraphSequential(nn.Module):
 class GraphLinear(nn.Linear):
 
     def __init__(self, in_channels, out_channels, correlation_matrix, bias=True):
+        """
+        :param in_channels: size of input features
+        :param out_channels: size of output features
+        :param correlation_matrix: correlation matrix for information propagation
+        :param bias: whether to use bias
+        """
         super().__init__(in_channels, out_channels, bias)
+
+        assert isinstance(correlation_matrix, nn.Parameter), "correlation must be nn.Parameter"
 
         self.correlation_matrix = correlation_matrix
 
@@ -36,6 +48,11 @@ class GraphLinear(nn.Linear):
 class GCN(nn.Module):
 
     def __init__(self, embeddings, correlations, out_features):
+        """
+        :param embeddings: init embeddings for graph, either numpy or torch.tensor
+        :param correlations: normalized adjacency matrix
+        :param out_features: output features of extractor
+        """
         super().__init__()
 
         self.out_features = out_features
@@ -57,6 +74,10 @@ class GCN(nn.Module):
         return logits
 
     def export_linear(self):
+        """
+        return linear layer for better test time inference
+        :return: nn.Linear module
+        """
         linear = nn.Linear(self.out_features, self.graph.embedding.shape[0])
 
         with torch.no_grad():
