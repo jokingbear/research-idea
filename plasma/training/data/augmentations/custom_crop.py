@@ -97,8 +97,8 @@ class MinEdgeResize(DualTransform):
         min_edge = min(h, w)
 
         size = self.size
-        new_h = np.round(h / min_edge * size)
-        new_w = np.round(w / min_edge * size)
+        new_h = np.round(h / min_edge * size).astype(int)
+        new_w = np.round(w / min_edge * size).astype(int)
         img = cv2.resize(img, (new_w, new_h), interpolation=self.interpolation)
 
         return img
