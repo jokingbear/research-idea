@@ -68,6 +68,12 @@ class MinEdgeCrop(DualTransform):
 class MinEdgeResize(DualTransform):
 
     def __init__(self, size, interpolation=cv2.INTER_LINEAR, always_apply=False, p=0.5):
+        """
+        :param size: final size of min edge
+        :param interpolation: how to interpolate image
+        :param always_apply:
+        :param p:
+        """
         super().__init__(always_apply, p)
 
         self.size = size
@@ -83,9 +89,9 @@ class MinEdgeResize(DualTransform):
         h, w = img.shape[:2]
 
         if len(img.shape) == 2:
-            c_pad = [(0, 0)]
-        else:
             c_pad = []
+        else:
+            c_pad = [(0, 0)]
 
         img = np.pad(img, [(0, 0), (0, 0), *c_pad])
         min_edge = min(h, w)

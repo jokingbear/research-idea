@@ -1,1 +1,1 @@
-from .custom_crop import MinEdgeCrop
+from .custom_crop import MinEdgeCrop, MinEdgeResize
