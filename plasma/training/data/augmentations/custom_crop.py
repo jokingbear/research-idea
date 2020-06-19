@@ -9,13 +9,7 @@ class MinEdgeCrop(DualTransform):
     def __init__(self, always_apply=False, p=0.5):
         super().__init__(always_apply, p)
 
-    def apply_to_keypoint(self, keypoint, **params):
-        raise NotImplementedError("no implementation for bbox")
-
-    def apply_to_bbox(self, bbox, **params):
-        raise NotImplementedError("no implementation for bbox")
-
-    def apply(self, img, position="center"):
+    def apply(self, img, position="center", **kwargs):
         """
         crop image base on min size
         :param img: image to be cropped
@@ -26,15 +20,13 @@ class MinEdgeCrop(DualTransform):
 
         h, w = img.shape[:2]
 
-        assert h % 2 == 0 and w % 2 == 0, "height and width must be even"
-
         min_edge = min(h, w)
         if h > min_edge:
             if position == "left":
                 img = img[:min_edge]
             elif position == "center":
                 d = (h - min_edge) // 2
-                img = img[d:-d]
+                img = img[d:-d] if d != 0 else img
 
                 if h % 2 != 0:
                     img = img[1:]
@@ -46,7 +38,7 @@ class MinEdgeCrop(DualTransform):
                 img = img[:, :min_edge]
             elif position == "center":
                 d = (w - min_edge) // 2
-                img = img[:, d:-d]
+                img = img[:, d:-d] if d != 0 else img
 
                 if w % 2 != 0:
                     img = img[:, 1:]
@@ -61,13 +53,16 @@ class MinEdgeCrop(DualTransform):
             "position": np.random.choice(["left", "center", "right"])
         }
 
-    def get_params_dependent_on_targets(self, params):
-        pass
-
 
 class MinEdgeResize(DualTransform):
 
     def __init__(self, size, interpolation=cv2.INTER_LINEAR, always_apply=False, p=0.5):
+        """
+        :param size: final size of min edge
+        :param interpolation: how to interpolate image
+        :param always_apply:
+        :param p:
+        """
         super().__init__(always_apply, p)
 
         self.size = size
@@ -83,16 +78,16 @@ class MinEdgeResize(DualTransform):
         h, w = img.shape[:2]
 
         if len(img.shape) == 2:
-            c_pad = [(0, 0)]
-        else:
             c_pad = []
+        else:
+            c_pad = [(0, 0)]
 
         img = np.pad(img, [(0, 0), (0, 0), *c_pad])
         min_edge = min(h, w)
 
         size = self.size
-        new_h = np.round(h / min_edge * size)
-        new_w = np.round(w / min_edge * size)
+        new_h = np.round(h / min_edge * size).astype(int)
+        new_w = np.round(w / min_edge * size).astype(int)
         img = cv2.resize(img, (new_w, new_h), interpolation=self.interpolation)
 
         return img
