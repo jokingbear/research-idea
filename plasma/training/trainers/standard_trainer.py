@@ -10,6 +10,16 @@ class StandardTrainer(BaseTrainer):
 
     def __init__(self, model, optimizer, loss, metrics=None,
                  x_device=None, x_type=torch.float, y_device=None, y_type=torch.long):
+        """
+        :param model: torch module
+        :param optimizer: torch optimizer
+        :param loss: loss function with signature function(preds, trues)
+        :param metrics: list of metric functions with signature function(preds, trues)
+        :param x_device: device to put inputs
+        :param x_type: type to cast inputs
+        :param y_device: device to put labels
+        :param y_type: type to cast labels
+        """
         super().__init__([model], [optimizer], loss, metrics)
 
         self.x_device = x_device
@@ -23,7 +33,13 @@ class StandardTrainer(BaseTrainer):
         return get_batch_tensors(batch_data, self.x_type, self.x_device, self.y_type, self.y_device)
 
     def train_one_batch(self, inputs, targets) -> Tuple[dict, object]:
-        preds = self.models[0](inputs)
+        if isinstance(inputs, dict):
+            preds = self.models[0](**inputs)
+        elif isinstance(inputs, list):
+            preds = self.models[0](*inputs)
+        else:
+            preds = self.models[0](inputs)
+
         loss = self.loss(preds, targets)
 
         if isinstance(loss, dict):
@@ -49,7 +65,14 @@ class StandardTrainer(BaseTrainer):
         return measures
 
     def get_eval_cache(self, inputs, targets):
-        return self.models[0](inputs), targets
+        if isinstance(inputs, dict):
+            preds = self.models[0](**inputs)
+        elif isinstance(inputs, list):
+            preds = self.models[0](*inputs)
+        else:
+            preds = self.models[0](inputs)
+
+        return preds, targets
 
     def get_eval_logs(self, eval_caches):
         preds, trues = eval_caches
