@@ -5,6 +5,10 @@ import torch.nn as nn
 class GlobalAverage(nn.Module):
 
     def __init__(self, rank=2, keepdims=False):
+        """
+        :param rank: dimension of image
+        :param keepdims: whether to preserve shape after averaging
+        """
         super().__init__()
         self.axes = list(range(2, 2 + rank))
         self.keepdims = keepdims
@@ -19,6 +23,10 @@ class GlobalAverage(nn.Module):
 class Reshape(nn.Module):
 
     def __init__(self, *shape):
+        """
+        final tensor forward result (B, *shape)
+        :param shape: shape to resize to except batch dimension
+        """
         super().__init__()
 
         self.shape = shape
@@ -39,6 +47,9 @@ class Identity(nn.Module):
 class ImagenetNorm(nn.Module):
 
     def __init__(self, from_raw=True):
+        """
+        :param from_raw: whether the input image lies in the range of [0, 255]
+        """
         super().__init__()
 
         self.from_raw = from_raw
@@ -61,5 +72,22 @@ class ImagenetNorm(nn.Module):
 
 class Normalization(nn.Module):
 
+    def __init__(self, from_raw=True):
+        """
+        :param from_raw: whether the input image lies in the range of [0, 255]
+        """
+        super().__init__()
+
+        self.from_raw = from_raw
+
     def forward(self, x):
-        return x / 127.5 - 1
+        if x.dtype != torch.float:
+            x = x.float()
+
+        if self.from_raw:
+            return x / 127.5 - 1
+        else:
+            return x * 2 - 1
+
+    def extra_repr(self):
+        return f"from_raw={self.from_raw}"

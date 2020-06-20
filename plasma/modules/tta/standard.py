@@ -13,9 +13,13 @@ class HorizontalFlip(nn.Module):
 class Zoom(nn.Module):
 
     def __init__(self, scale=0.1, interpolation="bilinear"):
+        """
+        :param scale: scale to zoom, positive for zooming in, negative for zooming out
+        :param interpolation: how to resize zoomed image
+        """
         super().__init__()
 
-        assert scale != 0, "scale must not be 0"
+        assert -1 < scale < 0 or 0 < scale < 1, "scale doesn't lie in range (-1, 0) U (0, 1)"
         self.scale = scale
         self.interpolation = interpolation
 
@@ -40,6 +44,10 @@ class Zoom(nn.Module):
 class Compose(nn.Module):
 
     def __init__(self, main_module, aug_modules):
+        """
+        :param main_module: main computation module
+        :param aug_modules: test time augmentation modules
+        """
         super().__init__()
 
         assert len(aug_modules) > 0, "must have at least 1 augmentation module"
