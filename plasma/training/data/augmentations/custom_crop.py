@@ -54,7 +54,7 @@ class MinEdgeCrop(DualTransform):
 
     def get_params(self):
         return {
-            "position": np.random.choice(self._default_positions)
+            "position": np.random.choice(self.positions)
         }
 
 
