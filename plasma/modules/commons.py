@@ -46,7 +46,8 @@ class ImagenetNorm(nn.Module):
         self.std = nn.Parameter(torch.tensor([0.229, 0.224, 0.225]), requires_grad=False)
 
     def forward(self, x: torch.Tensor):
-        assert x.dtype == torch.float, "input tensor must be float"
+        if x.dtype != torch.float:
+            x = x.float()
 
         x = x / 255 if self.from_raw else x
         mean = self.mean.view(1, 3, 1, 1)
