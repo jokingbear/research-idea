@@ -24,6 +24,9 @@ class MinEdgeCrop(DualTransform):
 
         h, w = img.shape[:2]
 
+        if h == w:
+            return img
+
         min_edge = min(h, w)
         if h > min_edge:
             if position == "left":
@@ -80,13 +83,6 @@ class MinEdgeResize(DualTransform):
         :return: resized image
         """
         h, w = img.shape[:2]
-
-        if len(img.shape) == 2:
-            c_pad = []
-        else:
-            c_pad = [(0, 0)]
-
-        img = np.pad(img, [(0, 0), (0, 0), *c_pad])
         min_edge = min(h, w)
 
         size = self.size

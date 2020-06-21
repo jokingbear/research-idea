@@ -1,7 +1,6 @@
 import os
 from collections import defaultdict
 
-import numpy as np
 import torch
 import torch.optim as opts
 
@@ -76,45 +75,55 @@ class LrFinder(Callback):
 
 class WarmRestart(Callback):
 
-    def __init__(self, min_lr=0, t0=10, factor=2, cycles=3, reset_state=False,
+    def __init__(self, min_lr=0, t0=10, factor=2, cycles=3,
                  snapshot=True, directory="checkpoint", model_name=None):
+        """
+        :param min_lr: final learning
+        :param t0: number of epoch in the 1st cycle
+        :param factor: factor to change epoch each cycle
+        :param cycles: number of cycle to run
+        :param snapshot: whether to save snapshot each cycle
+        :param directory: where to save the model
+        :param model_name: model file name
+        """
         super().__init__()
 
         self.min_lr = min_lr
         self.t0 = t0
         self.factor = factor
         self.cycles = cycles
-        self.reset_state = reset_state
         self.snapshot = snapshot
         self.dir = directory
         self.model_name = model_name or "warm"
 
         self.base_lrs = None
         self.scheduler = None
-        self.current_epoch = 0
+        self.run_epoch = 0
         self.finished_cycles = 0
         self.max_epoch = t0
 
     def on_train_begin(self, **train_configs):
-        self.base_lrs = [g["lr"] for g in self.optimizers[0].param_groups]
-        self.current_epoch = train_configs["start_epoch"] - 1
+        self.run_epoch = train_configs["start_epoch"] - 1
+        train_loader = train_configs["train_loader"]
+        self.scheduler = opts.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizers[0],
+                                                                       T_0=len(train_loader),
+                                                                       T_mult=self.factor,
+                                                                       eta_min=self.min_lr,
+                                                                       last_epoch=self.run_epoch)
 
         if not os.path.exists(self.dir) and self.snapshot:
             os.mkdir(self.dir)
 
-    def on_epoch_begin(self, epoch):
-        min_lr = self.min_lr
-        for max_lr, g in zip(self.base_lrs, self.optimizers[0].param_groups):
-            g["lr"] = min_lr + 0.5 * (max_lr - min_lr) * (1 + np.cos(self.current_epoch / self.max_epoch * np.pi))
-
     def on_epoch_end(self, epoch, logs=None):
-        self.current_epoch += 1
+        self.run_epoch += 1
 
         for i, g in enumerate(self.optimizers[0].param_groups):
             logs[f"lr {i}"] = g["lr"]
 
-        if self.current_epoch == self.max_epoch:
-            self.current_epoch = 0
+        self.scheduler.step()
+
+        if self.run_epoch == self.max_epoch:
+            self.run_epoch = 0
             self.max_epoch *= self.factor
             self.finished_cycles += 1
 
@@ -125,9 +134,6 @@ class WarmRestart(Callback):
 
                 torch.save(model_dict, f"{self.dir}/snapshot_{self.model_name}_cycle_{self.finished_cycles}.model")
                 torch.save(optim_dict, f"{self.dir}/snapshot_{self.model_name}_cycle_{self.finished_cycles}.optim")
-
-            if self.reset_state:
-                self.optimizers[0].state = defaultdict(dict)
 
         self.trainer.training = self.finished_cycles < self.cycles
 
@@ -158,6 +164,6 @@ class SuperConvergence(Callback):
     def on_epoch_end(self, epoch, logs=None):
         self.trainer.training = epoch < self.epochs
 
-        if not self.trainer.training:
-            model_dict = self.models[0].state_dict()
-            torch.save(model_dict, f"{self.dir}/{self.name}.model")
+    def on_train_end(self):
+        model_dict = self.models[0].state_dict()
+        torch.save(model_dict, f"{self.dir}/{self.name}.model")
