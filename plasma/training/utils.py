@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.onnx as onnx
 import torch.utils.data as data
+import multiprocessing as mp
 
 from tqdm import tqdm
 from tqdm.notebook import tqdm as tqdm_nb
@@ -9,16 +10,32 @@ from tqdm.notebook import tqdm as tqdm_nb
 on_notebook = True
 
 
-def get_tqdm(total, desc):
-    return tqdm_nb(total=total, desc=desc) if on_notebook else tqdm(total=total, desc=desc)
+def get_tqdm(total, desc, iterable=None):
+    """
+    get tqdm progress bar
+    :param total: total length of the progress bar
+    :param desc: description of the progress bar
+    :param iterable: target to be iterated
+    :return: tqdm progress bar
+    """
+    if on_notebook:
+        return tqdm_nb(iterable=iterable, total=total, desc=desc)
+    else:
+        return tqdm(iterable=iterable, total=total, desc=desc)
 
 
 def eval_modules(*modules):
+    """
+    turn module into evaluation mode, with torch no grad
+    :param modules: array of modules
+    :return: torch.no_grad()
+    """
     [m.eval() for m in modules]
 
     return torch.no_grad()
 
 
+# TODO: refactor for dict outputs
 def save_onnx(path, model, *input_shapes, device="cpu"):
     model = model.eval()
     args = [torch.ones([1, *shape], requires_grad=True, device=device) for shape in input_shapes]
@@ -38,9 +55,16 @@ def save_onnx(path, model, *input_shapes, device="cpu"):
                 opset_version=10, )
 
 
-def get_batch_iterator(*arrs, batch_size=32):
-    arrs = [np.array(arr) for arr in arrs]
-    n = min([arr.shape[0] for arr in arrs])
+def parallel_iterate(arr, iter_func, batch_size=32, workers=8):
+    """
+    parallel iterate array
+    :param arr: array to be iterated
+    :param iter_func: function to be called for each data
+    :param batch_size: batch size to run in parallel
+    :param workers: number of worker to run
+    """
+    arr = np.array(arr)
+    n = arr.shape[0]
 
     iterations = n // batch_size
     mod = n % batch_size
@@ -48,10 +72,11 @@ def get_batch_iterator(*arrs, batch_size=32):
     if mod != 0:
         iterations += 1
 
-    if len(arrs) == 1:
-        return [arrs[0][i * batch_size:(i + 1) * batch_size] for i in range(iterations)]
-    else:
-        return [[arr[i * batch_size:(i + 1) * batch_size] for arr in arrs] for i in range(iterations)]
+    elems = [arr[i * batch_size:(i + 1) * batch_size] for i in range(iterations)]
+
+    pool = mp.Pool(workers)
+    for e in get_tqdm(None, None, elems):
+        pool.map(iter_func, e)
 
 
 def get_loader(*arrs, mapper=None, batch_size=32, pin_memory=True, workers=20):
