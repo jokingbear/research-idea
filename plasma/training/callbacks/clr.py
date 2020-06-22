@@ -1,5 +1,4 @@
 import os
-from collections import defaultdict
 
 import torch
 import torch.optim as opts
