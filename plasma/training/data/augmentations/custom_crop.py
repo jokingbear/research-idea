@@ -1,13 +1,17 @@
 import cv2
 import numpy as np
+import pandas as pd
 
 from albumentations import DualTransform
 
 
 class MinEdgeCrop(DualTransform):
+    _default_positions = pd.Index(data=["center", "left", "right"])
 
-    def __init__(self, always_apply=False, p=0.5):
+    def __init__(self, positions=None, always_apply=False, p=0.5):
         super().__init__(always_apply, p)
+
+        self.positions = positions or self._default_positions
 
     def apply(self, img, position="center", **kwargs):
         """
@@ -16,9 +20,12 @@ class MinEdgeCrop(DualTransform):
         :param position: where to crop the image
         :return: cropped image
         """
-        assert position in {"center", "left", "right"}, "position must either be: left, center or right"
+        assert position in self._default_positions, "position must either be: left, center or right"
 
         h, w = img.shape[:2]
+
+        if h == w:
+            return img
 
         min_edge = min(h, w)
         if h > min_edge:
@@ -50,7 +57,7 @@ class MinEdgeCrop(DualTransform):
 
     def get_params(self):
         return {
-            "position": np.random.choice(["left", "center", "right"])
+            "position": np.random.choice(self.positions)
         }
 
 
@@ -76,13 +83,6 @@ class MinEdgeResize(DualTransform):
         :return: resized image
         """
         h, w = img.shape[:2]
-
-        if len(img.shape) == 2:
-            c_pad = []
-        else:
-            c_pad = [(0, 0)]
-
-        img = np.pad(img, [(0, 0), (0, 0), *c_pad])
         min_edge = min(h, w)
 
         size = self.size
