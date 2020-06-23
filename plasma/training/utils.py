@@ -7,15 +7,15 @@ import multiprocessing as mp
 from tqdm import tqdm
 from tqdm.notebook import tqdm as tqdm_nb
 
-on_notebook = True
+on_notebook = False
 
 
-def get_tqdm(total, desc, iterable=None):
+def get_tqdm(iterable=None, total=None, desc=None):
     """
     get tqdm progress bar
+    :param iterable: target to be iterated
     :param total: total length of the progress bar
     :param desc: description of the progress bar
-    :param iterable: target to be iterated
     :return: tqdm progress bar
     """
     if on_notebook:

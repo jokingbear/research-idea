@@ -52,7 +52,7 @@ class BaseTrainer:
     def train_one_epoch(self, epoch, train_loader, callbacks):
         running_metrics = np.zeros([])
 
-        with get_tqdm(len(train_loader), "train") as pbar:
+        with get_tqdm(total=len(train_loader), desc="train") as pbar:
             for i, data in enumerate(train_loader):
                 inputs, targets = self.extract_data(data)
                 [c.on_training_batch_begin(epoch, i, inputs, targets) for c in callbacks]
@@ -79,7 +79,7 @@ class BaseTrainer:
     def evaluate_one_epoch(self, test_loader, epoch=0, callbacks=()):
         eval_caches = []
 
-        with get_tqdm(len(test_loader), "eval") as pbar, eval_modules(*self.models):
+        with get_tqdm(total=len(test_loader), desc="eval") as pbar, eval_modules(*self.models):
             for i, data in enumerate(test_loader):
                 inputs, targets = self.extract_data(data)
                 [c.on_validation_batch_begin(epoch, i, inputs, targets) for c in callbacks]
