@@ -75,7 +75,7 @@ def parallel_iterate(arr, iter_func, batch_size=32, workers=8):
     elems = [arr[i * batch_size:(i + 1) * batch_size] for i in range(iterations)]
 
     pool = mp.Pool(workers)
-    for e in get_tqdm(None, None, elems):
+    for e in get_tqdm(iterable=elems):
         pool.map(iter_func, e)
 
 
