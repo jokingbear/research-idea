@@ -1,9 +1,10 @@
+import multiprocessing as mp
+import os
+
 import numpy as np
 import torch
 import torch.onnx as onnx
 import torch.utils.data as data
-import multiprocessing as mp
-
 from tqdm import tqdm
 from tqdm.notebook import tqdm as tqdm_nb
 
@@ -100,3 +101,9 @@ def get_loader(*arrs, mapper=None, batch_size=32, pin_memory=True, workers=20):
 
     return data.DataLoader(Data(), batch_size, shuffle=False, drop_last=False,
                            pin_memory=pin_memory, num_workers=workers)
+
+
+def visible_devices(*device_ids):
+    assert len(device_ids) > 0, "there must be at least 1 id"
+
+    os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(device_ids)
