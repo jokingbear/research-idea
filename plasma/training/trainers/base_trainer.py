@@ -24,30 +24,33 @@ class BaseTrainer:
         callbacks = callbacks or []
 
         [c.set_trainer(self) for c in callbacks]
+        try:
+            train_configs = {
+                "train_loader": train_loader,
+                "test_loader": valid_loader,
+                "start_epoch": start_epoch,
+            }
+            [c.on_train_begin(**train_configs) for c in callbacks]
+            for e in count(start=start_epoch):
+                print(f"epoch {e}")
+                [c.on_epoch_begin(e) for c in callbacks]
 
-        train_configs = {
-            "train_loader": train_loader,
-            "test_loader": valid_loader,
-            "start_epoch": start_epoch,
-        }
-        [c.on_train_begin(**train_configs) for c in callbacks]
-        for e in count(start=start_epoch):
-            print(f"epoch {e}")
-            [c.on_epoch_begin(e) for c in callbacks]
+                train_logs = self.train_one_epoch(e, train_loader, callbacks)
+                val_logs = {}
 
-            train_logs = self.train_one_epoch(e, train_loader, callbacks)
-            val_logs = {}
+                if valid_loader is not None:
+                    val_logs = self.evaluate_one_epoch(valid_loader, e, callbacks)
 
-            if valid_loader is not None:
-                val_logs = self.evaluate_one_epoch(valid_loader, e, callbacks)
+                logs = {**train_logs, **val_logs}
 
-            logs = {**train_logs, **val_logs}
+                [c.on_epoch_end(e, logs) for c in callbacks]
 
-            [c.on_epoch_end(e, logs) for c in callbacks]
-
-            if not self.training:
-                break
-        [c.on_train_end() for c in callbacks]
+                if not self.training:
+                    break
+            [c.on_train_end() for c in callbacks]
+        except Exception as e:
+            with open("trainer_error.txt", "w+") as handle:
+                handle.write(str(e))
 
     def train_one_epoch(self, epoch, train_loader, callbacks):
         running_metrics = np.zeros([])
