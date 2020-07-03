@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torch.nn as nn
 
@@ -91,3 +92,23 @@ class Normalization(nn.Module):
 
     def extra_repr(self):
         return f"from_raw={self.from_raw}"
+
+
+class ImageToTensor(nn.Module):
+
+    def __init__(self, rank=2):
+        super().__init__()
+
+        self.rank = rank
+
+    def forward(self, x):
+        rank = len(x.shape[1:])
+
+        if rank == self.rank:
+            return x[:, np.newaxis]
+        else:
+            rank = self.rank
+            return x.permute([0, rank + 1, *range(1, rank + 1)])
+
+    def extra_repr(self):
+        return f"rank={self.rank}"
