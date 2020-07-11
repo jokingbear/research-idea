@@ -7,7 +7,7 @@ from .df_data import PandasDataset
 def get_pandas_dataset(df: pd.DataFrame, mapper, **kwargs):
     """
     create dataset from pandas dataframe
-    :param df: dataframe
+    :param df: pandas dataframe
     :param mapper: mapping from row to numpy array, mapping signature: (idx, **row) -> numpy arrays
     :param kwargs: additional parameter for mapper function
     :return: plasma Dataset
