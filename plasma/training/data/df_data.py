@@ -7,7 +7,7 @@ from .base_class import StandardDataset
 
 class PandasDataset(StandardDataset):
 
-    def __init__(self, df: pd.DataFrame, path_column, class_columns, prefix=None, img_reader=cv2.imread,
+    def __init__(self, df: pd.DataFrame, path_column, class_columns=None, prefix=None, img_reader=cv2.imread,
                  cast_label=np.uint8, augmentations=None):
         """
         Pandas dataset for classification
@@ -41,11 +41,6 @@ class PandasDataset(StandardDataset):
 
         if self.augmentations is not None:
             img = self.augmentations(image=img)["image"]
-
-        if len(img.shape) == 2:
-            img = img[np.newaxis]
-        else:
-            img = img.transpose([2, 0, 1])
 
         if self.class_columns is not None:
             classes = row[self.class_columns].values.astype(self.cast_label)
