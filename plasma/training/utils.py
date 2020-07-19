@@ -106,4 +106,4 @@ def get_loader(*arrs, mapper=None, batch_size=32, pin_memory=True, workers=20):
 def visible_devices(*device_ids):
     assert len(device_ids) > 0, "there must be at least 1 id"
 
-    os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(device_ids)
+    os.environ['CUDA_VISIBLE_DEVICES'] = ','.join([str(d) for d in device_ids])
