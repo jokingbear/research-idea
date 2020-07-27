@@ -22,6 +22,6 @@ def get_pandas_dataset(df: pd.DataFrame, mapper, **kwargs):
         def get_item(self, idx):
             row = df.iloc[idx]
 
-            return mapper(idx, **row, **kwargs)
+            return mapper(idx, row, **kwargs)
 
     return Data()

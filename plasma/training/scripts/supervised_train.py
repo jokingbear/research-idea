@@ -11,7 +11,8 @@ from ..trainers import Trainer
 from ..losses import weighted_bce
 from ..metrics import fb_fn
 from ..callbacks import *
-from .utils import *
+from ...hub import get_hub_entries
+from pathlib import Path
 
 
 def check_dictionary(d, *keys):

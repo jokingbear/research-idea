@@ -80,8 +80,17 @@ def parallel_iterate(arr, iter_func, batch_size=32, workers=8):
         pool.map(iter_func, e)
 
 
-def get_loader(*arrs, mapper=None, batch_size=32, pin_memory=True, workers=20):
-    n = min([len(a) for a in arrs])
+def get_loader(arr, mapper=None, batch_size=32, pin_memory=True, workers=20):
+    """
+    get loader from array or dataframe
+    :param arr: array to iter
+    :param mapper: how map array element, signature: (idx, elem) -> obj
+    :param batch_size: the batch size of the loader
+    :param pin_memory: whether the loader should pin memory for fast transfer
+    :param workers: number of workers to run in parallel
+    :return: pytorch loader
+    """
+    n = len(arr)
     workers = workers or batch_size // 2
 
     class Data(data.Dataset):
@@ -90,20 +99,22 @@ def get_loader(*arrs, mapper=None, batch_size=32, pin_memory=True, workers=20):
             return n
 
         def __getitem__(self, idx):
-            items = [a[idx] for a in arrs]
+            item = arr[idx]
 
             if mapper is not None:
-                return mapper(*items)
-            elif len(items) == 1:
-                return items[0]
+                return mapper(idx, item)
 
-            return items
+            return item
 
     return data.DataLoader(Data(), batch_size, shuffle=False, drop_last=False,
                            pin_memory=pin_memory, num_workers=workers)
 
 
 def visible_devices(*device_ids):
+    """
+    restrict visible device
+    :param device_ids: device ids start at 0
+    """
     assert len(device_ids) > 0, "there must be at least 1 id"
 
     os.environ['CUDA_VISIBLE_DEVICES'] = ','.join([str(d) for d in device_ids])
