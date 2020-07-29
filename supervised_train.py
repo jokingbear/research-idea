@@ -7,11 +7,8 @@ import torch
 import torch.nn as nn
 import torch.optim as opts
 
-from ..trainers import Trainer
-from ..losses import weighted_bce
-from ..metrics import fb_fn
-from ..callbacks import *
-from ...hub import get_hub_entries
+from plasma.training import trainers, losses, metrics, callbacks
+from plasma.hub import get_hub_entries
 from pathlib import Path
 
 
@@ -35,7 +32,7 @@ def get_train_valid(repo_config):
 
     if "method" in repo:
         train_valid = repo.load(repo["method"], **repo_kwargs)
-        if isinstance(train_valid, tuple):
+        if isinstance(train_valid, (tuple, list)):
             train, valid = train_valid
         else:
             train = train_valid
@@ -81,9 +78,9 @@ def get_model(model_config):
 
 
 def get_optimizer(optimizer_config, model_obj):
-    check_dictionary(optimizer_config, "class")
+    check_dictionary(optimizer_config, "name")
 
-    opt_class = optimizer_config["class"]
+    opt_class = optimizer_config["name"]
     opt_kwargs = optimizer_config["kwargs"]
 
     if opt_class == "SGD":
@@ -100,9 +97,9 @@ def get_optimizer(optimizer_config, model_obj):
 
 
 def get_loss(loss_config):
-    check_dictionary(loss_config, "value")
+    check_dictionary(loss_config, "name")
 
-    value = loss_config["value"]
+    value = loss_config["name"]
     loss_kwargs = loss_config.get("kwargs", {})
     if value == "bce":
         loss_obj = nn.BCELoss(**loss_kwargs)
@@ -118,7 +115,7 @@ def get_loss(loss_config):
             print(weights)
 
         weights = torch.tensor(weights, dtype=torch.float, device="cuda:0")
-        loss_obj = weighted_bce(weights, loss_kwargs.get("smooth", None))
+        loss_obj = losses.weighted_bce(weights, loss_kwargs.get("smooth", None))
     elif value == "category":
         loss_obj = nn.CrossEntropyLoss()
     else:
@@ -131,11 +128,11 @@ def get_metrics(metrics_configs):
     metric_objs = []
 
     for metric_conf in metrics_configs:
-        value = metric_conf["value"]
+        value = metric_conf["name"]
         kwargs = metric_conf.get("kwargs", {})
 
         if "f" in value:
-            metric_objs.append(fb_fn(**kwargs))
+            metric_objs.append(metrics.fb_fn(**kwargs))
 
     return metric_objs
 
@@ -144,17 +141,17 @@ def get_callbacks(callbacks_configs):
     callback_objs = []
 
     for cb in callbacks_configs:
-        value = cb["value"]
+        value = cb["name"]
         kwargs = cb.get("kwargs", {})
 
-        if value == "lr finder":
-            callback_objs.append(LrFinder(**kwargs))
-        elif value == "super convergence":
-            callback_objs.append(SuperConvergence(**kwargs))
-        elif value == "csv logger":
-            callback_objs.append(CSVLogger(**kwargs))
+        if value in {"lr finder", "lr_finder"}:
+            callback_objs.append(callbacks.LrFinder(**kwargs))
+        elif value in {"super convergence", "super_convergence"}:
+            callback_objs.append(callbacks.SuperConvergence(**kwargs))
+        elif value in {"csv logger", "csv_logger"}:
+            callback_objs.append(callbacks.CSVLogger(**kwargs))
         elif value == "tensorboard":
-            callback_objs.append(Tensorboard(**kwargs))
+            callback_objs.append(callbacks.Tensorboard(**kwargs))
         else:
             raise Exception("only support for lr finder, super convergence, csv logger and tensorboard")
 
@@ -162,16 +159,15 @@ def get_callbacks(callbacks_configs):
 
 
 parser = argparse.ArgumentParser(description='Plasma supervised training script')
-parser.add_argument("--train-configs", default=None, help="path to additional train config json")
+parser.add_argument("--train-configs", help="path to train config json")
 
 args = parser.parse_args()
 config_file = args.train_configs
 
-
 with open(config_file, "r") as handle:
     config = json.load(handle)
 
-check_dictionary(config, "repo", "model")
+check_dictionary(config, "repo", "model", "loss")
 
 train_ds, valid_ds = get_train_valid(config["repo"])
 print("train: ", len(train_ds))
@@ -180,20 +176,21 @@ print("valid: ", len(valid_ds))
 model = get_model(config["model"])
 print(model)
 
-opt = get_optimizer(config.get("optimizer", {"class": "SGD",
+opt = get_optimizer(config.get("optimizer", {"name": "SGD",
                                              "kwargs": {"lr": .1,
                                                         "momentum": .9,
                                                         "nesterov": True,
                                                         "weight_decay": 1e-6}}), model)
+print(opt)
 
 loss = get_loss(config["loss"])
-metrics = get_metrics(config.get("metrics", []))
+metric_fns = get_metrics(config.get("metrics", []))
 
-trainer = Trainer(model, opt, loss, metrics, x_device="cuda:0", y_device="cuda:0", y_type=torch.float)
+trainer = trainers.Trainer(model, opt, loss, metric_fns, x_device="cuda:0", y_device="cuda:0", y_type=torch.float)
 cbs = get_callbacks(config.get("callbacks", []))
 
-train_batch = config["train_batch"]
-train_loader = train_ds.get_torch_loader(batch_size=config["train_batch"])
+train_batch = config.get("train_batch", 128)
+train_loader = train_ds.get_torch_loader(batch_size=train_batch)
 
 if valid_ds is not None:
     valid_loader = valid_ds.get_torch_loader(batch_size=config.get("valid_batch", train_batch), drop_last=True)

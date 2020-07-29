@@ -56,7 +56,7 @@ def save_onnx(path, model, *input_shapes, device="cpu"):
                 opset_version=10, )
 
 
-def parallel_iterate(arr, iter_func, batch_size=32, workers=8):
+def parallel_iterate(arr, iter_func, batch_size=32, workers=20):
     """
     parallel iterate array
     :param arr: array to be iterated

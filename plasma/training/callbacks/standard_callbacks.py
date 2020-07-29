@@ -2,6 +2,7 @@ import collections
 import csv
 import io
 import os
+import math
 
 import numpy as np
 import torch
@@ -243,3 +244,13 @@ class TrainingScheduler(Callback):
     def on_epoch_end(self, epoch, logs=None):
         self.runned += 1
         self.trainer.training = self.runned < self.epochs
+
+
+class NanCheck(Callback):
+
+    def on_training_batch_end(self, epoch, step, inputs, targets, caches, logs=None):
+        nan = [math.isnan(logs[k]) for k in logs]
+        nan = sum(nan, 0)
+
+        if nan > 0:
+            raise ValueError(f"nan! {logs}")
