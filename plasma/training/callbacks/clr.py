@@ -139,10 +139,20 @@ class WarmRestart(Callback):
 
 class SuperConvergence(Callback):
 
-    def __init__(self, epochs, snapshot=True, directory="checkpoint", name=None):
+    def __init__(self, epochs, initial_div=25, final_div=1e-4, snapshot=True, directory="checkpoint", name=None):
+        """
+        :param epochs: number of epoch to run
+        :param initial_div: initial divide number for lr, initial_lr = lr / initial_div
+        :param final_div: final divide number for lr, final_lr = lr / final_div
+        :param snapshot: whether to take snapshot at the end of training
+        :param directory: directory to put snapshot in
+        :param name: name of the snapshot
+        """
         super().__init__()
 
         self.epochs = epochs
+        self.initial_div = initial_div
+        self.final_div = final_div
         self.snapshot = snapshot
         self.dir = directory
         self.name = name or "super_convergence"
@@ -152,7 +162,8 @@ class SuperConvergence(Callback):
         n = len(train_configs["train_loader"])
         max_lr = [g["lr"] for g in self.optimizers[0].param_groups]
 
-        self.scheduler = opts.lr_scheduler.OneCycleLR(self.optimizers[0], max_lr, epochs=self.epochs, steps_per_epoch=n)
+        self.scheduler = opts.lr_scheduler.OneCycleLR(self.optimizers[0], max_lr, epochs=self.epochs, steps_per_epoch=n,
+                                                      div_factor=self.initial_div, final_div_factor=self.final_div)
 
         if not os.path.exists(self.dir) and self.snapshot:
             os.mkdir(self.dir)
