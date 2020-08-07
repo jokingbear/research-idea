@@ -47,10 +47,12 @@ class BaseTrainer:
 
                 if not self.training:
                     break
+
+            [c.on_train_end() for c in callbacks]
         except Exception as e:
             with open("trainer_error.txt", "w+") as handle:
                 handle.write(str(e))
-            [c.on_train_end() for c in callbacks]
+
             raise
 
     def train_one_epoch(self, epoch, train_loader, callbacks):
