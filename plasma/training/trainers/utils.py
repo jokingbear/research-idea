@@ -7,6 +7,7 @@ default_type = torch.float
 def to_device(xs, dtype=None, device=None):
     device = device or default_device
     dtype = dtype or default_type
+    dtype = torch.float if dtype == "float" else torch.long if dtype == "long" else dtype
 
     if type(xs) in {list, tuple}:
         return [to_device(x, dtype, device) for x in xs]

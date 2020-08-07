@@ -1,0 +1,22 @@
+{
+  "repo": {
+    "path": "train_examples/repo"
+  },
+  "model": {
+    "path":"train_examples/model",
+    "method": "model",
+    "a": 1,
+    "b": 2,
+    "c": 3
+  },
+  "loss": {
+    "name": "category"
+  },
+  "callbacks": [
+    {
+      "name": "lr finder",
+      "epochs": 1
+    }
+  ],
+  "y_type": "long"
+}

@@ -50,8 +50,8 @@ class BaseTrainer:
         except Exception as e:
             with open("trainer_error.txt", "w+") as handle:
                 handle.write(str(e))
-        finally:
             [c.on_train_end() for c in callbacks]
+            raise
 
     def train_one_epoch(self, epoch, train_loader, callbacks):
         running_metrics = np.zeros([])

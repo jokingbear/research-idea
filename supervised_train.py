@@ -1,15 +1,15 @@
 import argparse
 import json
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
-
 import torch
 import torch.nn as nn
 import torch.optim as opts
 
-from plasma.training import trainers, losses, metrics, callbacks
 from plasma.hub import get_hub_entries
-from pathlib import Path
+from plasma.training import trainers, losses, metrics, callbacks
 
 
 def check_dictionary(d, *keys):
@@ -28,9 +28,9 @@ def get_train_valid(repo_config):
     check_dictionary(repo_config, "path")
     repo = get_entries(repo_config["path"])
 
-    repo_kwargs = repo_config.get("kwargs", {})
+    repo_kwargs = {k: repo_config[k] for k in repo_config if k not in {"path", "method"}}
 
-    if "method" in repo:
+    if "method" in repo_config:
         train_valid = repo.load(repo["method"], **repo_kwargs)
         if isinstance(train_valid, (tuple, list)):
             train, valid = train_valid
@@ -52,18 +52,11 @@ def get_train_valid(repo_config):
 
 
 def get_model(model_config):
-    check_dictionary(model_config, "path")
-    model_entries = get_entries(model_config)
+    check_dictionary(model_config, "path", "method")
+    model_entries = get_entries(model_config["path"])
 
-    methods = set(model_entries.list())
-    model_kwargs = model_config.get("kwargs", {})
-
-    if "class" in model_config:
-        model_obj = model_entries.load(model_config["method"], **model_kwargs)
-    elif "Classifier" in methods:
-        model_obj = model_entries.load("Classifier", **model_kwargs)
-    else:
-        raise Exception("class must be in model config, or model module must contain class Classifier")
+    model_kwargs = {k: model_config[k] for k in model_config if k not in {"path", "method", "checkpoint"}}
+    model_obj = model_entries.load(model_config["method"], **model_kwargs)
 
     if "checkpoint" in model_config:
         print(model_obj.load_state_dict(torch.load(model_config["checkpoint"], map_location="cpu")))
@@ -81,7 +74,7 @@ def get_optimizer(optimizer_config, model_obj):
     check_dictionary(optimizer_config, "name")
 
     opt_class = optimizer_config["name"]
-    opt_kwargs = optimizer_config["kwargs"]
+    opt_kwargs = {k: optimizer_config[k] for k in optimizer_config if k not in {"name", "checkpoint"}}
 
     if opt_class == "SGD":
         opt_obj = opts.SGD(model_obj.parameters(), **opt_kwargs)
@@ -100,7 +93,7 @@ def get_loss(loss_config):
     check_dictionary(loss_config, "name")
 
     value = loss_config["name"]
-    loss_kwargs = loss_config.get("kwargs", {})
+    loss_kwargs = {k: loss_config[k] for k in loss_config if k not in {"name"}}
     if value == "bce":
         loss_obj = nn.BCELoss(**loss_kwargs)
     elif value == "wbce":
@@ -114,7 +107,8 @@ def get_loss(loss_config):
             weights = pd.read_csv(weights, index_col=0)
             print(weights)
 
-        weights = torch.tensor(weights, dtype=torch.float, device="cuda:0")
+        device = "cpu" if torch.cuda.device_count() == 0 else "cuda:0"
+        weights = torch.tensor(weights, dtype=torch.float, device=device)
         loss_obj = losses.weighted_bce(weights, loss_kwargs.get("smooth", None))
     elif value == "category":
         loss_obj = nn.CrossEntropyLoss()
@@ -129,7 +123,7 @@ def get_metrics(metrics_configs):
 
     for metric_conf in metrics_configs:
         value = metric_conf["name"]
-        kwargs = metric_conf.get("kwargs", {})
+        kwargs = {k: metric_conf[k] for k in metric_conf if k not in {"name"}}
 
         if "f" in value:
             metric_objs.append(metrics.fb_fn(**kwargs))
@@ -142,7 +136,7 @@ def get_callbacks(callbacks_configs):
 
     for cb in callbacks_configs:
         value = cb["name"]
-        kwargs = cb.get("kwargs", {})
+        kwargs = {k: cb[k] for k in cb if k not in {"name"}}
 
         if value in {"lr finder", "lr_finder"}:
             callback_objs.append(callbacks.LrFinder(**kwargs))
@@ -158,43 +152,49 @@ def get_callbacks(callbacks_configs):
     return callback_objs
 
 
-parser = argparse.ArgumentParser(description='Plasma supervised training script')
-parser.add_argument("--train-configs", help="path to train config json")
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Plasma supervised training script')
+    parser.add_argument("--train-configs", help="path to train config json")
 
-args = parser.parse_args()
-config_file = args.train_configs
+    args = parser.parse_args()
+    config_file = args.train_configs
 
-with open(config_file, "r") as handle:
-    config = json.load(handle)
+    with open(config_file, "r") as handle:
+        config = json.load(handle)
 
-check_dictionary(config, "repo", "model", "loss")
+    check_dictionary(config, "repo", "model", "loss")
 
-train_ds, valid_ds = get_train_valid(config["repo"])
-print("train: ", len(train_ds))
-print("valid: ", len(valid_ds))
+    train_ds, valid_ds = get_train_valid(config["repo"])
+    print("train: ", len(train_ds))
+    print("valid: ", len(valid_ds))
 
-model = get_model(config["model"])
-print(model)
+    model = get_model(config["model"])
+    print(model)
 
-opt = get_optimizer(config.get("optimizer", {"name": "SGD",
-                                             "kwargs": {"lr": .1,
-                                                        "momentum": .9,
-                                                        "nesterov": True,
-                                                        "weight_decay": 1e-6}}), model)
-print(opt)
+    opt = get_optimizer(config.get("optimizer", {"name": "SGD",
+                                                 "lr": .1,
+                                                 "momentum": .9,
+                                                 "nesterov": True,
+                                                 "weight_decay": 1e-6}), model)
+    print(opt)
 
-loss = get_loss(config["loss"])
-metric_fns = get_metrics(config.get("metrics", []))
+    loss = get_loss(config["loss"])
+    metric_fns = get_metrics(config.get("metrics", []))
 
-trainer = trainers.Trainer(model, opt, loss, metric_fns, x_device="cuda:0", y_device="cuda:0", y_type=torch.float)
-cbs = get_callbacks(config.get("callbacks", []))
+    device = "cpu" if torch.cuda.device_count() == 0 else "cuda:0"
+    x_type = config.get("x_type", None)
+    y_type = config.get("y_type", None)
 
-train_batch = config.get("train_batch", 128)
-train_loader = train_ds.get_torch_loader(batch_size=train_batch)
+    trainer = trainers.Trainer(model, opt, loss, metric_fns,
+                               x_device=device, x_type=x_type, y_device=device, y_type=y_type)
+    cbs = get_callbacks(config.get("callbacks", []))
 
-if valid_ds is not None:
-    valid_loader = valid_ds.get_torch_loader(batch_size=config.get("valid_batch", train_batch), drop_last=True)
-else:
-    valid_loader = None
+    train_batch = config.get("train_batch", 128)
+    train_loader = train_ds.get_torch_loader(batch_size=train_batch)
 
-trainer.fit(train_loader, valid_loader, callbacks=cbs)
+    if valid_ds is not None:
+        valid_loader = valid_ds.get_torch_loader(batch_size=config.get("valid_batch", train_batch), drop_last=True)
+    else:
+        valid_loader = None
+
+    trainer.fit(train_loader, valid_loader, callbacks=cbs)
