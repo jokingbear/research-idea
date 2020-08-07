@@ -50,7 +50,7 @@ class GCN(nn.Module):
     def __init__(self, embeddings, correlations, out_features):
         """
         :param embeddings: init embeddings for graph, either numpy or torch.tensor
-        :param correlations: normalized adjacency matrix
+        :param correlations: normalized adjacency matrix in numpy
         :param out_features: output features of extractor
         """
         super().__init__()
@@ -82,7 +82,7 @@ class GCN(nn.Module):
 
         with torch.no_grad():
             linear.weight.data = self.graph()
-            linear.bias.data = self.bias
+            linear.bias.data = self.bias.data
 
         return linear
 

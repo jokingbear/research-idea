@@ -1,14 +1,16 @@
 import inspect as insp
+import sys
 
 from importlib import import_module
-from .utils import get_base
+from pathlib import Path
 
 
 class HubEntries:
 
-    def __init__(self, path, default_file):
-        base = get_base(path)
-        self.module = import_module(f"{base}.{default_file}")
+    def __init__(self, absolute_path, default_file):
+        base = Path(absolute_path)
+        sys.path.append(str(base))
+        self.module = import_module(default_file)
 
     def load(self, entry_name, *args, **kwargs):
         """

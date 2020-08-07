@@ -24,13 +24,13 @@ class BaseTrainer:
         callbacks = callbacks or []
 
         [c.set_trainer(self) for c in callbacks]
+        train_configs = {
+            "train_loader": train_loader,
+            "test_loader": valid_loader,
+            "start_epoch": start_epoch,
+        }
+        [c.on_train_begin(**train_configs) for c in callbacks]
         try:
-            train_configs = {
-                "train_loader": train_loader,
-                "test_loader": valid_loader,
-                "start_epoch": start_epoch,
-            }
-            [c.on_train_begin(**train_configs) for c in callbacks]
             for e in count(start=start_epoch):
                 print(f"epoch {e}")
                 [c.on_epoch_begin(e) for c in callbacks]
@@ -47,10 +47,13 @@ class BaseTrainer:
 
                 if not self.training:
                     break
+
             [c.on_train_end() for c in callbacks]
         except Exception as e:
             with open("trainer_error.txt", "w+") as handle:
                 handle.write(str(e))
+
+            raise
 
     def train_one_epoch(self, epoch, train_loader, callbacks):
         running_metrics = np.zeros([])
