@@ -8,7 +8,7 @@ from albumentations import DualTransform
 class MinEdgeCrop(DualTransform):
     _default_positions = pd.Index(data=["center", "left", "right"])
 
-    def __init__(self, positions=None, always_apply=False, p=0.5):
+    def __init__(self, positions=None, always_apply=True, p=0.5):
         super().__init__(always_apply, p)
 
         self.positions = positions or self._default_positions
@@ -63,7 +63,7 @@ class MinEdgeCrop(DualTransform):
 
 class MinEdgeResize(DualTransform):
 
-    def __init__(self, size, interpolation=cv2.INTER_LINEAR, always_apply=False, p=0.5):
+    def __init__(self, size, interpolation=cv2.INTER_LINEAR, always_apply=True, p=0.5):
         """
         :param size: final size of min edge
         :param interpolation: how to interpolate image

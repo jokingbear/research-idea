@@ -52,7 +52,6 @@ class BaseTrainer:
         except Exception as e:
             with open("trainer_error.txt", "w+") as handle:
                 handle.write(str(e))
-
             raise
 
     def train_one_epoch(self, epoch, train_loader, callbacks):
