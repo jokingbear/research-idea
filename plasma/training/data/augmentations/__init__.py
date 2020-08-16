@@ -1,1 +1,1 @@
-from .custom_crop import MinEdgeCrop, MinEdgeResize
+from .custom_crop import MinEdgeCrop, MinEdgeResize, ToTorch

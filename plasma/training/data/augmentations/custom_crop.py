@@ -91,3 +91,17 @@ class MinEdgeResize(DualTransform):
         img = cv2.resize(img, (new_w, new_h), interpolation=self.interpolation)
 
         return img
+
+
+class ToTorch(DualTransform):
+
+    def __init__(self):
+        super().__init__(always_apply=True)
+
+    def apply(self, img, **params):
+        assert len(img.shape) in {2, 3}, f"image shape must either be (h, w) or (h, w, c), currently {img.shape}"
+
+        if len(img.shape) == 2:
+            return img[:, np.newaxis]
+        else:
+            return img.transpose([2, 0, 1])

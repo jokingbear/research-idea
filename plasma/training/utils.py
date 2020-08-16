@@ -1,7 +1,6 @@
 import multiprocessing as mp
 import os
 
-import numpy as np
 import torch
 import torch.onnx as onnx
 import torch.utils.data as data
@@ -56,28 +55,23 @@ def save_onnx(path, model, *input_shapes, device="cpu"):
                 opset_version=10, )
 
 
-def parallel_iterate(arr, iter_func, batch_size=32, workers=20):
+def parallel_iterate(arr, iter_func, workers=32):
     """
     parallel iterate array
     :param arr: array to be iterated
-    :param iter_func: function to be called for each data
-    :param batch_size: batch size to run in parallel
+    :param iter_func: function to be called for each data idx, arg
     :param workers: number of worker to run
     """
-    arr = np.array(arr)
-    n = arr.shape[0]
 
-    iterations = n // batch_size
-    mod = n % batch_size
-
-    if mod != 0:
-        iterations += 1
-
-    elems = [arr[i * batch_size:(i + 1) * batch_size] for i in range(iterations)]
-
+    workers = workers
     pool = mp.Pool(workers)
-    for e in get_tqdm(iterable=elems):
-        pool.map(iter_func, e)
+    jobs = [pool.apply_async(iter_func, args=(i, arg)) for i, arg in enumerate(arr)]
+    results = [j.get() for j in get_tqdm(jobs)]
+    pool.close()
+    pool.join()
+
+    if not all([r is None for r in results]):
+        return results
 
 
 def get_loader(arr, mapper=None, batch_size=32, pin_memory=True, workers=20):
