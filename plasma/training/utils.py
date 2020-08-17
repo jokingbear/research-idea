@@ -55,17 +55,19 @@ def save_onnx(path, model, *input_shapes, device="cpu"):
                 opset_version=10, )
 
 
-def parallel_iterate(arr, iter_func, workers=32):
+def parallel_iterate(arr, iter_func, workers=32, use_index=False):
     """
     parallel iterate array
     :param arr: array to be iterated
-    :param iter_func: function to be called for each data idx, arg
+    :param iter_func: function to be called for each data, signature (idx, arg) or arg
     :param workers: number of worker to run
+    :param use_index: whether to add index to each call of iter func
+    :return list of result if not all is None
     """
 
     workers = workers
     pool = mp.Pool(workers)
-    jobs = [pool.apply_async(iter_func, args=(i, arg)) for i, arg in enumerate(arr)]
+    jobs = [pool.apply_async(iter_func, args=(i, arg) if use_index else (arg,)) for i, arg in enumerate(arr)]
     results = [j.get() for j in get_tqdm(jobs)]
     pool.close()
     pool.join()
