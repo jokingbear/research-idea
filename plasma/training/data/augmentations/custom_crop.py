@@ -2,13 +2,13 @@ import cv2
 import numpy as np
 import pandas as pd
 
-from albumentations import DualTransform
+from albumentations import DualTransform, ImageOnlyTransform
 
 
 class MinEdgeCrop(DualTransform):
     _default_positions = pd.Index(data=["center", "left", "right"])
 
-    def __init__(self, positions=None, always_apply=False, p=0.5):
+    def __init__(self, positions=None, always_apply=True, p=0.5):
         super().__init__(always_apply, p)
 
         self.positions = positions or self._default_positions
@@ -63,7 +63,7 @@ class MinEdgeCrop(DualTransform):
 
 class MinEdgeResize(DualTransform):
 
-    def __init__(self, size, interpolation=cv2.INTER_LINEAR, always_apply=False, p=0.5):
+    def __init__(self, size, interpolation=cv2.INTER_LINEAR, always_apply=True, p=0.5):
         """
         :param size: final size of min edge
         :param interpolation: how to interpolate image
@@ -91,3 +91,24 @@ class MinEdgeResize(DualTransform):
         img = cv2.resize(img, (new_w, new_h), interpolation=self.interpolation)
 
         return img
+
+
+class ToTorch(DualTransform):
+
+    def __init__(self):
+        super().__init__(always_apply=True)
+
+    def apply(self, img, **params):
+        assert len(img.shape) in {2, 3}, f"image shape must either be (h, w) or (h, w, c), currently {img.shape}"
+
+        if len(img.shape) == 2:
+            return img[np.newaxis]
+        else:
+            return img.transpose([2, 0, 1])
+
+
+class InvertGray(ImageOnlyTransform):
+
+    def apply(self, img, **params):
+        assert len(img.shape) == 2, "only support gray image"
+        return abs(255 - img)

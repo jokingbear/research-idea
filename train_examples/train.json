@@ -10,7 +10,7 @@
     "c": 3
   },
   "loss": {
-    "name": "category"
+    "name": "bce"
   },
   "callbacks": [
     {
@@ -18,5 +18,8 @@
       "epochs": 1
     }
   ],
-  "y_type": "long"
+  "trainer": {
+    "x_device": "cuda:0",
+    "y_device": "cuda:0"
+  }
 }

@@ -4,6 +4,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as func
 
+from .commons import Identity
+
 
 class GraphSequential(nn.Module):
 
@@ -47,44 +49,58 @@ class GraphLinear(nn.Linear):
 
 class GCN(nn.Module):
 
-    def __init__(self, embeddings, correlations, out_features):
+    def __init__(self, backbone, embeddings, correlations, backbone_features, ratio=0.5, sigmoid=True):
         """
         :param embeddings: init embeddings for graph, either numpy or torch.tensor
         :param correlations: normalized adjacency matrix in numpy
-        :param out_features: output features of extractor
+        :param backbone_features: output features of extractor
         """
         super().__init__()
 
-        self.out_features = out_features
+        self.backbone = backbone
+
         correlations = torch.tensor(correlations, dtype=torch.float)
         correlations = nn.Parameter(correlations, requires_grad=False)
-
+        bottleneck = int(np.round(backbone_features * ratio))
         self.graph = GraphSequential(embeddings, *[
-            GraphLinear(embeddings.shape[-1], out_features // 2, correlations),
+            GraphLinear(embeddings.shape[-1], bottleneck, correlations),
             nn.LeakyReLU(0.2, inplace=True),
-            GraphLinear(out_features // 2, out_features, correlations)
+            GraphLinear(bottleneck, backbone_features, correlations),
         ])
 
+        self.out = nn.Sigmoid() if sigmoid else Identity()
+
         self.bias = nn.Parameter(torch.zeros(embeddings.shape[0]), requires_grad=True)
+        self.backbone_features = backbone_features
 
     def forward(self, x):
+        features = self.backbone(x)
         embeddings = self.graph()
-        logits = func.linear(x, embeddings, self.bias)
+        logits = func.linear(features, embeddings, self.bias)
 
-        return logits
+        result = self.out(logits)
+
+        return result
 
     def export_linear(self):
         """
-        return linear layer for better test time inference
-        :return: nn.Linear module
+        return new gcn with graph replaced with a linear layer
+        :return: nn.Sequential module
         """
-        linear = nn.Linear(self.out_features, self.graph.embedding.shape[0])
+        linear = nn.Linear(self.backbone_features, self.graph.embedding.shape[0])
+        graph = self.graph.eval()
 
         with torch.no_grad():
-            linear.weight.data = self.graph()
+            linear.weight.data = graph()
             linear.bias.data = self.bias.data
 
-        return linear
+        model = nn.Sequential(*[
+            self.backbone,
+            linear,
+            self.out
+        ])
+
+        return model
 
 
 def get_label_correlation(df, columns, return_count=True):

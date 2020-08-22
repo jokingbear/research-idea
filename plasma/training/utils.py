@@ -1,7 +1,6 @@
 import multiprocessing as mp
 import os
 
-import numpy as np
 import torch
 import torch.onnx as onnx
 import torch.utils.data as data
@@ -36,48 +35,25 @@ def eval_modules(*modules):
     return torch.no_grad()
 
 
-# TODO: refactor for dict outputs
-def save_onnx(path, model, *input_shapes, device="cpu"):
-    model = model.eval()
-    args = [torch.ones([1, *shape], requires_grad=True, device=device) for shape in input_shapes]
-    outputs = model(*args)
-
-    if torch.is_tensor(outputs):
-        outputs = [outputs]
-
-    input_names = [f"input_{i}" for i, _ in enumerate(args)]
-    output_names = [f"output_{i}" for i, _ in enumerate(outputs)]
-
-    onnx.export(model, tuple(args), path,
-                export_params=True, verbose=True, do_constant_folding=True,
-                input_names=input_names,
-                output_names=output_names,
-                dynamic_axes={n: {0: "batch_size"} for n in input_names + output_names},
-                opset_version=10, )
-
-
-def parallel_iterate(arr, iter_func, batch_size=32, workers=20):
+def parallel_iterate(arr, iter_func, workers=32, use_index=False):
     """
     parallel iterate array
     :param arr: array to be iterated
-    :param iter_func: function to be called for each data
-    :param batch_size: batch size to run in parallel
+    :param iter_func: function to be called for each data, signature (idx, arg) or arg
     :param workers: number of worker to run
+    :param use_index: whether to add index to each call of iter func
+    :return list of result if not all is None
     """
-    arr = np.array(arr)
-    n = arr.shape[0]
 
-    iterations = n // batch_size
-    mod = n % batch_size
-
-    if mod != 0:
-        iterations += 1
-
-    elems = [arr[i * batch_size:(i + 1) * batch_size] for i in range(iterations)]
-
+    workers = workers
     pool = mp.Pool(workers)
-    for e in get_tqdm(iterable=elems):
-        pool.map(iter_func, e)
+    jobs = [pool.apply_async(iter_func, args=(i, arg) if use_index else (arg,)) for i, arg in enumerate(arr)]
+    results = [j.get() for j in get_tqdm(jobs)]
+    pool.close()
+    pool.join()
+
+    if not all([r is None for r in results]):
+        return results
 
 
 def get_loader(arr, mapper=None, batch_size=32, pin_memory=True, workers=20):
