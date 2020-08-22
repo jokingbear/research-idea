@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import pandas as pd
 
-from albumentations import DualTransform
+from albumentations import DualTransform, ImageOnlyTransform
 
 
 class MinEdgeCrop(DualTransform):
@@ -102,6 +102,13 @@ class ToTorch(DualTransform):
         assert len(img.shape) in {2, 3}, f"image shape must either be (h, w) or (h, w, c), currently {img.shape}"
 
         if len(img.shape) == 2:
-            return img[:, np.newaxis]
+            return img[np.newaxis]
         else:
             return img.transpose([2, 0, 1])
+
+
+class InvertGray(ImageOnlyTransform):
+
+    def apply(self, img, **params):
+        assert len(img.shape) == 2, "only support gray image"
+        return abs(255 - img)
