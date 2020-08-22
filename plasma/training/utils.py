@@ -35,26 +35,6 @@ def eval_modules(*modules):
     return torch.no_grad()
 
 
-# TODO: refactor for dict outputs
-def save_onnx(path, model, *input_shapes, device="cpu"):
-    model = model.eval()
-    args = [torch.ones([1, *shape], requires_grad=True, device=device) for shape in input_shapes]
-    outputs = model(*args)
-
-    if torch.is_tensor(outputs):
-        outputs = [outputs]
-
-    input_names = [f"input_{i}" for i, _ in enumerate(args)]
-    output_names = [f"output_{i}" for i, _ in enumerate(outputs)]
-
-    onnx.export(model, tuple(args), path,
-                export_params=True, verbose=True, do_constant_folding=True,
-                input_names=input_names,
-                output_names=output_names,
-                dynamic_axes={n: {0: "batch_size"} for n in input_names + output_names},
-                opset_version=10, )
-
-
 def parallel_iterate(arr, iter_func, workers=32, use_index=False):
     """
     parallel iterate array
