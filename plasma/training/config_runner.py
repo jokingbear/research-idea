@@ -3,11 +3,11 @@ import json
 import torch.nn as nn
 import torch.optim as opts
 
-from ...hub import get_hub_entries
-from ..losses import weighted_bce
-from ..metrics import fb_fn, acc_fn
-from ..callbacks import LrFinder, SuperConvergence, CSVLogger, Tensorboard
-from .standard_trainer import StandardTrainer
+from ..hub import get_hub_entries
+from .losses import weighted_bce
+from .metrics import fb_fn, acc_fn
+from .callbacks import LrFinder, SuperConvergence, CSVLogger, Tensorboard
+from .trainers.standard_trainer import StandardTrainer
 
 
 class ConfigRunner:
@@ -85,16 +85,17 @@ class ConfigRunner:
         name = loss_config["name"]
         kwargs = self.get_kwargs(loss_config, ["name", "path"])
 
-        if name.lower() == "bce":
-            loss = nn.BCELoss
+        if "path" in loss_config:
+            entries = get_hub_entries(loss_config["path"])
+            loss = entries.load(name, **kwargs)
+        elif name.lower() == "bce":
+            loss = nn.BCELoss(**kwargs)
         elif name.lower() == "bce_logit":
-            loss = nn.BCEWithLogitsLoss
+            loss = nn.BCEWithLogitsLoss(**kwargs)
         elif name.lower() in {"cb_bce", "wbce"}:
-            loss = weighted_bce
+            loss = weighted_bce(**kwargs)
         else:
             raise NotImplementedError("currently only support bce, bce_logit, cb_bce and wbce")
-
-        loss = loss(**kwargs)
 
         return loss
 
