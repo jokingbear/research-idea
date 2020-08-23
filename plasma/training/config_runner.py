@@ -8,6 +8,7 @@ from .losses import weighted_bce
 from .metrics import fb_fn, acc_fn
 from .callbacks import LrFinder, SuperConvergence, CSVLogger, Tensorboard
 from .trainers.standard_trainer import StandardTrainer
+from pathlib import Path
 
 
 class ConfigRunner:
@@ -43,7 +44,8 @@ class ConfigRunner:
         self.callbacks = self.get_callbacks(callbacks_configs)
 
     def get_repo(self, repo_config):
-        repo_entries = get_hub_entries(repo_config["path"])
+        repo_path, repo_module = self.get_module_name(repo_config["path"])
+        repo_entries = get_hub_entries(repo_path, repo_module)
 
         entries = repo_entries.list()
         kwargs = self.get_kwargs(repo_config, ["path", "method"])
@@ -68,7 +70,8 @@ class ConfigRunner:
         return train, valid
 
     def get_model(self, model_config):
-        model_entries = get_hub_entries(model_config["path"])
+        model_path, model_module = self.get_module_name(model_config["path"])
+        model_entries = get_hub_entries(model_path, model_module)
 
         kwargs = self.get_kwargs(model_config, ["path", "name", "parallel"])
         name = model_config["name"]
@@ -86,7 +89,8 @@ class ConfigRunner:
         kwargs = self.get_kwargs(loss_config, ["name", "path"])
 
         if "path" in loss_config:
-            entries = get_hub_entries(loss_config["path"])
+            loss_path, loss_module = self.get_module_name(loss_config["path"])
+            entries = get_hub_entries(loss_path, loss_module)
             loss = entries.load(name, **kwargs)
         elif name.lower() == "bce":
             loss = nn.BCELoss(**kwargs)
@@ -132,11 +136,12 @@ class ConfigRunner:
 
     def get_trainer(self, trainer_config):
         path = trainer_config.get("path", None)
-        name = trainer_config["name"].lower()
+        name = trainer_config.get("name", "standard").lower()
         kwargs = self.get_kwargs(trainer_config, excludes=["name", "path"])
 
         if path is not None:
-            entries = get_hub_entries(path)
+            trainer_path, trainer_module = self.get_module_name(path)
+            entries = get_hub_entries(trainer_path, trainer_module)
             trainer = entries.load(name, self.model, self.optimizer, self.loss, metrics=self.metrics, **kwargs)
         elif name == "standard":
             trainer = StandardTrainer(self.model, self.optimizer, self.loss, metrics=self.metrics, **kwargs)
@@ -174,3 +179,15 @@ class ConfigRunner:
         excludes = set(excludes)
 
         return {k: configs[k] for k in configs if k not in excludes}
+
+    @staticmethod
+    def get_module_name(path):
+        path = Path(path)
+        name = path.name
+
+        if ".npy" in name:
+            name = name[:-4]
+
+        parent_path = str(path.parent)
+
+        return parent_path, name

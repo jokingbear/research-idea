@@ -29,7 +29,8 @@ class Classifier(nn.Sequential):
 
         self.classifier = nn.Sequential(*[
             GlobalAverage(),
-            nn.Linear(128, 10)
+            nn.Linear(128, 1),
+            nn.Sigmoid(),
         ])
 
 
