@@ -27,8 +27,8 @@ class StandardDataset(data.Dataset):
     def reset(self):
         pass
 
-    def get_torch_loader(self, batch_size=32, workers=20, pin=True, drop_last=True):
-        sampler = self.sampler or RandomSampler(self)
+    def get_torch_loader(self, batch_size=32, workers=20, pin=True, drop_last=True, shuffle=True):
+        sampler = self.sampler or RandomSampler(self) if shuffle else SequentialSampler(self)
 
         return data.DataLoader(self, batch_size, sampler=sampler, num_workers=workers,
                                pin_memory=pin, drop_last=drop_last)
