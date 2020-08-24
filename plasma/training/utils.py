@@ -2,10 +2,10 @@ import multiprocessing as mp
 import os
 
 import torch
-import torch.onnx as onnx
 import torch.utils.data as data
 from tqdm import tqdm
 from tqdm.notebook import tqdm as tqdm_nb
+from .config_runner import ConfigRunner
 
 on_notebook = False
 
@@ -94,3 +94,12 @@ def visible_devices(*device_ids):
     assert len(device_ids) > 0, "there must be at least 1 id"
 
     os.environ['CUDA_VISIBLE_DEVICES'] = ','.join([str(d) for d in device_ids])
+
+
+def get_runner(json_path):
+    """
+    get runner
+    :param json_path: path to json file or dictionary
+    :return: Training Runner
+    """
+    return ConfigRunner(json_path)
