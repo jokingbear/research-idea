@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import pandas as pd
 
-from albumentations import DualTransform, ImageOnlyTransform
+from albumentations import DualTransform, ImageOnlyTransform, Crop, RandomCrop
 
 
 class MinEdgeCrop(DualTransform):

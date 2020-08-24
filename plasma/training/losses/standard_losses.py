@@ -47,7 +47,7 @@ def fb_loss_fn(beta=1, axes=(0,), binary=False, one_hot_n_class=None, smooth=1e-
     return fb_loss
 
 
-def weighted_bce(weights_path, smooth=None):
+def weighted_bce(weights_path, smooth=None, device="cpu"):
     if ".csv" in weights_path:
         weights = pd.read_csv(weights_path, index_col=0)
         print(weights)
@@ -58,7 +58,7 @@ def weighted_bce(weights_path, smooth=None):
     else:
         raise NotImplementedError("only support csv and numpy extension")
 
-    weights = torch.tensor(weights, dtype=torch.float)
+    weights = torch.tensor(weights, dtype=torch.float, device=device)
 
     def wbce(pred, true):
         _assert_inputs(pred, true)
@@ -69,11 +69,11 @@ def weighted_bce(weights_path, smooth=None):
 
         if smooth is not None:
             sm = np.random.uniform(1 - smooth, 1)
-            ln0 = w[..., 0] * (1 - true) * (sm * ln0 + (1 - sm) * ln1)
-            ln1 = w[..., 1] * true * (sm * ln1 + (1 - sm) * ln0)
+            ln0 = weights[..., 0] * (1 - true) * (sm * ln0 + (1 - sm) * ln1)
+            ln1 = weights[..., 1] * true * (sm * ln1 + (1 - sm) * ln0)
         else:
-            ln0 = w[..., 0] * (1 - true) * ln0
-            ln1 = w[..., 1] * true * ln1
+            ln0 = weights[..., 0] * (1 - true) * ln0
+            ln1 = weights[..., 1] * true * ln1
 
         ln = ln0 + ln1
         return -ln.mean()

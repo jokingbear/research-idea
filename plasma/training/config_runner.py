@@ -1,15 +1,15 @@
 import json
+from pathlib import Path
 
 import torch
 import torch.nn as nn
 import torch.optim as opts
 
-from ..hub import get_hub_entries
+from .callbacks import LrFinder, SuperConvergence, CSVLogger, Tensorboard
 from .losses import weighted_bce
 from .metrics import fb_fn, acc_fn
-from .callbacks import LrFinder, SuperConvergence, CSVLogger, Tensorboard
 from .trainers.standard_trainer import StandardTrainer
-from pathlib import Path
+from ..hub import get_hub_entries
 
 
 class ConfigRunner:
@@ -25,9 +25,9 @@ class ConfigRunner:
         model_config = config["model"]
         loss_config = config["loss"]
         metrics_configs = config.get("metrics", [])
-        opt_config = config.get("opt", {"name": "SGD",
-                                        "lr": 1e-1, "momentum": 9e-1,
-                                        "weight_decay": 1e-6, "nesterov": True})
+        opt_config = config.get("optimizer", {"name": "SGD",
+                                              "lr": 1e-1, "momentum": 9e-1,
+                                              "weight_decay": 1e-6, "nesterov": True})
         callbacks_configs = config.get("callbacks", [])
         trainer_config = config.get("trainer", {"name": "standard"})
 
@@ -174,11 +174,11 @@ class ConfigRunner:
             name = cb_config["name"].lower()
 
             kwargs = self.get_kwargs(cb_config)
-            if name == "lrfinder":
+            if name in {"lrfinder", "lr finder", "lr_finder"}:
                 cbs.append(LrFinder(**kwargs))
-            elif name == "superconvergence":
+            elif name in {"superconvergence", "super convergence", "super_convergence"}:
                 cbs.append(SuperConvergence(**kwargs))
-            elif name == "csvlogger":
+            elif name in {"csvlogger", "csv logger", "csv_logger"}:
                 cbs.append(CSVLogger(**kwargs))
             elif name == "tensorboard":
                 cbs.append(Tensorboard(**kwargs))
