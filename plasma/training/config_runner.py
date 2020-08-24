@@ -1,5 +1,6 @@
 import json
 
+import torch
 import torch.nn as nn
 import torch.optim as opts
 
@@ -73,9 +74,13 @@ class ConfigRunner:
         model_path, model_module = self.get_module_name(model_config["path"])
         model_entries = get_hub_entries(model_path, model_module)
 
-        kwargs = self.get_kwargs(model_config, ["path", "name", "parallel"])
+        kwargs = self.get_kwargs(model_config, ["path", "name", "parallel", "checkpoint"])
         name = model_config["name"]
         model = model_entries.load(name, **kwargs)
+
+        if "checkpoint" in model_config:
+            w = torch.load(model_config["checkpoint"], map_location="cpu")
+            print(model.load(w, strict=False))
 
         if model_config.get("parallel", False):
             model = nn.DataParallel(model).cuda()
