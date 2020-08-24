@@ -15,8 +15,11 @@ from pathlib import Path
 class ConfigRunner:
 
     def __init__(self, config_file, verbose=1):
-        with open(config_file) as handle:
-            config = json.load(handle)
+        if isinstance(config_file, dict):
+            config = config_file
+        else:
+            with open(config_file) as handle:
+                config = json.load(handle)
 
         repo_config = config["repo"]
         model_config = config["model"]
