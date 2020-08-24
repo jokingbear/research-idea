@@ -75,10 +75,11 @@ class MinEdgeResize(DualTransform):
         self.size = size
         self.interpolation = interpolation
 
-    def apply(self, img, **params):
+    def apply(self, img, interpolation=cv2.INTER_LINEAR, **params):
         """
         resize image based on its min edge
         :param img: image to be resized
+        :param interpolation: how to interpolate an image, value according to cv2.INTER_*
         :param params: not used
         :return: resized image
         """
@@ -88,9 +89,14 @@ class MinEdgeResize(DualTransform):
         size = self.size
         new_h = np.round(h / min_edge * size).astype(int)
         new_w = np.round(w / min_edge * size).astype(int)
-        img = cv2.resize(img, (new_w, new_h), interpolation=self.interpolation)
+        img = cv2.resize(img, (new_w, new_h), interpolation=interpolation)
 
         return img
+
+    def get_params(self):
+        return {
+            "interpolation": self.interpolation
+        }
 
 
 class ToTorch(DualTransform):

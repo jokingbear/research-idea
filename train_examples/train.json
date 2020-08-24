@@ -4,7 +4,7 @@
   },
   "model": {
     "path":"train_examples/model",
-    "method": "model",
+    "name": "model",
     "a": 1,
     "b": 2,
     "c": 3
@@ -19,7 +19,6 @@
     }
   ],
   "trainer": {
-    "x_device": "cuda:0",
-    "y_device": "cuda:0"
+    "y_type": "float"
   }
 }

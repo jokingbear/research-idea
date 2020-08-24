@@ -1,9 +1,5 @@
-from plasma.modules import *
+from plasma.training.config_runner import ConfigRunner as Runner
 
-
-a = torch.ones(5, 128, 128)
-b = torch.ones(5, 128, 128, 3)
-
-m = ImageToTensor()
-print(m(a).shape)
-print(m(b).shape)
+if __name__ == '__main__':
+    runner = Runner("train_examples/train.json")
+    runner.run()
