@@ -1,5 +1,6 @@
 import torch
 
+
 def acc_fn(binary=False):
     def acc(pred, true):
         if binary:
