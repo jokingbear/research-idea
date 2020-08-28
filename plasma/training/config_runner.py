@@ -1,50 +1,53 @@
 import json
+from pathlib import Path
 
 import torch
 import torch.nn as nn
 import torch.optim as opts
 
-from ..hub import get_hub_entries
+from .callbacks import LrFinder, SuperConvergence, CSVLogger, Tensorboard
 from .losses import weighted_bce
 from .metrics import fb_fn, acc_fn
-from .callbacks import LrFinder, SuperConvergence, CSVLogger, Tensorboard
 from .trainers.standard_trainer import StandardTrainer
-from pathlib import Path
+from ..hub import get_hub_entries
 
 
 class ConfigRunner:
 
     def __init__(self, config_file, verbose=1):
-        with open(config_file) as handle:
-            config = json.load(handle)
+        if isinstance(config_file, dict):
+            config = config_file
+        else:
+            with open(config_file) as handle:
+                config = json.load(handle)
 
         repo_config = config["repo"]
         model_config = config["model"]
         loss_config = config["loss"]
         metrics_configs = config.get("metrics", [])
-        opt_config = config.get("opt", {"name": "SGD",
-                                        "lr": 1e-1, "momentum": 9e-1,
-                                        "weight_decay": 1e-6, "nesterov": True})
+        opt_config = config.get("optimizer", {"name": "SGD",
+                                              "lr": 1e-1, "momentum": 9e-1,
+                                              "weight_decay": 1e-6, "nesterov": True})
         callbacks_configs = config.get("callbacks", [])
         trainer_config = config.get("trainer", {"name": "standard"})
 
         print("creating train, valid loader") if verbose else None
-        self.train, self.valid = self.get_repo(repo_config)
+        self.train, self.valid = self._get_repo(repo_config)
         if verbose:
             print("train: ", len(self.train))
-            print("valid: ", len(self.valid))
+            print("valid: ", len(self.valid)) if self.valid is not None else None
 
         print("creating model") if verbose else None
-        self.model = self.get_model(model_config)
+        self.model = self._get_model(model_config)
         print(self.model) if verbose else None
 
-        self.loss = self.get_loss(loss_config)
-        self.metrics = self.get_metrics(metrics_configs)
-        self.optimizer = self.get_optimizer(opt_config)
-        self.trainer = self.get_trainer(trainer_config)
-        self.callbacks = self.get_callbacks(callbacks_configs)
+        self.loss = self._get_loss(loss_config)
+        self.metrics = self._get_metrics(metrics_configs)
+        self.optimizer = self._get_optimizer(opt_config)
+        self.trainer = self._get_trainer(trainer_config)
+        self.callbacks = self._get_callbacks(callbacks_configs)
 
-    def get_repo(self, repo_config):
+    def _get_repo(self, repo_config):
         repo_path, repo_module = self.get_module_name(repo_config["path"])
         repo_entries = get_hub_entries(repo_path, repo_module)
 
@@ -70,7 +73,7 @@ class ConfigRunner:
 
         return train, valid
 
-    def get_model(self, model_config):
+    def _get_model(self, model_config):
         model_path, model_module = self.get_module_name(model_config["path"])
         model_entries = get_hub_entries(model_path, model_module)
 
@@ -89,7 +92,7 @@ class ConfigRunner:
 
         return model
 
-    def get_loss(self, loss_config):
+    def _get_loss(self, loss_config):
         name = loss_config["name"]
         kwargs = self.get_kwargs(loss_config, ["name", "path"])
 
@@ -108,23 +111,32 @@ class ConfigRunner:
 
         return loss
 
-    def get_metrics(self, metrics_configs):
-        metrics = []
+    def _get_metrics(self, metrics_configs):
+        if isinstance(metrics_configs, list):
+            metrics = []
 
-        for m_cfg in metrics_configs:
-            name = m_cfg["name"].lower()
-            kwargs = self.get_kwargs(m_cfg)
+            for m_cfg in metrics_configs:
+                name = m_cfg["name"].lower()
+                kwargs = self.get_kwargs(m_cfg)
 
-            if name == "f1_score":
-                metrics.append(fb_fn(beta=1, **kwargs))
-            elif name == "f_score":
-                metrics.append(fb_fn(**kwargs))
-            elif name in {"acc", "accuracy"}:
-                metrics.append(acc_fn(**kwargs))
+                if name == "f1_score":
+                    metrics.append(fb_fn(beta=1, **kwargs))
+                elif name == "f_score":
+                    metrics.append(fb_fn(**kwargs))
+                elif name in {"acc", "accuracy"}:
+                    metrics.append(acc_fn(**kwargs))
+        else:
+            path, name = self.get_module_name(metrics_configs["path"])
+            entries = get_hub_entries(path, name)
+
+            name = metrics_configs["name"]
+            kwargs = self.get_kwargs(metrics_configs, excludes=["name", "path"])
+
+            metrics = entries.load(name, **kwargs)
 
         return metrics
 
-    def get_optimizer(self, opt_config):
+    def _get_optimizer(self, opt_config):
         name = opt_config["name"]
         kwargs = self.get_kwargs(opt_config)
 
@@ -139,7 +151,7 @@ class ConfigRunner:
 
         return opt
 
-    def get_trainer(self, trainer_config):
+    def _get_trainer(self, trainer_config):
         path = trainer_config.get("path", None)
         name = trainer_config.get("name", "standard").lower()
         kwargs = self.get_kwargs(trainer_config, excludes=["name", "path"])
@@ -155,18 +167,18 @@ class ConfigRunner:
 
         return trainer
 
-    def get_callbacks(self, callbacks_configs):
+    def _get_callbacks(self, callbacks_configs):
         cbs = []
 
         for cb_config in callbacks_configs:
             name = cb_config["name"].lower()
 
             kwargs = self.get_kwargs(cb_config)
-            if name == "lrfinder":
+            if name in {"lrfinder", "lr finder", "lr_finder"}:
                 cbs.append(LrFinder(**kwargs))
-            elif name == "superconvergence":
+            elif name in {"superconvergence", "super convergence", "super_convergence"}:
                 cbs.append(SuperConvergence(**kwargs))
-            elif name == "csvlogger":
+            elif name in {"csvlogger", "csv logger", "csv_logger"}:
                 cbs.append(CSVLogger(**kwargs))
             elif name == "tensorboard":
                 cbs.append(Tensorboard(**kwargs))
@@ -174,6 +186,9 @@ class ConfigRunner:
         return cbs
 
     def run(self):
+        """
+        run the training process based on config
+        """
         self.trainer.fit(self.train, self.valid, callbacks=self.callbacks)
 
     def __call__(self, *args, **kwargs):

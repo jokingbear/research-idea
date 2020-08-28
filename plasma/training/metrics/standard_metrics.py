@@ -1,3 +1,6 @@
+import torch
+
+
 def acc_fn(binary=False):
     def acc(pred, true):
         if binary:
@@ -17,7 +20,10 @@ def fb_fn(beta=1, axes=(0,), binary=False, smooth=1e-7, mean=True):
     def fb_score(pred, true):
         if not binary:
             true = true[:, 1:, ...]
-            pred = pred[:, 1:, ...]
+            pred = pred.argmax(dim=1)
+            pred = torch.stack([(pred == i).float() for i in range(true.shape[1]) if i > 0], dim=1)
+        else:
+            pred = (pred >= 0.5).float()
 
         p = (beta2 + 1) * (true * pred).sum(dim=axes)
         s = (beta2 * true + pred).sum(dim=axes)
