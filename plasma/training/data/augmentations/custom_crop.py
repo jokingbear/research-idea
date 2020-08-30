@@ -111,10 +111,3 @@ class ToTorch(DualTransform):
             return img[np.newaxis]
         else:
             return img.transpose([2, 0, 1])
-
-
-class InvertGray(ImageOnlyTransform):
-
-    def apply(self, img, **params):
-        assert len(img.shape) == 2, "only support gray image"
-        return abs(255 - img)

@@ -52,10 +52,10 @@ class ConfigRunner:
         repo_entries = get_hub_entries(repo_path, repo_module)
 
         entries = repo_entries.list()
-        kwargs = self.get_kwargs(repo_config, ["path", "method"])
+        kwargs = self.get_kwargs(repo_config, ["name", "method"])
 
-        if "method" in repo_config:
-            method = repo_config["method"]
+        if "name" in repo_config:
+            method = repo_config["name"]
         elif "train_valid" in entries:
             method = "train_valid"
         elif "train" in entries:
@@ -137,12 +137,12 @@ class ConfigRunner:
         return metrics
 
     def _get_optimizer(self, opt_config):
-        name = opt_config["name"]
+        name = opt_config["name"].lower()
         kwargs = self.get_kwargs(opt_config)
 
-        if name.lower() == "sgd":
+        if name == "sgd":
             opt = opts.SGD
-        elif name.lower() == "adam":
+        elif name == "adam":
             opt = opts.Adam
         else:
             raise NotImplementedError("only support adam and sgd")
@@ -203,11 +203,7 @@ class ConfigRunner:
     @staticmethod
     def get_module_name(path):
         path = Path(path)
-        name = path.name
-
-        if ".npy" in name:
-            name = name[:-4]
-
+        name = path.name.replace(".py", "")
         parent_path = str(path.parent)
 
         return parent_path, name

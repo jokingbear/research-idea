@@ -43,8 +43,6 @@ def parallel_iterate(arr, iter_func, workers=32, use_index=False):
     :param use_index: whether to add index to each call of iter func
     :return list of result if not all is None
     """
-
-    workers = workers
     pool = mp.Pool(workers)
     jobs = [pool.apply_async(iter_func, args=(i, arg) if use_index else (arg,)) for i, arg in enumerate(arr)]
     results = [j.get() for j in get_tqdm(jobs)]
@@ -85,7 +83,7 @@ def get_loader(arr, mapper=None, batch_size=32, pin_memory=True, workers=20):
                            pin_memory=pin_memory, num_workers=workers)
 
 
-def visible_devices(*device_ids):
+def set_devices(*device_ids):
     """
     restrict visible device
     :param device_ids: device ids start at 0

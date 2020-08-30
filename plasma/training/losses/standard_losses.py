@@ -63,7 +63,6 @@ def weighted_bce(weights_path, smooth=None, device="cpu"):
     def wbce(pred, true):
         _assert_inputs(pred, true)
 
-        w = weights.to(pred.device)
         ln0 = (1 - pred + 1e-7).log()
         ln1 = (pred + 1e-7).log()
 
