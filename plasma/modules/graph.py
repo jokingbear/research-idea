@@ -132,10 +132,10 @@ def get_adjacency_matrix(smooth_corr, neighbor_ratio=0.2):
     :param neighbor_ratio: how strong neighbor nodes affect main nodes
     :return: adjacency matrix as dataframe
     """
-    identiy = np.identity(smooth_corr.shape[0])
-    reweight = smooth_corr - identiy
+    identity = np.identity(smooth_corr.shape[0])
+    reweight = smooth_corr - identity
     reweight = reweight * neighbor_ratio / (1 - neighbor_ratio) / (reweight.values.sum(axis=0, keepdims=True) + 1e-8)
-    reweight = reweight + identiy
+    reweight = reweight + identity
 
     D = reweight.values.sum(axis=1) ** (-0.5)
     D = np.diag(D)
