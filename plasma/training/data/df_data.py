@@ -16,7 +16,8 @@ class PandasDataset(StandardDataset):
 
         self.input_idx = imapper is not None
         self.df = df.copy()
-        self.mapper = mapper or imapper
+        self.mapper = mapper
+        self.imapper = imapper
         self.kwargs = kwargs
 
     def get_len(self):
@@ -25,7 +26,7 @@ class PandasDataset(StandardDataset):
     def get_item(self, idx):
         row = self.df.iloc[idx]
 
-        if self.input_idx:
-            return self.mapper(idx, row)
-
-        return self.mapper(row, **self.kwargs)
+        if self.mapper is not None:
+            return self.mapper(row, **self.kwargs)
+        else:
+            return self.imapper(idx, row, **self.kwargs)
