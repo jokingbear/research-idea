@@ -29,10 +29,10 @@ class StandardTrainer(BaseTrainer):
 
         self.training = True
 
-    def extract_data(self, batch_data):
+    def _extract_data(self, batch_data):
         return get_batch_tensors(batch_data, self.x_type, self.x_device, self.y_type, self.y_device)
 
-    def train_one_batch(self, inputs, targets) -> Tuple[dict, object]:
+    def _train_one_batch(self, inputs, targets) -> Tuple[dict, object]:
         if isinstance(inputs, dict):
             preds = self.models[0](**inputs)
         elif isinstance(inputs, list):
@@ -53,7 +53,7 @@ class StandardTrainer(BaseTrainer):
 
         return loss_dict, preds
 
-    def get_train_measures(self, inputs, targets, loss_dict, cache) -> dict:
+    def _get_train_measures(self, inputs, targets, loss_dict, cache) -> dict:
         preds = cache
 
         measures = loss_dict
@@ -64,7 +64,7 @@ class StandardTrainer(BaseTrainer):
 
         return measures
 
-    def get_eval_cache(self, inputs, targets):
+    def _get_eval_cache(self, inputs, targets):
         if isinstance(inputs, dict):
             preds = self.models[0](**inputs)
         elif isinstance(inputs, list):
@@ -74,7 +74,7 @@ class StandardTrainer(BaseTrainer):
 
         return preds, targets
 
-    def get_eval_logs(self, eval_caches):
+    def _get_eval_logs(self, eval_caches):
         preds, trues = eval_caches
 
         loss = self.loss(preds, trues)
