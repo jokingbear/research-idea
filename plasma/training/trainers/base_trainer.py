@@ -35,11 +35,11 @@ class BaseTrainer:
                 print(f"epoch {e}")
                 [c.on_epoch_begin(e) for c in callbacks]
 
-                train_logs = self.train_one_epoch(e, train_loader, callbacks)
+                train_logs = self._train_one_epoch(e, train_loader, callbacks)
                 val_logs = {}
 
                 if valid_loader is not None:
-                    val_logs = self.evaluate_one_epoch(valid_loader, e, callbacks)
+                    val_logs = self._evaluate_one_epoch(valid_loader, e, callbacks)
 
                 logs = {**train_logs, **val_logs}
 
@@ -54,19 +54,19 @@ class BaseTrainer:
                 handle.write(str(e))
             raise
 
-    def train_one_epoch(self, epoch, train_loader, callbacks):
+    def _train_one_epoch(self, epoch, train_loader, callbacks):
         running_metrics = np.zeros([])
 
         with get_tqdm(total=len(train_loader), desc="train") as pbar:
             for i, data in enumerate(train_loader):
-                inputs, targets = self.extract_data(data)
+                inputs, targets = self._extract_data(data)
                 [c.on_training_batch_begin(epoch, i, inputs, targets) for c in callbacks]
 
                 [m.train().zero_grad() for m in self.models]
-                loss_dict, caches = self.train_one_batch(inputs, targets)
+                loss_dict, caches = self._train_one_batch(inputs, targets)
 
                 with torch.no_grad():
-                    measures = self.get_train_measures(inputs, targets, loss_dict, caches)
+                    measures = self._get_train_measures(inputs, targets, loss_dict, caches)
                     measures = pd.Series(measures)
 
                     running_metrics = running_metrics + measures
@@ -81,15 +81,15 @@ class BaseTrainer:
 
         return logs
 
-    def evaluate_one_epoch(self, test_loader, epoch=0, callbacks=()):
+    def _evaluate_one_epoch(self, test_loader, epoch=0, callbacks=()):
         eval_caches = []
 
         with get_tqdm(total=len(test_loader), desc="eval") as pbar, eval_modules(*self.models):
             for i, data in enumerate(test_loader):
-                inputs, targets = self.extract_data(data)
+                inputs, targets = self._extract_data(data)
                 [c.on_validation_batch_begin(epoch, i, inputs, targets) for c in callbacks]
 
-                caches = self.get_eval_cache(inputs, targets)
+                caches = self._get_eval_cache(inputs, targets)
                 eval_caches.append(caches)
 
                 pbar.update()
@@ -101,27 +101,27 @@ class BaseTrainer:
                 n_pred = len(eval_caches[0])
                 eval_caches = [torch.cat([c[i] for c in eval_caches], dim=0) for i in range(n_pred)]
 
-            logs = self.get_eval_logs(eval_caches)
+            logs = self._get_eval_logs(eval_caches)
 
             pbar.set_postfix(logs)
             return logs
 
     @abstractmethod
-    def extract_data(self, batch_data):
+    def _extract_data(self, batch_data):
         pass
 
     @abstractmethod
-    def train_one_batch(self, inputs, targets) -> Tuple[dict, object]:
+    def _train_one_batch(self, inputs, targets) -> Tuple[dict, object]:
         pass
 
     @abstractmethod
-    def get_train_measures(self, inputs, targets, loss_dict, cache) -> dict:
+    def _get_train_measures(self, inputs, targets, loss_dict, cache) -> dict:
         pass
 
     @abstractmethod
-    def get_eval_cache(self, inputs, targets):
+    def _get_eval_cache(self, inputs, targets):
         pass
 
     @abstractmethod
-    def get_eval_logs(self, eval_caches) -> dict:
+    def _get_eval_logs(self, eval_caches) -> dict:
         pass
