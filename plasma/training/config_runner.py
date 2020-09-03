@@ -5,11 +5,12 @@ import torch
 import torch.nn as nn
 import torch.optim as opts
 
-from .callbacks import LrFinder, SuperConvergence, CSVLogger, Tensorboard
-from .losses import weighted_bce
-from .metrics import fb_fn, acc_fn
+from .callbacks import __mapping__ as callback_map
+from .losses import __mapping__ as loss_maps
+from .metrics import __mapping__ as metric_maps
 from .trainers.standard_trainer import StandardTrainer
 from ..hub import get_hub_entries
+from .optimizers import __mapping__ as optimizer_map
 
 
 class ConfigRunner:
@@ -42,8 +43,14 @@ class ConfigRunner:
         print(self.model) if verbose else None
 
         self.loss = self._get_loss(loss_config)
+        print("loss: ", self.loss) if verbose else None
+
         self.metrics = self._get_metrics(metrics_configs)
+        print("metrics: ", self.metrics) if verbose else None
+
         self.optimizer = self._get_optimizer(opt_config)
+        print("optimizer: ", self.optimizer) if verbose else None
+
         self.trainer = self._get_trainer(trainer_config)
         self.callbacks = self._get_callbacks(callbacks_configs)
 
@@ -52,7 +59,7 @@ class ConfigRunner:
         repo_entries = get_hub_entries(repo_path, repo_module)
 
         entries = repo_entries.list()
-        kwargs = self.get_kwargs(repo_config, ["name", "method"])
+        kwargs = self.get_kwargs(repo_config, ["name", "method", "path"])
 
         if "name" in repo_config:
             method = repo_config["name"]
@@ -93,21 +100,17 @@ class ConfigRunner:
         return model
 
     def _get_loss(self, loss_config):
-        name = loss_config["name"]
+        name = loss_config["name"].lower()
         kwargs = self.get_kwargs(loss_config, ["name", "path"])
 
         if "path" in loss_config:
             loss_path, loss_module = self.get_module_name(loss_config["path"])
             entries = get_hub_entries(loss_path, loss_module)
             loss = entries.load(name, **kwargs)
-        elif name.lower() == "bce":
-            loss = nn.BCELoss(**kwargs)
-        elif name.lower() == "bce_logit":
-            loss = nn.BCEWithLogitsLoss(**kwargs)
-        elif name.lower() in {"cb_bce", "wbce"}:
-            loss = weighted_bce(**kwargs)
+        elif name in loss_maps:
+            loss = loss_maps[name](**kwargs)
         else:
-            raise NotImplementedError("currently only support bce, bce_logit, cb_bce and wbce")
+            raise NotImplementedError(f"currently only support {loss_maps.keys()}")
 
         return loss
 
@@ -119,12 +122,8 @@ class ConfigRunner:
                 name = m_cfg["name"].lower()
                 kwargs = self.get_kwargs(m_cfg)
 
-                if name == "f1_score":
-                    metrics.append(fb_fn(beta=1, **kwargs))
-                elif name == "f_score":
-                    metrics.append(fb_fn(**kwargs))
-                elif name in {"acc", "accuracy"}:
-                    metrics.append(acc_fn(**kwargs))
+                if name in metric_maps:
+                    metrics.append(metric_maps[name](**kwargs))
         else:
             path, name = self.get_module_name(metrics_configs["path"])
             entries = get_hub_entries(path, name)
@@ -140,12 +139,10 @@ class ConfigRunner:
         name = opt_config["name"].lower()
         kwargs = self.get_kwargs(opt_config)
 
-        if name == "sgd":
-            opt = opts.SGD
-        elif name == "adam":
-            opt = opts.Adam
+        if name in optimizer_map:
+            opt = optimizer_map[name]
         else:
-            raise NotImplementedError("only support adam and sgd")
+            raise NotImplementedError(f"only support {optimizer_map.keys()}")
 
         opt = opt(self.model.parameters(), **kwargs)
 
@@ -174,14 +171,9 @@ class ConfigRunner:
             name = cb_config["name"].lower()
 
             kwargs = self.get_kwargs(cb_config)
-            if name in {"lrfinder", "lr finder", "lr_finder"}:
-                cbs.append(LrFinder(**kwargs))
-            elif name in {"superconvergence", "super convergence", "super_convergence"}:
-                cbs.append(SuperConvergence(**kwargs))
-            elif name in {"csvlogger", "csv logger", "csv_logger"}:
-                cbs.append(CSVLogger(**kwargs))
-            elif name == "tensorboard":
-                cbs.append(Tensorboard(**kwargs))
+
+            if name in callback_map:
+                cbs.append(callback_map[name](**kwargs))
 
         return cbs
 
