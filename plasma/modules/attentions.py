@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as func
 
+import numpy as np
+
 from .commons import GlobalAverage
 
 
@@ -101,6 +103,56 @@ class SAModule(nn.Module):
         conv3_proj = self.conv3(feat_map).view(batch_size, -1, width * height)
 
         feat_refine = torch.bmm(conv3_proj, attention.permute(0, 2, 1))
+        feat_refine = feat_refine.view(batch_size, num_channels, height, width)
+
+        feat_map = self.gamma * feat_refine + feat_map
+
+        return feat_map
+
+
+class DSAModule(nn.Module):
+
+    def __init__(self, num_channels):
+        super().__init__()
+        self.num_channels = num_channels
+
+        self.conv1 = nn.Conv2d(in_channels=num_channels,
+                               out_channels=num_channels // 8, kernel_size=1)
+        self.conv2 = nn.Conv2d(in_channels=num_channels,
+                               out_channels=num_channels // 8, kernel_size=1)
+        self.conv3 = nn.Conv2d(in_channels=num_channels,
+                               out_channels=num_channels, kernel_size=1)
+
+        self.unary = nn.Conv2d(in_channels=num_channels, out_channels=1, kernel_size=1)
+        self.gamma = nn.Parameter(torch.zeros(1), requires_grad=True)
+
+    def forward(self, feat_map):
+        batch_size, num_channels, height, width = feat_map.size()
+
+        # B x HW_i x C
+        conv1_proj = self.conv1(feat_map).view(batch_size, -1, width * height).permute(0, 2, 1)
+        conv1_mean = conv1_proj.mean(dim=1, keepdim=True)
+        conv1_proj = conv1_proj - conv1_mean
+
+        # B x C x HW_j
+        conv2_proj = self.conv2(feat_map).view(batch_size, -1, width * height)
+        conv2_mean = conv2_proj.mean(dim=-1, keepdim=True)
+        conv2_proj = conv2_proj - conv2_mean
+
+        # B x 1 x HW_j
+        unary_map = self.unary(feat_map).view(batch_size, -1)
+        unary_map = unary_map.softmax(dim=-1)
+        unary_map = unary_map[:, np.newaxis]
+
+        # B x HW_j x HW_i
+        relation_map = torch.bmm(conv1_proj, conv2_proj)
+        attention = func.softmax(relation_map, dim=-1) + unary_map
+        attention = attention.permute(0, 2, 1)
+
+        # B x C x HW_j
+        conv3_proj = self.conv3(feat_map).view(batch_size, -1, width * height)
+
+        feat_refine = torch.bmm(conv3_proj, attention)
         feat_refine = feat_refine.view(batch_size, num_channels, height, width)
 
         feat_map = self.gamma * feat_refine + feat_map
