@@ -3,12 +3,11 @@ from pathlib import Path
 
 import torch
 import torch.nn as nn
-import torch.optim as opts
 
 from .callbacks import __mapping__ as callback_map
 from .losses import __mapping__ as loss_maps
 from .metrics import __mapping__ as metric_maps
-from .trainers.standard_trainer import StandardTrainer
+from .trainers import __mapping__ as trainer_maps
 from ..hub import get_hub_entries
 from .optimizers import __mapping__ as optimizer_map
 
@@ -52,7 +51,10 @@ class ConfigRunner:
         print("optimizer: ", self.optimizer) if verbose else None
 
         self.trainer = self._get_trainer(trainer_config)
+        print("trainer ", self.trainer) if verbose else None
+
         self.callbacks = self._get_callbacks(callbacks_configs)
+        print("callbacks: ", self.callbacks) if verbose else None
 
     def _get_repo(self, repo_config):
         repo_path, repo_module = self.get_module_name(repo_config["path"])
@@ -157,8 +159,8 @@ class ConfigRunner:
             trainer_path, trainer_module = self.get_module_name(path)
             entries = get_hub_entries(trainer_path, trainer_module)
             trainer = entries.load(name, self.model, self.optimizer, self.loss, metrics=self.metrics, **kwargs)
-        elif name == "standard":
-            trainer = StandardTrainer(self.model, self.optimizer, self.loss, metrics=self.metrics, **kwargs)
+        elif name in trainer_maps:
+            trainer = trainer_maps[name](self.model, self.optimizer, self.loss, metrics=self.metrics, **kwargs)
         else:
             raise not NotImplementedError("only support standard trainer for empty trainer config")
 
