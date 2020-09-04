@@ -86,7 +86,7 @@ class ConfigRunner:
         model_path, model_module = self.get_module_name(model_config["path"])
         model_entries = get_hub_entries(model_path, model_module)
 
-        kwargs = self.get_kwargs(model_config, ["path", "name", "parallel", "checkpoint"])
+        kwargs = self.get_kwargs(model_config, ["path", "name", "parallel", "checkpoint", "gpu"])
         name = model_config["name"]
         model = model_entries.load(name, **kwargs)
 
