@@ -12,6 +12,13 @@
   "loss": {
     "name": "bce"
   },
+  "optimizer": {
+    "name": "sgd gc",
+    "lr": 1e-1,
+    "momentum": 0.9,
+    "weight_decay": 1e-6,
+    "nesterov": true
+  },
   "callbacks": [
     {
       "name": "lr finder",

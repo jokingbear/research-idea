@@ -28,11 +28,20 @@ class HubEntries:
         return function(*args, **kwargs)
 
     def list(self):
+        """
+        list all available entries
+        :return: list of entries
+        """
         function_names = [name for name, _ in insp.getmembers(self.module, insp.isfunction)]
 
         return function_names
 
     def inspect(self, entry_name):
+        """
+        inspect args and kwargs of an entry
+        :param entry_name: name of the entry
+        :return: argspec object
+        """
         function = getattr(self.module, entry_name)
 
         assert insp.isfunction(function), f"{function} is not a function"
