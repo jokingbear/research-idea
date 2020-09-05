@@ -139,19 +139,19 @@ class WarmRestart(Callback):
 
 class SuperConvergence(Callback):
 
-    def __init__(self, epochs, snapshot=True, directory="checkpoint", name=None):
+    def __init__(self, epochs, snapshot=True, directory="checkpoint", model_name=None):
         """
         :param epochs: number of epoch to run
         :param snapshot: whether to take snapshot at the end of training
         :param directory: directory to put snapshot in
-        :param name: name of the snapshot
+        :param model_name: name of the snapshot
         """
         super().__init__()
 
         self.epochs = epochs
         self.snapshot = snapshot
         self.dir = directory
-        self.name = name or "super_convergence"
+        self.name = model_name or "super_convergence"
         self.scheduler = None
 
     def on_train_begin(self, **train_configs):
