@@ -1,35 +1,58 @@
 import torch
+import torch.nn as nn
 
 
-def acc_fn(binary=False):
-    def acc(pred, true):
-        if binary:
-            pred = (pred >= 0.5)
+class Accuracy(nn.Module):
+
+    def __init__(self, binary=False):
+        super().__init__()
+
+        self.binary = binary
+
+    def forward(self, preds, trues):
+        if self.binary:
+            preds = (preds >= 0.5)
         else:
-            pred = pred.argmax(dim=1)
+            preds = preds.argmax(dim=1)
 
-        result = (pred == true).float().mean()
+        result = (preds == trues).float().mean()
         return result
 
-    return acc
+    def extra_repr(self):
+        return f"binary={self.binary}"
 
 
-def fb_fn(beta=1, axes=(0,), binary=False, smooth=1e-7, mean=True):
-    beta2 = beta ** 2
+class FbetaScore(nn.Module):
 
-    def fb_score(pred, true):
-        if not binary:
-            true = true[:, 1:, ...]
-            pred = pred.argmax(dim=1)
-            pred = torch.stack([(pred == i).float() for i in range(true.shape[1]) if i > 0], dim=1)
+    def __init__(self, beta=1, axes=(0,), binary=False, smooth=1e-7, classes=None):
+        super().__init__()
+
+        self.beta = beta
+        self.axes = axes
+        self.binary = binary
+        self.smooth = smooth
+        self.classes = classes
+
+    def forward(self, preds, trues):
+        beta2 = self.beta ** 2
+
+        if self.binary:
+            preds = (preds >= 0.5).float()
         else:
-            pred = (pred >= 0.5).float()
+            trues = trues[:, 1:, ...]
+            preds = preds.argmax(dim=1)
+            preds = torch.stack([(preds == i).float() for i in range(1, trues.shape[1])], dim=1)
 
-        p = (beta2 + 1) * (true * pred).sum(dim=axes)
-        s = (beta2 * true + pred).sum(dim=axes)
+        p = (beta2 + 1) * (trues * preds).sum(dim=self.axes)
+        s = (beta2 * trues + preds).sum(dim=self.axes)
 
-        fb = (p + smooth) / (s + smooth)
+        fb = (p + self.smooth) / (s + self.smooth)
 
-        return {f"f{beta}_score": fb.mean() if mean else fb}
+        if self.classes is not None:
+            results = {f"{c}_F{self.beta}": fb[:, i].mean() for i, c in enumerate(self.classes)}
 
-    return fb_score
+        return {f"F{self.beta}": fb.mean()}
+
+    def extra_repr(self):
+        return f"beta={self.beta}, axes={self.axes}, binary={self.binary}, " \
+               f"smooth={self.smooth}, classes={self.classes}"

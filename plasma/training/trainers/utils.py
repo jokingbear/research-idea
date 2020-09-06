@@ -32,7 +32,7 @@ def get_batch_tensors(batch_values, x_type, x_device, y_type, y_device):
 
 def get_dict(values, prefix=None, name=None):
     prefix = prefix or ""
-    name = name or "loss"
+    name = name or "Loss"
 
     if isinstance(values, dict):
         d = {prefix + k: float(values[k]) for k in values}

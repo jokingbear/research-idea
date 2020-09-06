@@ -125,3 +125,12 @@ class BaseTrainer:
     @abstractmethod
     def _get_eval_logs(self, eval_caches) -> dict:
         pass
+
+    def extra_repr(self):
+        return ""
+
+    def __repr__(self):
+        return f"{type(self).__name__}({self.extra_repr()})"
+
+    def __str__(self):
+        return repr(self)

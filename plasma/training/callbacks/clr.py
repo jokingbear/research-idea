@@ -51,11 +51,11 @@ class LrFinder(Callback):
     def on_train_end(self):
         self.plot_data()
 
-    def get_data(self, group=0, target="loss"):
+    def get_data(self, group=0, target="Loss"):
         for lr, logs in self.history[group]:
             yield lr, logs[target]
 
-    def plot_data(self, group=0, target="loss"):
+    def plot_data(self, group=0, target="Loss"):
         lrs, targets = zip(*self.get_data(group, target))
 
         if self.use_plotly:
