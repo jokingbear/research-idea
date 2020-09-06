@@ -47,4 +47,4 @@ class Callback:
         return f"{type(self).__name__}({self.extra_repr()})"
 
     def __str__(self):
-        return self.__repr__()
+        return repr(self)

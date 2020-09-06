@@ -18,4 +18,6 @@ __mapping__ = {
     "lr finder": LrFinder,
     "lr_finder": LrFinder,
     "warm": WarmRestart,
+    "warm restart": WarmRestart,
+    "warm_restart": WarmRestart,
 }

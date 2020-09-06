@@ -12,7 +12,7 @@ from ..utils import get_tqdm, eval_modules
 
 class BaseTrainer:
 
-    def __init__(self, models: List[nn.Module], optimizers, loss, metrics=None):
+    def __init__(self, models: List[nn.Module], optimizers, loss: nn.Module, metrics=None):
         self.models = models
         self.optimizers = optimizers
         self.loss = loss
