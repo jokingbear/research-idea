@@ -39,3 +39,12 @@ class Callback:
         self.models = [m.module if isinstance(m, nn.DataParallel) else m for m in trainer.models]
         self.optimizers = trainer.optimizers
         self.trainer = trainer
+
+    def extra_repr(self):
+        return ""
+
+    def __repr__(self):
+        return f"{type(self).__name__}({self.extra_repr()})"
+
+    def __str__(self):
+        return self.__repr__()
