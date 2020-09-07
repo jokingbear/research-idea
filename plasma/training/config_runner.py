@@ -92,7 +92,7 @@ class ConfigRunner:
 
         if "checkpoint" in model_config:
             w = torch.load(model_config["checkpoint"], map_location="cpu")
-            print(model.load(w, strict=False))
+            print(model.load_state_dict(w, strict=False))
 
         if model_config.get("parallel", False):
             model = nn.DataParallel(model).cuda()

@@ -1,5 +1,5 @@
 from .base_class import Callback
-from .standard_callbacks import CSVLogger, Tensorboard, TrainingScheduler
+from .standard_callbacks import CSVLogger, Tensorboard
 from .standard_callbacks import ReduceLROnPlateau, EarlyStopping, ModelCheckpoint
 from .clr import SuperConvergence, LrFinder, WarmRestart
 
@@ -18,4 +18,6 @@ __mapping__ = {
     "lr finder": LrFinder,
     "lr_finder": LrFinder,
     "warm": WarmRestart,
+    "warm restart": WarmRestart,
+    "warm_restart": WarmRestart,
 }

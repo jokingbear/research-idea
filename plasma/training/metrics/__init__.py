@@ -1,10 +1,10 @@
-from .standard_metrics import acc_fn, fb_fn
+from .standard_metrics import Accuracy, FbetaScore
 
 
 __mapping__ = {
-    "accuracy": acc_fn,
-    "acc": acc_fn,
-    "fb": fb_fn,
-    "fb_score": fb_fn,
-    "fb score": fb_fn,
+    "accuracy": Accuracy,
+    "acc": Accuracy,
+    "fb": FbetaScore,
+    "fb_score": FbetaScore,
+    "fb score": FbetaScore,
 }

@@ -53,11 +53,12 @@ def parallel_iterate(arr, iter_func, workers=32, use_index=False):
         return results
 
 
-def get_loader(arr, mapper=None, batch_size=32, pin_memory=True, workers=20):
+def get_loader(arr, mapper=None, imapper=None, batch_size=32, pin_memory=True, workers=20):
     """
     get loader from array or dataframe
     :param arr: array to iter
-    :param mapper: how map array element, signature: (idx, elem) -> obj
+    :param mapper: how to map array element, signature: elem -> obj
+    :param imapper: how to map array element, signature: (idx, elem) -> obj
     :param batch_size: the batch size of the loader
     :param pin_memory: whether the loader should pin memory for fast transfer
     :param workers: number of workers to run in parallel
@@ -75,6 +76,8 @@ def get_loader(arr, mapper=None, batch_size=32, pin_memory=True, workers=20):
             item = arr[idx]
 
             if mapper is not None:
+                return mapper(item)
+            elif imapper is not None:
                 return mapper(idx, item)
 
             return item

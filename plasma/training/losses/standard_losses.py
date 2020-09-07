@@ -1,98 +1,148 @@
 import pandas as pd
 import numpy as np
+
 import torch
+import torch.nn as nn
 
 from .utils import _assert_inputs
 
 
-def focal_loss_fn(gamma=2, binary=False, one_hot_n_class=None):
-    def focal_loss(pred, true):
-        if one_hot_n_class is not None:
-            true = torch.stack([true == i for i in range(one_hot_n_class)], dim=1)
+class FocalLoss(nn.Module):
 
-        _assert_inputs(pred, true)
+    def __init__(self, gamma=2, binary=False):
+        super().__init__()
 
-        if binary:
-            prob = true * pred + (1 - true) * (1 - pred)
+        self.gamma = gamma
+        self.binary = binary
+
+    def forward(self, preds, trues):
+        _assert_inputs(preds, trues)
+
+        if self.binary:
+            prob = trues * preds + (1 - trues) * (1 - preds)
         else:
-            prob = (true * pred).sum(dim=1)
+            prob = (trues * preds).sum(dim=1)
 
-        ln = (1 - prob).pow(gamma) * (prob + 1e-7).log()
+        ln = (1 - prob).pow(self.gamma) * (prob + 1e-7).log()
 
         return -ln.mean()
 
-    return focal_loss
+    def extra_repr(self):
+        return f"gamma={self.gamma}, binary={self.binary}"
 
 
-def fb_loss_fn(beta=1, axes=(0,), binary=False, one_hot_n_class=None, smooth=1e-7):
-    beta2 = beta ** 2
+class FbetaLoss(nn.Module):
+    
+    def __init__(self, beta=1, axes=(0,), binary=False, smooth=1e-7):
+        super().__init__()
 
-    def fb_loss(pred, true):
-        if one_hot_n_class is not None:
-            true = torch.stack([true == i for i in range(one_hot_n_class)], dim=1)
+        self.beta = beta
+        self.axes = axes
+        self.binary = binary
+        self.smooth = smooth
 
-        if not binary:
-            true = true[:, 1:, ...]
-            pred = pred[:, 1:, ...]
+    def forward(self, preds, trues):
+        beta2 = self.beta ** 2
 
-        _assert_inputs(pred, true)
+        if not self.binary:
+            trues = trues[:, 1:, ...]
+            preds = preds[:, 1:, ...]
 
-        p = (beta2 + 1) * (true * pred).sum(dim=axes)
-        s = (beta2 * true + pred).sum(dim=axes)
+        _assert_inputs(preds, trues)
 
-        fb = (p + smooth) / (s + smooth)
+        p = (beta2 + 1) * (trues * preds).sum(dim=self.axes)
+        s = (beta2 * trues + preds).sum(dim=self.axes)
+
+        fb = (p + self.smooth) / (s + self.smooth)
 
         return (1 - fb).mean()
 
-    return fb_loss
+    def extra_repr(self):
+        return f"beta={self.beta}, axes={self.axes}, binary={self.binary}, smooth={self.smooth}"
 
 
-def weighted_bce(weights_path, smooth=None, device="cpu"):
-    if ".csv" in weights_path:
-        weights = pd.read_csv(weights_path, index_col=0)
-        print(weights)
-        weights = weights.values
-    elif ".npy" in weights_path:
-        weights = np.load(weights_path)
-        print(weights.shape)
-    else:
-        raise NotImplementedError("only support csv and numpy extension")
+class WBCE(nn.Module):
 
-    weights = torch.tensor(weights, dtype=torch.float, device=device)
+    def __init__(self, weights_path, smooth=None, device="cpu"):
+        super().__init__()
 
-    def wbce(pred, true):
-        _assert_inputs(pred, true)
-
-        ln0 = (1 - pred + 1e-7).log()
-        ln1 = (pred + 1e-7).log()
-
-        if smooth is not None:
-            sm = np.random.uniform(1 - smooth, 1)
-            ln0 = weights[..., 0] * (1 - true) * (sm * ln0 + (1 - sm) * ln1)
-            ln1 = weights[..., 1] * true * (sm * ln1 + (1 - sm) * ln0)
+        if ".csv" in weights_path:
+            weights = pd.read_csv(weights_path, index_col=0)
+            print(weights)
+            weights = weights.values
+        elif ".npy" in weights_path:
+            weights = np.load(weights_path)
+            print(weights.shape)
         else:
-            ln0 = weights[..., 0] * (1 - true) * ln0
-            ln1 = weights[..., 1] * true * ln1
+            raise NotImplementedError("only support csv and numpy extension")
+
+        self.weights = torch.tensor(weights, dtype=torch.float, device=device)
+        self.smooth = smooth
+
+    def forward(self, preds, trues):
+        _assert_inputs(preds, trues)
+
+        ln0 = (1 - preds + 1e-7).log()
+        ln1 = (preds + 1e-7).log()
+
+        weights = self.weights
+        if self.smooth is not None:
+            sm = torch.ones_like(preds).uniform_(1 - self.smooth, 1)
+            ln0 = weights[..., 0] * (1 - trues) * (sm * ln0 + (1 - sm) * ln1)
+            ln1 = weights[..., 1] * trues * (sm * ln1 + (1 - sm) * ln0)
+        else:
+            ln0 = weights[..., 0] * (1 - trues) * ln0
+            ln1 = weights[..., 1] * trues * ln1
 
         ln = ln0 + ln1
         return -ln.mean()
 
-    return wbce
+    def extra_repr(self):
+        return f"weights_shape={self.weights.shape}, smooth={self.smooth}, device={self.device}"
+
+    @staticmethod
+    def get_class_balance_weight(counts, anchor=0):
+        """
+        calculate class balance weight from counts with anchor
+        :param counts: class counts, shape=(n_class, 2)
+        :param anchor: make anchor class weight = 1 and keep the aspect ratio of other weight
+        :return: weights for cross entropy loss
+        """
+        total = counts.values[0, 0] + counts.values[0, 1]
+        beta = 1 - 1 / total
+
+        weights = (1 - beta) / (1 - beta ** counts)
+        normalized_weights = weights / weights.values[:, anchor, np.newaxis]
+
+        return normalized_weights
 
 
-def combine_loss(*losses, weights=None):
-    weights = weights or [1] * len(losses)
+class CombineLoss(nn.Module):
 
-    def total_loss(pred, true):
+    def __init__(self, *losses, weights=None):
+        super().__init__()
+
+        self.losses = nn.ModuleList(losses)
+        self.weights = weights or [1] * len(losses)
+
+    def forward(self, preds, trues):
         loss = 0
         d = {}
 
-        for ls, w in zip(losses, weights):
-            ind_loss = ls(pred, true)
-            d[ls.__name__] = ind_loss
-            loss = loss + w * ind_loss
+        for ls, w in zip(self.losses, self.weights):
+            ind_loss = ls(preds, trues)
 
-        d["loss"] = loss
+            if isinstance(ind_loss, dict):
+                for k in ind_loss:
+                    if k != "Loss":
+                        d[k] = ind_loss[k]
+                    else:
+                        loss = loss + w * ind_loss["Loss"]
+            else:
+                loss = loss + w * ind_loss
+
+        d["Loss"] = loss
         return d
 
-    return total_loss
+    def extra_repr(self):
+        return f"weights={self.weights}"

@@ -12,7 +12,7 @@ from ..utils import get_tqdm, eval_modules
 
 class BaseTrainer:
 
-    def __init__(self, models: List[nn.Module], optimizers, loss, metrics=None):
+    def __init__(self, models: List[nn.Module], optimizers, loss: nn.Module, metrics=None):
         self.models = models
         self.optimizers = optimizers
         self.loss = loss
@@ -125,3 +125,12 @@ class BaseTrainer:
     @abstractmethod
     def _get_eval_logs(self, eval_caches) -> dict:
         pass
+
+    def extra_repr(self):
+        return ""
+
+    def __repr__(self):
+        return f"{type(self).__name__}({self.extra_repr()})"
+
+    def __str__(self):
+        return repr(self)

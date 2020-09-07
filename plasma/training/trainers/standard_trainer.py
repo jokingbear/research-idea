@@ -44,9 +44,9 @@ class StandardTrainer(BaseTrainer):
 
         if isinstance(loss, dict):
             loss_dict = {k: float(loss[k]) for k in loss}
-            loss = loss["loss"]
+            loss = loss["Loss"]
         else:
-            loss_dict = {"loss": float(loss)}
+            loss_dict = {"Loss": float(loss)}
 
         loss.backward()
         self.optimizers[0].step()
@@ -59,7 +59,7 @@ class StandardTrainer(BaseTrainer):
         measures = loss_dict
         for m in self.metrics:
             m_value = m(preds, targets)
-            m_dict = get_dict(m_value, name=m.__name__)
+            m_dict = get_dict(m_value, name=m.get_name())
             measures.update(m_dict)
 
         return measures
@@ -78,12 +78,16 @@ class StandardTrainer(BaseTrainer):
         preds, trues = eval_caches
 
         loss = self.loss(preds, trues)
-        loss_dict = get_dict(loss, prefix="val ", name="loss")
+        loss_dict = get_dict(loss, prefix="Val_", name="Loss")
 
         measures = loss_dict
         for m in self.metrics:
             m_value = m(preds, trues)
-            m_dict = get_dict(m_value, prefix="val ", name=m.__name__)
+            m_dict = get_dict(m_value, prefix="val ", name=m.get_name())
             measures.update(m_dict)
 
         return measures
+
+    def extra_repr(self):
+        return f"x_device={self.x_device}, x_type={self.x_type}, " \
+               f"y_device={self.y_device}, y_type={self.y_type}"

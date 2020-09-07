@@ -51,11 +51,11 @@ class LrFinder(Callback):
     def on_train_end(self):
         self.plot_data()
 
-    def get_data(self, group=0, target="loss"):
+    def get_data(self, group=0, target="Loss"):
         for lr, logs in self.history[group]:
             yield lr, logs[target]
 
-    def plot_data(self, group=0, target="loss"):
+    def plot_data(self, group=0, target="Loss"):
         lrs, targets = zip(*self.get_data(group, target))
 
         if self.use_plotly:
@@ -70,6 +70,9 @@ class LrFinder(Callback):
             plt.ylabel(target)
             plt.title(f"lr vs {target}")
             plt.show()
+
+    def extra_repr(self):
+        return f"min_lr={self.min_lr}, max_lr={self.max_lr}, epochs={self.epochs}, use_plotly={self.use_plotly}"
 
 
 class WarmRestart(Callback):
@@ -136,6 +139,10 @@ class WarmRestart(Callback):
 
         self.trainer.training = self.finished_cycles < self.cycles
 
+    def extra_repr(self):
+        return f"min_lr={self.min_lr}, t0={self.t0}, factor={self.factor}, cycles={self.cycles}, " \
+               f"snapshot={self.snapshot}, directory={self.dir}, model_name={self.model_name}"
+
 
 class SuperConvergence(Callback):
 
@@ -172,3 +179,6 @@ class SuperConvergence(Callback):
     def on_train_end(self):
         model_dict = self.models[0].state_dict()
         torch.save(model_dict, f"{self.dir}/{self.name}.model")
+
+    def extra_repr(self):
+        return f"epochs={self.epochs}, snapshot={self.snapshot}, directory={self.dir}, model_name={self.name}"

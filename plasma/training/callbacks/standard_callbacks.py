@@ -33,6 +33,10 @@ class ReduceLROnPlateau(Callback):
 
         self.scheduler.step(logs[self.monitor], epoch + 1)
 
+    def extra_repr(self):
+        return f"monitor={self.monitor}, patience={self.patience}, mode={self.mode}, factor={self.factor}" \
+               f"verbose={self.verbose}"
+
 
 class EarlyStopping(Callback):
 
@@ -65,6 +69,9 @@ class EarlyStopping(Callback):
         if self.patience_count == self.patience:
             self.trainer.training = False
             print("Early stopping") if self.verbose else None
+
+    def extra_repr(self):
+        return f"monitor={self.monitor}, patience={self.patience}, mode={self.mode}, verbose={self.verbose}"
 
 
 class ModelCheckpoint(Callback):
@@ -106,6 +113,10 @@ class ModelCheckpoint(Callback):
                 torch.save(optim_dict, f"{path}.opt_{i}")
 
             self.running_monitor_val = monitor_val
+
+    def extra_repr(self):
+        return f"file_path={self.file_path}, monitor={self.monitor}, mode={self.mode}, " \
+               f"save_best_only={self.save_best_only}, overwrite={self.overwrite}, verbose={self.verbose}"
 
 
 class CSVLogger(Callback):
@@ -189,6 +200,9 @@ class CSVLogger(Callback):
         self.csv_file.close()
         self.writer = None
 
+    def extra_repr(self):
+        return f"filename={self.filename}, separator={self.sep}, append={self.append}"
+
 
 class Tensorboard(Callback):
 
@@ -228,18 +242,6 @@ class Tensorboard(Callback):
         self.train_writer.close()
         self.valid_writer.close()
 
-
-class TrainingScheduler(Callback):
-
-    def __init__(self, epochs=100):
-        super().__init__()
-
-        self.epochs = epochs
-        self.runned = 0
-
-    def on_train_begin(self, **train_configs):
-        self.runned = train_configs["start_epoch"] - 1
-
-    def on_epoch_end(self, epoch, logs=None):
-        self.runned += 1
-        self.trainer.training = self.runned < self.epochs
+    def extra_repr(self):
+        return f"log_dir={self.log_dir}, steps={self.steps}, flushes={self.flushes}, " \
+               f"inputs={self.inputs.shape if self.inputs is not None else None}, current_step={self.current_step}"
