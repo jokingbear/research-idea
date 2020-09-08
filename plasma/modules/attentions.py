@@ -44,7 +44,7 @@ class SEAttention(nn.Module):
 
 class CBAM(nn.Module):
 
-    def __init__(self, in_channels, ratio=1 / 16):
+    def __init__(self, in_channels, kernel_size=7, ratio=1 / 16):
         super().__init__()
 
         self.spatial_avg = nn.AdaptiveAvgPool2d(1)
@@ -57,7 +57,7 @@ class CBAM(nn.Module):
         ])
 
         self.spatial_attention = nn.Sequential(*[
-            nn.Conv2d(2, 1, kernel_size=7, padding=3),
+            nn.Conv2d(2, 1, kernel_size=kernel_size, padding=3),
             nn.Sigmoid()
         ])
 
