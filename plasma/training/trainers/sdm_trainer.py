@@ -1,13 +1,13 @@
-import torch.nn as nn
-
 from typing import Tuple
+
+import torch.nn as nn
 
 from .base_trainer import BaseTrainer
 from .utils import *
 
 
 class SDM(BaseTrainer):
-    
+
     def __init__(self, model, optimizer, loss=None, alpha=1, device=None):
         loss = loss or nn.MSELoss()
         super().__init__([model], [optimizer], loss)
@@ -36,7 +36,7 @@ class SDM(BaseTrainer):
         teacher_intermediates = outputs["teacher_intermediates"]
 
         student_proj_loss = self.loss(student_projects, teacher_features)
-        student_cycle_loss = self.loss(student_features, student_cycle)
+        student_cycle_loss = self.loss(student_cycle, student_features)
 
         teacher_proj_loss = self.loss(teacher_projects, student_features)
         teacher_cycle_loss = self.loss(teacher_cycle, teacher_features)
@@ -49,7 +49,7 @@ class SDM(BaseTrainer):
         total_loss = total_loss + self.alpha * int_loss
         total_loss.backward()
 
-        self.optimizers[0].backward()
+        self.optimizers[0].step()
 
         return {
             "student_proj": float(student_proj_loss),
