@@ -146,7 +146,7 @@ class ConfigRunner:
         else:
             raise NotImplementedError(f"only support {optimizer_map.keys()}")
 
-        opt = opt(self.model.parameters(), **kwargs)
+        opt = opt([p for p in self.model.parameters() if p.requires_grad], **kwargs)
 
         return opt
 
