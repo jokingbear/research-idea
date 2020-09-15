@@ -1,6 +1,5 @@
-import pandas as pd
 import numpy as np
-
+import pandas as pd
 import torch
 import torch.nn as nn
 
@@ -98,7 +97,7 @@ class WBCE(nn.Module):
         return -ln.mean()
 
     def extra_repr(self):
-        return f"weights_shape={self.weights.shape}, smooth={self.smooth}, device={self.device}"
+        return f"weights_shape={self.weights.shape}, smooth={self.smooth}, device={self.weights.device}"
 
     @staticmethod
     def get_class_balance_weight(counts, anchor=0):

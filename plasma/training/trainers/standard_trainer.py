@@ -59,7 +59,7 @@ class StandardTrainer(BaseTrainer):
         measures = loss_dict
         for m in self.metrics:
             m_value = m(preds, targets)
-            m_dict = get_dict(m_value, name=m.get_name())
+            m_dict = get_dict(m_value, name=m._get_name())
             measures.update(m_dict)
 
         return measures
@@ -83,7 +83,7 @@ class StandardTrainer(BaseTrainer):
         measures = loss_dict
         for m in self.metrics:
             m_value = m(preds, trues)
-            m_dict = get_dict(m_value, prefix="val ", name=m.get_name())
+            m_dict = get_dict(m_value, prefix="val ", name=m._get_name())
             measures.update(m_dict)
 
         return measures
