@@ -1,6 +1,7 @@
-from .standard_losses import CombineLoss, FbetaLoss, FocalLoss, WBCE
 from torch.nn import BCELoss, MSELoss, L1Loss
 
+from .segmentation import TVLoss
+from .standard_losses import CombineLoss, FbetaLoss, FocalLoss, WBCE
 
 __mapping__ = {
     "wbce": WBCE,
@@ -12,4 +13,5 @@ __mapping__ = {
     "mse": MSELoss,
     "l2": MSELoss,
     "l1": L1Loss,
+    "tv": TVLoss
 }

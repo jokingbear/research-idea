@@ -39,7 +39,11 @@ class ConfigRunner:
 
         print("creating model") if verbose else None
         self.model = self._get_model(model_config)
-        print(self.model) if verbose else None
+        if verbose:
+            print("printing model to model.txt")
+
+            with open("model.txt", "w") as handle:
+                handle.write(str(self.model))
 
         self.loss = self._get_loss(loss_config)
         print("loss: ", self.loss) if verbose else None
@@ -146,7 +150,7 @@ class ConfigRunner:
         else:
             raise NotImplementedError(f"only support {optimizer_map.keys()}")
 
-        opt = opt(self.model.parameters(), **kwargs)
+        opt = opt([p for p in self.model.parameters() if p.requires_grad], **kwargs)
 
         return opt
 
