@@ -14,12 +14,16 @@ from .optimizers import __mapping__ as optimizer_map
 
 class ConfigRunner:
 
-    def __init__(self, config_file, verbose=1):
+    def __init__(self, config_file, verbose=1, save_config_path=None, name=None):
         if isinstance(config_file, dict):
             config = config_file
         else:
             with open(config_file) as handle:
                 config = json.load(handle)
+
+        self.config = config
+        self.save_config_path = save_config_path
+        self.name = name or "train_config"
 
         repo_config = config["repo"]
         model_config = config["model"]
@@ -188,6 +192,11 @@ class ConfigRunner:
         run the training process based on config
         """
         self.trainer.fit(self.train, self.valid, callbacks=self.callbacks)
+
+        if self.save_config_path is not None:
+            full_file = f"{self.save_config_path}/{self.name}"
+            with open(full_file, "w") as handle:
+                json.dump(self.config, handle)
 
     def __call__(self, *args, **kwargs):
         self.run()
