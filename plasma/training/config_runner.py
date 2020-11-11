@@ -210,7 +210,7 @@ class ConfigRunner:
     @staticmethod
     def get_module_name(path):
         path = Path(path)
-        name = path.name.replace(".py", "")
         parent_path = str(path.parent)
+        module = path.name
 
-        return parent_path, name
+        return parent_path, module
