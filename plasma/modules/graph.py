@@ -3,6 +3,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.nn.functional as func
+import pydot
 
 from .commons import Identity
 
@@ -141,3 +142,28 @@ def get_adjacency_matrix(smooth_corr, neighbor_ratio=0.2):
     D = np.diag(D)
     normalized = D @ reweight.values.transpose() @ D
     return pd.DataFrame(normalized, index=smooth_corr.index, columns=smooth_corr.columns)
+
+
+def get_graph(corr, threshold=0.4):
+    """
+    draw a pydot graph of correlation
+    :param corr: dataframe of correlation matrix
+    :param threshold: threshold to prune correlation
+    :return: pydot graph
+    """
+    smooth_corr = corr >= threshold
+    graph = pydot.Dot(graph_type='digraph')
+
+    for c1 in corr.columns:
+        node1 = pydot.Node(c1)
+        graph.add_node(node1)
+
+        for c2 in corr.columns:
+            if c2 != c1:
+                node2 = pydot.Node(c2)
+
+                if smooth_corr.loc[c1, c2] != 0:
+                    edge = pydot.Edge(node1, node2, label=np.round(corr.loc[c1, c2], decimals=2))
+                    graph.add_edge(edge)
+
+    return graph

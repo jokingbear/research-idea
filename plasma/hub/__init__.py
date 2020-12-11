@@ -8,4 +8,5 @@ def get_hub_entries(path, default_file="hubconfig"):
     :param default_file: default entry file, default="hubconfig"
     :return: HubEntries
     """
-    return HubEntries(path, default_file)
+    module_name = default_file.replace(".py", "")
+    return HubEntries(path, module_name)
