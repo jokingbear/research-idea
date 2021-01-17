@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import numpy as np
 
 
 class Accuracy(nn.Module):
@@ -49,7 +50,11 @@ class FbetaScore(nn.Module):
         fb = (p + self.smooth) / (s + self.smooth)
 
         if self.classes is not None:
+            if len(fb.shape) == 1:
+                fb = fb[np.newaxis]
             results = {f"{c}_F{self.beta}": fb[:, i].mean() for i, c in enumerate(self.classes)}
+            results[f"F{self.beta}"] = fb.mean()
+            return results
 
         return {f"F{self.beta}": fb.mean()}
 
