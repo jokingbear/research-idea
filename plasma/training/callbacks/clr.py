@@ -1,5 +1,5 @@
 import os
-
+import numpy as np
 import torch
 import torch.optim as opts
 
@@ -146,7 +146,7 @@ class WarmRestart(Callback):
 
 class SuperConvergence(Callback):
 
-    def __init__(self, epochs, snapshot=True, directory="checkpoint", model_name=None):
+    def __init__(self, epochs, div_factor=25., snapshot=True, directory="checkpoint", model_name=None):
         """
         :param epochs: number of epoch to run
         :param snapshot: whether to take snapshot at the end of training
@@ -156,6 +156,7 @@ class SuperConvergence(Callback):
         super().__init__()
 
         self.epochs = epochs
+        self.div_factor = div_factor
         self.snapshot = snapshot
         self.dir = directory
         self.name = model_name or "super_convergence"
@@ -165,7 +166,8 @@ class SuperConvergence(Callback):
         n = len(train_configs["train_loader"])
         max_lr = [g["lr"] for g in self.optimizers[0].param_groups]
 
-        self.scheduler = opts.lr_scheduler.OneCycleLR(self.optimizers[0], max_lr, epochs=self.epochs, steps_per_epoch=n)
+        self.scheduler = opts.lr_scheduler.OneCycleLR(self.optimizers[0], max_lr,
+                                                      epochs=self.epochs, steps_per_epoch=n, div_factor=self.div_factor)
 
         if not os.path.exists(self.dir) and self.snapshot:
             os.mkdir(self.dir)
@@ -182,3 +184,37 @@ class SuperConvergence(Callback):
 
     def extra_repr(self):
         return f"epochs={self.epochs}, snapshot={self.snapshot}, directory={self.dir}, model_name={self.name}"
+
+
+class Warmup(Callback):
+
+    def __init__(self, init_lr, final_lr, n_epoch=1):
+        super().__init__()
+
+        assert init_lr > final_lr, "init_lr must be higher than final_lr"
+        assert init_lr > 0, "init_lr must be bigger than 0"
+
+        self.init_lr = init_lr
+        self.final_lr = final_lr
+        self.n_epoch = n_epoch
+
+        self.lrs = []
+        self.step = 0
+        self.total_step = 0
+
+    def on_train_begin(self, **train_configs):
+        steps = len(train_configs["train_loader"])
+
+        self.lrs = np.linspace(self.init_lr, self.final_lr, num=steps * self.n_epoch)
+        self.total_step = steps * self.n_epoch
+
+    def on_training_batch_begin(self, epoch, step, inputs, targets):
+        if self.step < self.total_step:
+            for g in self.optimizers[0].param_groups:
+                g["lr"] = self.lrs[self.step]
+
+    def on_training_batch_end(self, epoch, step, inputs, targets, caches, logs=None):
+        self.step += 1
+
+    def on_epoch_end(self, epoch, logs=None):
+        self.trainer.training = self.step >= self.total_step
