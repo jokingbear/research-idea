@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 
 import torch
 import torch.nn as nn
@@ -8,7 +7,7 @@ from .callbacks import __mapping__ as callback_map
 from .losses import __mapping__ as loss_maps
 from .metrics import __mapping__ as metric_maps
 from .trainers import __mapping__ as trainer_maps
-from ..hub import get_hub_entries
+from ..hub import get_entries
 from .optimizers import __mapping__ as optimizer_map
 
 
@@ -65,8 +64,7 @@ class ConfigRunner:
         print("callbacks: ", self.callbacks) if verbose else None
 
     def _get_repo(self, repo_config):
-        repo_path, repo_module = self.get_module_name(repo_config["path"])
-        repo_entries = get_hub_entries(repo_path, repo_module)
+        repo_entries = get_entries(repo_config["path"])
 
         entries = repo_entries.list()
         kwargs = self.get_kwargs(repo_config, ["name", "method", "path"])
@@ -91,8 +89,7 @@ class ConfigRunner:
         return train, valid
 
     def _get_model(self, model_config):
-        model_path, model_module = self.get_module_name(model_config["path"])
-        model_entries = get_hub_entries(model_path, model_module)
+        model_entries = get_entries(model_config["path"])
 
         kwargs = self.get_kwargs(model_config, ["path", "name", "parallel", "checkpoint", "gpu"])
         name = model_config["name"]
@@ -114,8 +111,7 @@ class ConfigRunner:
         kwargs = self.get_kwargs(loss_config, ["name", "path"])
 
         if "path" in loss_config:
-            loss_path, loss_module = self.get_module_name(loss_config["path"])
-            entries = get_hub_entries(loss_path, loss_module)
+            entries = get_entries(loss_config["path"])
             loss = entries.load(name, **kwargs)
         elif name in loss_maps:
             loss = loss_maps[name](**kwargs)
@@ -135,8 +131,7 @@ class ConfigRunner:
                 if name in metric_maps:
                     metrics.append(metric_maps[name](**kwargs))
         else:
-            path, name = self.get_module_name(metrics_configs["path"])
-            entries = get_hub_entries(path, name)
+            entries = get_entries(metrics_configs["path"])
 
             name = metrics_configs["name"]
             kwargs = self.get_kwargs(metrics_configs, excludes=["name", "path"])
@@ -164,8 +159,7 @@ class ConfigRunner:
         kwargs = self.get_kwargs(trainer_config, excludes=["name", "path"])
 
         if path is not None:
-            trainer_path, trainer_module = self.get_module_name(path)
-            entries = get_hub_entries(trainer_path, trainer_module)
+            entries = get_entries(path)
             trainer = entries.load(name, self.model, self.optimizer, self.loss, metrics=self.metrics, **kwargs)
         elif name in trainer_maps:
             trainer = trainer_maps[name](self.model, self.optimizer, self.loss, metrics=self.metrics, **kwargs)
@@ -206,11 +200,3 @@ class ConfigRunner:
         excludes = set(excludes)
 
         return {k: configs[k] for k in configs if k not in excludes}
-
-    @staticmethod
-    def get_module_name(path):
-        path = Path(path)
-        parent_path = str(path.parent)
-        module = path.name
-
-        return parent_path, module

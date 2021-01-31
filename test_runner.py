@@ -1,4 +1,4 @@
-from plasma.training.config_runner import ConfigRunner as Runner
+from plasma.training.runner import ConfigRunner as Runner
 
 
 if __name__ == '__main__':
