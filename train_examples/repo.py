@@ -13,6 +13,6 @@ def get_tensor(idx, *args, **kwargs):
 
 def train_valid():
     train = data.PandasDataset(df, get_tensor)
-    loader = train.get_torch_loader()
+    loader = train.get_torch_loader(workers=8)
 
     return loader, loader

@@ -1,12 +1,12 @@
 from .hub_entries import HubEntries
+from pathlib import Path
 
 
-def get_hub_entries(path, default_file="hubconfig"):
+def get_entries(path):
     """
     get enty point of a hub folder
-    :param path: path to hub folder
-    :param default_file: default entry file, default="hubconfig"
+    :param path: path to python module
     :return: HubEntries
     """
-    module_name = default_file.replace(".py", "")
-    return HubEntries(path, module_name)
+    path = Path(path)
+    return HubEntries(path.parent, path.name.replace(".py", ""))
