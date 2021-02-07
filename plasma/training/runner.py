@@ -13,13 +13,7 @@ from .optimizers import __mapping__ as optimizer_map
 
 class ConfigRunner:
 
-    def __init__(self, config_file, verbose=1, save_config_path=None, name=None):
-        if isinstance(config_file, dict):
-            config = config_file
-        else:
-            with open(config_file) as handle:
-                config = json.load(handle)
-
+    def __init__(self, config, save_config_path=None, name=None, verbose=1):
         self.config = config
         self.save_config_path = save_config_path
         self.name = name or "train_config"
@@ -192,7 +186,7 @@ class ConfigRunner:
             with open(full_file, "w") as handle:
                 json.dump(self.config, handle)
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self):
         self.run()
 
     @staticmethod
@@ -200,3 +194,21 @@ class ConfigRunner:
         excludes = set(excludes)
 
         return {k: configs[k] for k in configs if k not in excludes}
+
+
+def create(config, save_config_path=None, name=None, verbose=1):
+    """
+    create runner
+    Args:
+        config: config dict or path to config dict
+        save_config_path: where to save config after training
+        name: name of saved config
+        verbose: print creation step
+
+    Returns: ConfigRunner
+    """
+    if not isinstance(config, dict):
+        with open(config) as handle:
+            config = json.load(handle)
+
+    return ConfigRunner(config, save_config_path=save_config_path, name=name, verbose=verbose)
