@@ -34,7 +34,7 @@ def eval_modules(*modules):
     return torch.no_grad()
 
 
-def parallel_iterate(arr, iter_func, workers=32, use_index=False):
+def parallel_iterate(arr, iter_func, workers=32, use_index=False, **kwargs):
     """
     parallel iterate array
     :param arr: array to be iterated
@@ -44,7 +44,9 @@ def parallel_iterate(arr, iter_func, workers=32, use_index=False):
     :return list of result if not all is None
     """
     pool = mp.Pool(workers)
-    jobs = [pool.apply_async(iter_func, args=(i, arg) if use_index else (arg,)) for i, arg in enumerate(arr)]
+    jobs = [pool.apply_async(iter_func, args=(i, arg) if use_index else (arg,), kwds=kwargs)
+            for i, arg in enumerate(arr)]
+
     results = [j.get() for j in get_tqdm(jobs)]
     pool.close()
     pool.join()
@@ -53,7 +55,7 @@ def parallel_iterate(arr, iter_func, workers=32, use_index=False):
         return results
 
 
-def get_loader(arr, mapper=None, imapper=None, batch_size=32, pin_memory=True, workers=20):
+def get_loader(arr, mapper=None, imapper=None, batch_size=32, pin_memory=True, workers=20, **kwargs):
     """
     get loader from array or dataframe
     :param arr: array to iter
@@ -76,9 +78,9 @@ def get_loader(arr, mapper=None, imapper=None, batch_size=32, pin_memory=True, w
             item = arr[idx]
 
             if mapper is not None:
-                return mapper(item)
+                return mapper(item, **kwargs)
             elif imapper is not None:
-                return mapper(idx, item)
+                return mapper(idx, item, **kwargs)
 
             return item
 
