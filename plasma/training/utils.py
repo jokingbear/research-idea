@@ -2,25 +2,19 @@ import multiprocessing as mp
 import os
 
 import torch
-import torch.utils.data as data
-from tqdm import tqdm
-from tqdm.notebook import tqdm as tqdm_nb
-
-on_notebook = False
+from rich.progress import track
+from .data.adhoc_data import AdhocData
 
 
-def get_tqdm(iterable=None, total=None, desc=None):
+def get_progress(iterable=None, total=None, desc=None):
     """
-    get tqdm progress bar
+    get progress bar
     :param iterable: target to be iterated
     :param total: total length of the progress bar
     :param desc: description of the progress bar
-    :return: tqdm progress bar
+    :return: rich progress bar
     """
-    if on_notebook:
-        return tqdm_nb(iterable=iterable, total=total, desc=desc)
-    else:
-        return tqdm(iterable=iterable, total=total, desc=desc)
+    return track(iterable, total=total, description=desc)
 
 
 def eval_modules(*modules):
@@ -47,7 +41,7 @@ def parallel_iterate(arr, iter_func, workers=32, use_index=False, **kwargs):
     jobs = [pool.apply_async(iter_func, args=(i, arg) if use_index else (arg,), kwds=kwargs)
             for i, arg in enumerate(arr)]
 
-    results = [j.get() for j in get_tqdm(jobs)]
+    results = [j.get() for j in get_progress(jobs)]
     pool.close()
     pool.join()
 
@@ -55,7 +49,7 @@ def parallel_iterate(arr, iter_func, workers=32, use_index=False, **kwargs):
         return results
 
 
-def get_loader(arr, mapper=None, imapper=None, batch_size=32, pin_memory=True, workers=20, **kwargs):
+def get_loader(arr, mapper=None, imapper=None, batch_size=32, pin_memory=True, workers=None, **kwargs):
     """
     get loader from array or dataframe
     :param arr: array to iter
@@ -66,26 +60,10 @@ def get_loader(arr, mapper=None, imapper=None, batch_size=32, pin_memory=True, w
     :param workers: number of workers to run in parallel
     :return: pytorch loader
     """
-    n = len(arr)
     workers = workers or batch_size // 2
-
-    class Data(data.Dataset):
-
-        def __len__(self):
-            return n
-
-        def __getitem__(self, idx):
-            item = arr[idx]
-
-            if mapper is not None:
-                return mapper(item, **kwargs)
-            elif imapper is not None:
-                return mapper(idx, item, **kwargs)
-
-            return item
-
-    return data.DataLoader(Data(), batch_size, shuffle=False, drop_last=False,
-                           pin_memory=pin_memory, num_workers=workers)
+    dataset = AdhocData(arr, mapper, imapper, kwargs)
+    loader = dataset.get_torch_loader(batch_size, workers, pin=pin_memory, drop_last=False, shuffle=False)
+    return get_progress(loader, total=len(loader))
 
 
 def set_devices(*device_ids):

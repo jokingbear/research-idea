@@ -7,7 +7,8 @@
     "name": "model",
     "a": 1,
     "b": 2,
-    "c": 3
+    "c": 3,
+    "gpu": true
   },
   "loss": {
     "name": "bce"
@@ -26,6 +27,8 @@
     }
   ],
   "trainer": {
-    "y_type": "float"
+    "y_type": "float",
+    "x_device": "cuda:0",
+    "y_device": "cuda:0"
   }
 }
