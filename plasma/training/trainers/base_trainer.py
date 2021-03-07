@@ -7,7 +7,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 
-from ..utils import get_tqdm, eval_modules
+from ..utils import get_progress, eval_modules
 
 
 class BaseTrainer:
@@ -26,7 +26,7 @@ class BaseTrainer:
         [c.set_trainer(self) for c in callbacks]
         train_configs = {
             "train_loader": train_loader,
-            "test_loader": valid_loader,
+            "valid_loader": valid_loader,
             "start_epoch": start_epoch,
         }
         [c.on_train_begin(**train_configs) for c in callbacks]
@@ -57,42 +57,36 @@ class BaseTrainer:
     def _train_one_epoch(self, epoch, train_loader, callbacks):
         running_metrics = np.zeros([])
 
-        with get_tqdm(total=len(train_loader), desc="train") as pbar:
-            for i, data in enumerate(train_loader):
-                inputs, targets = self._extract_data(data)
-                [c.on_training_batch_begin(epoch, i, inputs, targets) for c in callbacks]
+        for i, data in enumerate(train_loader):
+            inputs, targets = self._extract_data(data)
+            [c.on_training_batch_begin(epoch, i, inputs, targets) for c in callbacks]
 
-                [m.train().zero_grad() for m in self.models]
-                loss_dict, caches = self._train_one_batch(inputs, targets)
+            [m.train().zero_grad() for m in self.models]
+            loss_dict, caches = self._train_one_batch(inputs, targets)
 
-                with torch.no_grad():
-                    measures = self._get_train_measures(inputs, targets, loss_dict, caches)
-                    measures = pd.Series(measures)
+            with torch.no_grad():
+                measures = self._get_train_measures(inputs, targets, loss_dict, caches)
+                measures = pd.Series(measures)
 
-                    running_metrics = running_metrics + measures
-                    logs = measures
-                    [c.on_training_batch_end(epoch, i, inputs, targets, caches, logs) for c in callbacks]
+                running_metrics = running_metrics + measures
+                logs = measures
+                [c.on_training_batch_end(epoch, i, inputs, targets, caches, logs) for c in callbacks]
 
-                    logs = logs.copy()
-                    logs.update(running_metrics / (i + 1))
-
-                pbar.set_postfix(logs)
-                pbar.update()
+                logs = logs.copy()
+                logs.update(running_metrics / (i + 1))
 
         return logs
 
     def _evaluate_one_epoch(self, test_loader, epoch=0, callbacks=()):
         eval_caches = []
 
-        with get_tqdm(total=len(test_loader), desc="eval") as pbar, eval_modules(*self.models):
+        with eval_modules(*self.models):
             for i, data in enumerate(test_loader):
                 inputs, targets = self._extract_data(data)
                 [c.on_validation_batch_begin(epoch, i, inputs, targets) for c in callbacks]
 
                 caches = self._get_eval_cache(inputs, targets)
                 eval_caches.append(caches)
-
-                pbar.update()
                 [c.on_validation_batch_end(epoch, i, inputs, targets, caches) for c in callbacks]
 
             if torch.is_tensor(eval_caches[0]):
@@ -101,10 +95,8 @@ class BaseTrainer:
                 n_pred = len(eval_caches[0])
                 eval_caches = [torch.cat([c[i] for c in eval_caches], dim=0) for i in range(n_pred)]
 
-            logs = self._get_eval_logs(eval_caches)
-
-            pbar.set_postfix(logs)
-            return logs
+        logs = self._get_eval_logs(eval_caches)
+        return logs
 
     @abstractmethod
     def _extract_data(self, batch_data):

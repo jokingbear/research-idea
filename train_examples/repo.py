@@ -15,4 +15,4 @@ def train_valid():
     train = data.PandasDataset(df, get_tensor)
     loader = train.get_torch_loader(workers=8)
 
-    return loader, loader
+    return loader, train.get_torch_loader(workers=8)

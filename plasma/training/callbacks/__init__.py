@@ -2,6 +2,7 @@ from .base_class import Callback
 from .standard_callbacks import CSVLogger, Tensorboard
 from .standard_callbacks import ReduceLROnPlateau, EarlyStopping, ModelCheckpoint
 from .clr import SuperConvergence, LrFinder, WarmRestart
+from .progress_callbacks import Progress
 
 
 __mapping__ = {
@@ -20,4 +21,5 @@ __mapping__ = {
     "warm": WarmRestart,
     "warm restart": WarmRestart,
     "warm_restart": WarmRestart,
+    "progress": Progress
 }

@@ -1,6 +1,6 @@
-from plasma.training.runner import ConfigRunner as Runner
+from plasma.training.runner import create
 
 
 if __name__ == '__main__':
-    runner = Runner("train_examples/train.json")
+    runner = create("train_examples/train.json")
     runner.run()
