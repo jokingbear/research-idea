@@ -2,7 +2,7 @@ import multiprocessing as mp
 import os
 
 import torch
-from rich.progress import track
+from tqdm import tqdm
 from .data.adhoc_data import AdhocData
 
 
@@ -12,9 +12,9 @@ def get_progress(iterable=None, total=None, desc=None):
     :param iterable: target to be iterated
     :param total: total length of the progress bar
     :param desc: description of the progress bar
-    :return: rich progress bar
+    :return: progress bar
     """
-    return track(iterable, total=total, description=desc)
+    return tqdm(iterable=iterable, total=total, desc=desc)
 
 
 def eval_modules(*modules):

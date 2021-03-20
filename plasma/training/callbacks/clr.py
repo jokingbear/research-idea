@@ -146,7 +146,8 @@ class WarmRestart(Callback):
 
 class SuperConvergence(Callback):
 
-    def __init__(self, epochs, div_factor=25., snapshot=True, directory="checkpoint", model_name=None):
+    def __init__(self, epochs, div_factor=25., final_div_factor=1e4,
+                 snapshot=True, directory="checkpoint", model_name=None):
         """
         :param epochs: number of epoch to run
         :param snapshot: whether to take snapshot at the end of training
@@ -157,6 +158,7 @@ class SuperConvergence(Callback):
 
         self.epochs = epochs
         self.div_factor = div_factor
+        self.final_div_factor = final_div_factor
         self.snapshot = snapshot
         self.dir = directory
         self.name = model_name or "super_convergence"
@@ -167,7 +169,9 @@ class SuperConvergence(Callback):
         max_lr = [g["lr"] for g in self.optimizers[0].param_groups]
 
         self.scheduler = opts.lr_scheduler.OneCycleLR(self.optimizers[0], max_lr,
-                                                      epochs=self.epochs, steps_per_epoch=n, div_factor=self.div_factor)
+                                                      epochs=self.epochs, steps_per_epoch=n,
+                                                      div_factor=self.div_factor,
+                                                      final_div_factor=self.final_div_factor)
 
         if not os.path.exists(self.dir) and self.snapshot:
             os.mkdir(self.dir)
@@ -183,7 +187,8 @@ class SuperConvergence(Callback):
         torch.save(model_dict, f"{self.dir}/{self.name}.model")
 
     def extra_repr(self):
-        return f"epochs={self.epochs}, snapshot={self.snapshot}, directory={self.dir}, model_name={self.name}"
+        return f"epochs={self.epochs}, div_factor={self.div_factor}, final_div_factor={self.final_div_factor}" \
+               f"snapshot={self.snapshot}, directory={self.dir}, model_name={self.name}"
 
 
 class Warmup(Callback):
