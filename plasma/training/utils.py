@@ -4,6 +4,7 @@ import os
 import torch
 from tqdm import tqdm
 from .data.adhoc_data import AdhocData
+from cleanlab.pruning import get_noise_indices
 
 
 def get_progress(iterable=None, total=None, desc=None):
@@ -28,7 +29,7 @@ def eval_modules(*modules):
     return torch.no_grad()
 
 
-def parallel_iterate(arr, iter_func, workers=32, use_index=False, **kwargs):
+def parallel_iterate(arr, iter_func, workers=8, use_index=False, **kwargs):
     """
     parallel iterate array
     :param arr: array to be iterated
@@ -63,7 +64,7 @@ def get_loader(arr, mapper=None, imapper=None, batch_size=32, pin_memory=True, w
     workers = workers or batch_size // 2
     dataset = AdhocData(arr, mapper, imapper, kwargs)
     loader = dataset.get_torch_loader(batch_size, workers, pin=pin_memory, drop_last=False, shuffle=False)
-    return get_progress(loader, total=len(loader))
+    return loader
 
 
 def set_devices(*device_ids):
@@ -74,3 +75,21 @@ def set_devices(*device_ids):
     assert len(device_ids) > 0, "there must be at least 1 id"
 
     os.environ['CUDA_VISIBLE_DEVICES'] = ','.join([str(d) for d in device_ids])
+
+
+def detect_outliers(preds, trues, multi_class=False):
+    """
+    detect outliers in data using prediction probability and ground truth
+    Args:
+        preds: prediction probability [N, class]
+        trues: ground truth [N] or [N, class] in case of multi_class
+        multi_class: whether to treat trues as multi-class or not
+    Returns:
+        indices of outliers
+    """
+    if multi_class:
+        trues = [trues[:, i] for i in range(trues.shape[-1])]
+
+    idc = get_noise_indices(trues, preds, multi_label=multi_class, sorted_index_method='normalized_margin')
+
+    return idc

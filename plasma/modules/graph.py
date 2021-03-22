@@ -104,7 +104,7 @@ class GCN(nn.Module):
         return model
 
 
-def get_label_correlation(df, columns, return_count=True):
+def get_label_correlation(df, columns, return_count=False):
     """
     Calculate correlation of columns from data frame
     :param df: pandas dataframe
