@@ -24,7 +24,7 @@ class SEAttention(nn.Module):
 
     def forward(self, x):
         att = self.channel_attention(x)
-        result = att.reshape(*att.shape, [1] * self.rank) * x
+        result = att.reshape(*att.shape, *[1] * self.rank) * x
 
         return result
 
