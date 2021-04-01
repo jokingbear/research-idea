@@ -110,8 +110,7 @@ class WarmRestart(Callback):
         self.scheduler = opts.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizers[0],
                                                                        T_0=len(train_loader),
                                                                        T_mult=self.factor,
-                                                                       eta_min=self.min_lr,
-                                                                       last_epoch=self.run_epoch)
+                                                                       eta_min=self.min_lr)
 
         if not os.path.exists(self.dir) and self.snapshot:
             os.mkdir(self.dir)
