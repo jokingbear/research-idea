@@ -186,7 +186,7 @@ class SuperConvergence(Callback):
         torch.save(model_dict, f"{self.dir}/{self.name}.model")
 
     def extra_repr(self):
-        return f"epochs={self.epochs}, div_factor={self.div_factor}, final_div_factor={self.final_div_factor}" \
+        return f"epochs={self.epochs}, div_factor={self.div_factor}, final_div_factor={self.final_div_factor}," \
                f"snapshot={self.snapshot}, directory={self.dir}, model_name={self.name}"
 
 
