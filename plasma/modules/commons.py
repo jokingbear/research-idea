@@ -38,12 +38,6 @@ class Reshape(nn.Module):
         return f"shape={self.shape}"
 
 
-class Identity(nn.Module):
-
-    def forward(self, x):
-        return x
-
-
 class ImagenetNorm(nn.Module):
 
     def __init__(self, from_raw=True):
