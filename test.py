@@ -1,3 +1,3 @@
 import torch.nn as nn
 
-nn.Identity()
+nn.InstanceNorm3d

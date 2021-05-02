@@ -5,8 +5,6 @@ import torch.nn as nn
 import torch.nn.functional as func
 import pydot
 
-from .commons import Identity
-
 
 class GraphSequential(nn.Module):
 
@@ -69,7 +67,7 @@ class GCN(nn.Module):
             GraphLinear(bottleneck, backbone_features, correlations),
         ])
 
-        self.out = nn.Sigmoid() if sigmoid else Identity()
+        self.out = nn.Sigmoid() if sigmoid else nn.Identity()
 
         self.bias = nn.Parameter(torch.zeros(embeddings.shape[0]), requires_grad=True)
         self.backbone_features = backbone_features
