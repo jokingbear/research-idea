@@ -77,19 +77,19 @@ def set_devices(*device_ids):
     os.environ['CUDA_VISIBLE_DEVICES'] = ','.join([str(d) for d in device_ids])
 
 
-def detect_outliers(preds, trues, multi_class=False):
+def detect_outliers(preds, trues, multi_label=False):
     """
     detect outliers in data using prediction probability and ground truth
     Args:
         preds: prediction probability [N, class]
         trues: ground truth [N] or [N, class] in case of multi_class
-        multi_class: whether to treat trues as multi-class or not
+        multi_label: whether to treat trues as multi-label or not
     Returns:
         indices of outliers
     """
-    if multi_class:
+    if multi_label:
         trues = [trues[:, i] for i in range(trues.shape[-1])]
 
-    idc = get_noise_indices(trues, preds, multi_label=multi_class, sorted_index_method='normalized_margin')
+    idc = get_noise_indices(trues, preds, multi_label=multi_label, sorted_index_method='normalized_margin')
 
     return idc

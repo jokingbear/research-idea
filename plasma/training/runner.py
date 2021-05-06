@@ -163,7 +163,7 @@ class ConfigRunner:
         return trainer
 
     def _get_callbacks(self, callbacks_configs):
-        callbacks_configs = [{"name": "progress"}] + callbacks_configs
+        callbacks_configs = [] + callbacks_configs
         cbs = []
 
         for cb_config in callbacks_configs:
