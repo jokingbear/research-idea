@@ -46,7 +46,7 @@ class LrFinder(Callback):
             g["lr"] = g["lr"] + self.gamma
 
     def on_epoch_end(self, epoch, logs=None):
-        self.trainer.training = epoch + 1 < self.epochs
+        self.trainer.training = epoch < self.epochs
 
     def on_train_end(self):
         self.plot_data()

@@ -1,12 +1,8 @@
-import wandb
-import time
-import numpy as np
-
-from tqdm import tqdm
+import torch
+import torch.nn as nn
 
 
-wandb.init(job_type='training', dir='check', project='test wandb')
+a = torch.rand(5, 8, 3, 3, 3)
 
-for i in tqdm(range(50)):
-    wandb.log({"epoch": i, "loss": np.random.normal()})
-    time.sleep(1)
+
+mean, std = torch.std_mean(a, dim=[1, 2, 3, 4], keepdim=True)

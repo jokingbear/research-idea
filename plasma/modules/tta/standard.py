@@ -1,44 +1,24 @@
-import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as func
 
 
-class HorizontalFlip(nn.Module):
+class Flip(nn.Module):
 
-    def forward(self, x):
-        return x.flip(dims=[-1])
-
-
-class Zoom(nn.Module):
-
-    def __init__(self, scale=0.1, interpolation="bilinear"):
+    def __init__(self, dims):
         """
-        :param scale: scale to zoom, positive for zooming in, negative for zooming out
-        :param interpolation: how to resize zoomed image
+        Create a Flip tta module
+        Args:
+            dims: flip dims
         """
         super().__init__()
 
-        assert -1 < scale < 0 or 0 < scale < 1, "scale doesn't lie in range (-1, 0) U (0, 1)"
-        self.scale = scale
-        self.interpolation = interpolation
+        self.dims = dims
 
-    def forward(self, x):
-        h, w = x.shape[-2:]
+    def forward(self, x, reverse=False):
+        return x.flip(dims=self.dims)
 
-        if self.scale > 0:
-            zoom_h = int(np.round(h * self.scale))
-            zoom_w = int(np.round(w * self.scale))
-            x = x[..., zoom_h:-zoom_h, zoom_w:-zoom_w]
-        else:
-            pad_h = -int(np.round(h * self.scale))
-            pad_w = -int(np.round(w * self.scale))
-            x = func.pad(x, [pad_w] * 2 + [pad_h] * 2)
-
-        return func.interpolate(x, size=(h, w), mode=self.interpolation, align_corners=True)
-
-    def extra_repr(self) -> str:
-        return f"scale={self.scale}, interpolation={self.interpolation}"
+    def extra_repr(self):
+        return f'dim={self.dims}'
 
 
 class Compose(nn.Module):
@@ -52,11 +32,17 @@ class Compose(nn.Module):
 
         assert len(aug_modules) > 0, "must have at least 1 augmentation module"
 
-        self.aug_modules = nn.ModuleList(aug_modules)
         self.main_module = main_module
+        self.aug_modules = nn.ModuleList(aug_modules)
 
     def forward(self, x):
-        x = [x] + [aug_module(x) for aug_module in self.aug_modules]
-        x = torch.stack(x, dim=1).flatten(start_dim=0, end_dim=1)
-        results = self.main_module(x)
-        return results.view(-1, 1 + len(self.aug_modules), *results.shape[1:])
+        augs = torch.cat([x] + [aug_module(x, reverse=False) for aug_module in self.aug_modules], dim=0)
+        results = self.main_module(augs)
+        results = results.view(1 + len(self.aug_modules), *x.shape)
+
+        if results.shape[1:] == x.shape:
+            results = [results[0]] + [aug_module(r, reverse=True)
+                                      for aug_module, r in zip(self.aug_modules, results[1:])]
+            results = torch.stack(results, dim=0)
+
+        return results

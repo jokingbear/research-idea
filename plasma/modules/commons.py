@@ -4,20 +4,20 @@ import torch.nn as nn
 
 class GlobalAverage(nn.Module):
 
-    def __init__(self, rank=2, keepdims=False):
+    def __init__(self, dims=(-1, -2), keepdims=False):
         """
-        :param rank: dimension of image
+        :param dims: dimensions of inputs
         :param keepdims: whether to preserve shape after averaging
         """
         super().__init__()
-        self.axes = list(range(2, 2 + rank))
+        self.dims = dims
         self.keepdims = keepdims
 
     def forward(self, x):
-        return torch.mean(x, dim=self.axes, keepdim=self.keepdims)
+        return torch.mean(x, dim=self.dims, keepdim=self.keepdims)
 
     def extra_repr(self):
-        return f"axes={self.axes}, keepdims={self.keepdims}"
+        return f"dims={self.dims}, keepdims={self.keepdims}"
 
 
 class Reshape(nn.Module):
@@ -36,12 +36,6 @@ class Reshape(nn.Module):
 
     def extra_repr(self):
         return f"shape={self.shape}"
-
-
-class Identity(nn.Module):
-
-    def forward(self, x):
-        return x
 
 
 class ImagenetNorm(nn.Module):
@@ -72,22 +66,36 @@ class ImagenetNorm(nn.Module):
 
 class Normalization(nn.Module):
 
-    def __init__(self, from_raw=True):
+    def __init__(self, mean=127.5, std=127.5):
         """
-        :param from_raw: whether the input image lies in the range of [0, 255]
+        calculate (x - mean) / std
+        :param mean: mean
+        :param std: std
         """
         super().__init__()
 
-        self.from_raw = from_raw
+        self.mean = nn.Parameter(torch.tensor(mean, dtype=torch.float), requires_grad=False)
+        self.std = nn.Parameter(torch.tensor(std, dtype=torch.float), requires_grad=False)
 
     def forward(self, x):
         if x.dtype != torch.float:
             x = x.float()
 
-        if self.from_raw:
-            return x / 127.5 - 1
-        else:
-            return x * 2 - 1
+        mean = self.mean.view(1, -1, *[1] * x.shape[2:])
+        std = self.std.view(1, -1, *[1] * x.shape[2:])
+        return (x - mean) / std
 
     def extra_repr(self):
-        return f"from_raw={self.from_raw}"
+        return f"mean={self.mean}, std={self.std}"
+
+
+class ClipHU(nn.Module):
+
+    def __init__(self, clip_max, clip_min):
+        super().__init__()
+
+        self.clip_max = nn.Parameter(clip_max, requires_grad=False)
+        self.clip_min = nn.Parameter(clip_min, requires_grad=False)
+
+    def forward(self, vol: torch.Tensor):
+        return vol.clamp(self.clip_min, self.clip_max)
