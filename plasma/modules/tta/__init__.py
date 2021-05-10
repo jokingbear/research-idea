@@ -1,1 +1,1 @@
-from .standard import HorizontalFlip, Zoom, Compose
+from .standard import Flip, Compose

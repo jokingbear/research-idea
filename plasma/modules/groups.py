@@ -3,11 +3,16 @@ import torch.nn as nn
 import torch.nn.functional as func
 import numpy as np
 
+from .commons import GlobalAverage
+
 
 class GConvPrime(nn.Module):
 
     def __init__(self, in_channels, out_channels, group_grids, pairs, kernel_size=3, stride=1, padding=1):
         super().__init__()
+
+        assert isinstance(group_grids, nn.Parameter), 'group_grids needs to be parameter'
+        assert not group_grids.requires_grad, 'group_grids must not require grad'
 
         self.in_channels = in_channels
         self.out_channels = out_channels
@@ -21,20 +26,30 @@ class GConvPrime(nn.Module):
         self._init_parameter()
 
     def forward(self, vol):
-        flatten = self.weight[np.newaxis].flatten(start_dim=1, end_dim=2)
-        flatten = flatten.repeat(self.group_channels, 1, 1, 1, 1)
-        grid = self.grid.to(flatten.device)[self.pairs.values]
+        # x: B x Cin x D x H x W
+        # flatten: CoutCin x k3
+        #          G x CoutCin x k3
+        flatten = self.weight.flatten(end_dim=1)
+        flatten = torch.stack([flatten] * self.group_channels, dim=0)
+
+        # grid: G x 3 x 4
+        grid = self.grid[self.pairs.values]
+
+        # map_weight: G x CoutCin x k3
+        #             GCout x Cin x k3
         map_weight = func.grid_sample(flatten, grid, align_corners=True)
         map_weight = map_weight.reshape(-1, *self.weight.shape[1:])
 
+        # conv: B x GCout x D x H x W
+        #       B x G x Cout x D x H x W
         conv = func.conv3d(vol, map_weight, None, self.stride, self.padding)
         conv = conv.reshape(-1, self.group_channels, self.out_channels, *conv.shape[2:])
         return conv
 
-    def _init_parameter(self):
+    def _init_parameter(self, nonlinearity='relu'):
         k = self.kernel_size
         weight = torch.randn(self.out_channels, self.in_channels, k, k, k, dtype=torch.float)
-        nn.init.kaiming_normal_(weight, nonlinearity='relu')
+        nn.init.kaiming_normal_(weight, nonlinearity=nonlinearity)
 
         self.weight = nn.Parameter(weight, requires_grad=True)
 
@@ -43,20 +58,13 @@ class GConvPrime(nn.Module):
                f"kernel_size={self.kernel_size}, stride={self.stride}, padding={self.padding}"
 
 
-class GGNorm(nn.InstanceNorm3d):
-
-    def forward(self, feature_maps):
-        f = feature_maps.transpose(1, 2)
-        flat_f = f.flatten(start_dim=2, end_dim=3)
-        f = super().forward(flat_f).view(f.shape)
-
-        return f.transpose(1, 2)
-
-
 class GConv(nn.Module):
 
     def __init__(self, in_channels, out_channels, group_grids, mapping, pairs, kernel_size=3, stride=1, padding=1):
         super().__init__()
+
+        assert isinstance(group_grids, nn.Parameter), 'group_grids needs to be parameter'
+        assert not group_grids.requires_grad, 'group_grids must not require grad'
 
         self.in_channels = in_channels
         self.out_channels = out_channels
@@ -78,11 +86,11 @@ class GConv(nn.Module):
         # G x out x G x in x spatial
         new_weight = torch.stack(permute_weights, dim=0)
         new_weight = torch.flatten(new_weight, start_dim=1, end_dim=3)
-        grid = self.grids.to(new_weight.device)[self.pairs.values]
+        grid = self.grids[self.pairs.values]
 
         new_weight = func.grid_sample(new_weight, grid, align_corners=True)
         new_weight = new_weight.reshape(self.group_channels * self.out_channels,
-                                        self.in_channels * self.group_channels,
+                                        self.group_channels * self.in_channels,
                                         *self.weight.shape[3:])
 
         feature_maps = feature_maps.flatten(start_dim=1, end_dim=2)
@@ -90,11 +98,11 @@ class GConv(nn.Module):
         conv = conv.reshape(-1, self.group_channels, self.out_channels, *conv.shape[2:])
         return conv
 
-    def _create_weight(self):
+    def _create_weight(self, nonlinearity='relu'):
         k = self.kernel_size
 
-        weight = torch.randn(self.out_channels, self.group_channels * self.in_channels, *[k] * 3, dtype=torch.float)
-        nn.init.kaiming_normal_(weight, nonlinearity='relu')
+        weight = torch.zeros(self.out_channels, self.group_channels * self.in_channels, *[k] * 3, dtype=torch.float)
+        nn.init.kaiming_normal_(weight, nonlinearity=nonlinearity)
         weight = weight.reshape(self.out_channels, self.group_channels, self.in_channels, *[k] * 3)
 
         self.weight = nn.Parameter(weight, requires_grad=True)
@@ -104,10 +112,26 @@ class GConv(nn.Module):
                f"kernel_size={self.kernel_size}, stride={self.stride}, padding={self.padding}"
 
 
-class GAverage(nn.Module):
+class GNorm(nn.Module):
 
-    def forward(self, x):
-        return x.mean(dim=[1, -1, -2, -3], keepdims=False)
+    def __init__(self, channels, eps=1e-8):
+        super().__init__()
+
+        self.channels = channels
+        self.eps = eps
+
+        self.weight = nn.Parameter(torch.ones(channels, dtype=torch.float), requires_grad=True)
+        self.bias = nn.Parameter(torch.zeros(channels, dtype=torch.float), requires_grad=True)
+
+    def forward(self, feature_maps):
+        std, mean = torch.std_mean(feature_maps, dim=[1, -1, -2, -3], keepdim=True)
+        weight = self.weight.view(1, 1, -1, 1, 1, 1)
+        bias = self.bias.view(1, 1, -1, 1, 1, 1)
+
+        return weight * (feature_maps - mean) / (std + self.eps) + bias
+
+    def extra_repr(self):
+        return f'channels={self.channels}, eps={self.eps}'
 
 
 class GSEAttention(nn.Module):
@@ -118,7 +142,7 @@ class GSEAttention(nn.Module):
         self.channels = channels
         squeeze = int(ratio * channels)
         self.se = nn.Sequential(*[
-            GAverage(),
+            GlobalAverage([1, -1, -2, -3]),
             nn.Linear(channels, squeeze),
             nn.ReLU(inplace=True),
             nn.Linear(squeeze, channels),
@@ -144,29 +168,27 @@ class GSAAttention(nn.Module):
 
     def forward(self, x):
         # x: B x G x C x D x H x W
-        # tran_x: B x C x G x D x H x W
-        # flat_x: B x C x GDHW
-        tran_x = x.transpose(1, 2)
-        flat_x = tran_x.flatten(start_dim=2)
+        # flat_x: BG x C x DHW
+        flat_x = x.view(-1, x.shape[2], x.shape[3] * x.shape[4] * x.shape[5])
 
-        # k: B x Cr x GDHW
-        #    B x GDHW x Cr
-        # v: B x Cr x GDHW
+        # k: BG x Cr x DHW
+        #    BG x DHW x Cr
+        # v: BG x Cr x DHW
         k = self.k(flat_x).transpose(1, 2)
         v = self.v(flat_x)
 
-        # kv:  B x GDHW x GDHW
-        # att: B x GDHW x GDHW
-        kv = torch.bmm(k, v)
+        # kv:  BG x DHW x DHW
+        # att: BG x DHW x DHW
+        kv = torch.matmul(k, v)
         att = kv.softmax(dim=1)
 
-        # q: B x C x GDHW
+        # q: BG x C x DHW
         q = self.q(flat_x)
 
-        # refined: B x C x G x D x H x W
+        # refined: BG x C x DHW
         #          B x G x C x D x H x W
-        refined = torch.bmm(q, att)
-        refined = refined.view(tran_x.shape).transpose(1, 2)
+        refined = torch.matmul(q, att)
+        refined = refined.view(*x.shape)
 
         result = self.gamma * refined + x
         return result
@@ -190,4 +212,5 @@ def create_grid(group, kernel):
     grids = torch.tensor(grids, dtype=torch.float)
 
     affine_grids = torch.einsum("ijka,rba->rijkb", grids, group)
+    affine_grids = nn.Parameter(affine_grids, requires_grad=False)
     return affine_grids

@@ -1,4 +1,3 @@
-from torch.utils import data
 from .base_class import StandardDataset
 
 
