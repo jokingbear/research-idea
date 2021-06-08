@@ -48,10 +48,10 @@ class SGD_GCC(Optimizer):
                 if weight_decay != 0:
                     d_p.add_(weight_decay, p.data)
 
-                #GC operation for Conv layers
-                if len(list(d_p.size()))>3:
-                   d_p.add_(-d_p.mean(dim = tuple(range(1,len(list(d_p.size())))), keepdim = True))
-                   
+                # GC operation for Conv layers
+                if len(list(d_p.size())) > 3:
+                    d_p.add_(-d_p.mean(dim=tuple(range(1, len(list(d_p.size())))), keepdim=True))
+
                 if momentum != 0:
                     param_state = self.state[p]
                     if 'momentum_buffer' not in param_state:
@@ -115,9 +115,9 @@ class SGD_GC(Optimizer):
                 if weight_decay != 0:
                     d_p.add_(weight_decay, p.data)
 
-                #GC operation for Conv layers and FC layers
-                if len(list(d_p.size()))>1:
-                   d_p.add_(-d_p.mean(dim = tuple(range(1,len(list(d_p.size())))), keepdim = True))
+                # GC operation for Conv layers and FC layers
+                if len(list(d_p.size())) > 1:
+                    d_p.add_(-d_p.mean(dim=tuple(range(1, len(list(d_p.size())))), keepdim=True))
 
                 if momentum != 0:
                     param_state = self.state[p]
@@ -180,7 +180,7 @@ class SGDW(Optimizer):
                 d_p = p.grad.data
 
                 old = torch.clone(p.data).detach()
-                #if weight_decay != 0:
+                # if weight_decay != 0:
                 #    d_p.add_(weight_decay, p.data)
                 if momentum != 0:
                     param_state = self.state[p]
@@ -198,7 +198,7 @@ class SGDW(Optimizer):
                 p.data.add_(-group['lr'], d_p)
 
                 if weight_decay != 0:
-                    p.data.add_(-weight_decay*group['lr'], old)
+                    p.data.add_(-weight_decay * group['lr'], old)
 
         return loss
 
@@ -246,13 +246,12 @@ class SGDW_GCC(Optimizer):
                 d_p = p.grad.data
 
                 old = torch.clone(p.data).detach()
-                #if weight_decay != 0:
+                # if weight_decay != 0:
                 #    d_p.add_(weight_decay, p.data)
-                
-                #GC operation for Conv layers
-                if len(list(d_p.size()))>3:
-                   d_p.add_(-d_p.mean(dim = tuple(range(1,len(list(d_p.size())))), keepdim = True))
 
+                # GC operation for Conv layers
+                if len(list(d_p.size())) > 3:
+                    d_p.add_(-d_p.mean(dim=tuple(range(1, len(list(d_p.size())))), keepdim=True))
 
                 if momentum != 0:
                     param_state = self.state[p]
@@ -270,6 +269,6 @@ class SGDW_GCC(Optimizer):
                 p.data.add_(-group['lr'], d_p)
 
                 if weight_decay != 0:
-                    p.data.add_(-weight_decay*group['lr'], old)
+                    p.data.add_(-weight_decay * group['lr'], old)
 
         return loss
