@@ -154,46 +154,6 @@ class GSEAttention(nn.Module):
         return att * x
 
 
-class GSAAttention(nn.Module):
-
-    def __init__(self, channels, ratio=1/8):
-        super().__init__()
-
-        self.channels = channels
-
-        self.k = nn.Conv1d(channels, int(channels * ratio), kernel_size=1)
-        self.v = nn.Conv1d(channels, int(channels * ratio), kernel_size=1)
-        self.q = nn.Conv1d(channels, channels, kernel_size=1)
-        self.gamma = nn.Parameter(torch.zeros(1), requires_grad=True)
-
-    def forward(self, x):
-        # x: B x G x C x D x H x W
-        # flat_x: BG x C x DHW
-        flat_x = x.view(-1, x.shape[2], x.shape[3] * x.shape[4] * x.shape[5])
-
-        # k: BG x Cr x DHW
-        #    BG x DHW x Cr
-        # v: BG x Cr x DHW
-        k = self.k(flat_x).transpose(1, 2)
-        v = self.v(flat_x)
-
-        # kv:  BG x DHW x DHW
-        # att: BG x DHW x DHW
-        kv = torch.matmul(k, v)
-        att = kv.softmax(dim=1)
-
-        # q: BG x C x DHW
-        q = self.q(flat_x)
-
-        # refined: BG x C x DHW
-        #          B x G x C x D x H x W
-        refined = torch.matmul(q, att)
-        refined = refined.view(*x.shape)
-
-        result = self.gamma * refined + x
-        return result
-
-
 def create_grid(group, kernel):
     half = kernel // 2
     coords = [-1 + i / half for i in range(half)] + [0] + [(i + 1) / half for i in range(half)]
