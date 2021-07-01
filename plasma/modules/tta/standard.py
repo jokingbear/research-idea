@@ -44,5 +44,7 @@ class Compose(nn.Module):
             results = [results[0]] + [aug_module(r, reverse=True)
                                       for aug_module, r in zip(self.aug_modules, results[1:])]
             results = torch.stack(results, dim=1)
+        else:
+            results = results.transpose(0, 1)
 
         return results

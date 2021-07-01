@@ -1,7 +1,7 @@
 import numpy as np
 
+from sklearn.model_selection import ParameterGrid
+from tqdm import tqdm
 
-a = np.array([
-    [1, 0],
-    [2, 3]
-])
+a = np.arange(1, 81)
+arr = []
