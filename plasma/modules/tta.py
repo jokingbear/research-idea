@@ -40,7 +40,7 @@ class Compose(nn.Module):
         results = self.main_module(augs)
         results = results.view(1 + len(self.aug_modules), -1, *results.shape[1:])
 
-        if results.shape[2:] == x.shape[1:]:
+        if results.shape[3:] == x.shape[2:]:
             results = [results[0]] + [aug_module(r, reverse=True)
                                       for aug_module, r in zip(self.aug_modules, results[1:])]
             results = torch.stack(results, dim=1)
