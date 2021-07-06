@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import pandas as pd
 
-from albumentations import DualTransform
+from albumentations import DualTransform, ImageOnlyTransform
 
 
 class MinEdgeCrop(DualTransform):
@@ -111,3 +111,63 @@ class ToTorch(DualTransform):
             return img[np.newaxis]
         else:
             return img.transpose([2, 0, 1])
+
+
+class HistogramMatching(ImageOnlyTransform):
+
+    def __init__(self, ref_hist, p=1, always_apply=False):
+        super().__init__(always_apply, p)
+
+        self.ref_cdf = self._get_cdf_(ref_hist)
+
+    def apply(self, img, **params):
+        vals, counts = np.unique(img, return_counts=True)
+        size = img.shape[0] * img.shape[1]
+
+        probs = counts / size
+        probs = {v: p for v, p in zip(vals, probs)}
+        probs = [probs.get(i, 0) for i in range(256)]
+
+        cdf = self._get_cdf_(probs)
+
+        mapping = self._map_cdf_(cdf, self.ref_cdf)
+        return mapping[img]
+
+    def _get_cdf_(self, hist):
+        cdf = []
+        acc = 0
+
+        for i in range(256):
+            acc += hist[i]
+            cdf.append(acc)
+
+        return np.array(cdf)
+
+    def _map_cdf_(self, in_cdf, ref_cdf):
+        mapping = []
+        for i in range(256):
+            val = in_cdf[i]
+
+            start = np.where(ref_cdf <= val)[0]
+            if len(start) == 0:
+                start = 0
+            else:
+                start = start[-1]
+
+            end = np.where(val <= ref_cdf)[0]
+            if len(end) == 0:
+                end = 255
+            else:
+                end = end[0]
+
+            start_val = ref_cdf[start]
+            end_val = ref_cdf[end]
+
+            if val < start_val:
+                mapping.append(start)
+            elif abs(start_val - val) < abs(val - end_val):
+                mapping.append(start)
+            else:
+                mapping.append(end)
+
+        return np.array(mapping)
