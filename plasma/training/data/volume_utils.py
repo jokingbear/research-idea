@@ -21,13 +21,14 @@ def resample(vol, dxyz, new_dxyz, order=3, resample_z=True, z_order=0):
     new_dxyz = np.array(new_dxyz)
 
     new_xyz = np.round(xyz * dxyz / new_dxyz)
-    factor = np.round(new_xyz / xyz).tolist()
+    factor = (new_xyz / xyz).tolist()
 
+    min_val = vol.min()
     if resample_z:
-        new_vol = zoom(vol, (factor[0], factor[1], 1), order=order)
-        new_vol = zoom(new_vol, (1, 1, factor[-1]), order=z_order)
+        new_vol = zoom(vol, (factor[0], factor[1], 1), order=order, cval=min_val)
+        new_vol = zoom(new_vol, (1, 1, factor[-1]), order=z_order, cval=min_val)
     else:
-        new_vol = zoom(vol, tuple(factor), order=order)
+        new_vol = zoom(vol, tuple(factor), order=order, cval=min_val)
 
     return new_vol
 
