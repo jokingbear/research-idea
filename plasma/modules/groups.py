@@ -8,7 +8,7 @@ from .commons import GlobalAverage
 
 class GConvPrime(nn.Module):
 
-    def __init__(self, in_channels, out_channels, group_grids, pairs, kernel_size=3, stride=1, padding=1):
+    def __init__(self, in_channels, out_channels, group_grids, pairs, padding):
         super().__init__()
 
         assert isinstance(group_grids, nn.Parameter), 'group_grids needs to be parameter'
@@ -17,8 +17,7 @@ class GConvPrime(nn.Module):
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.group_channels = group_grids.shape[0]
-        self.kernel_size = kernel_size
-        self.stride = stride
+        self.kernel_size = group_grids.shape[1]
         self.padding = padding
         self.pairs = pairs
 
@@ -42,7 +41,7 @@ class GConvPrime(nn.Module):
 
         # conv: B x GCout x D x H x W
         #       B x G x Cout x D x H x W
-        conv = func.conv3d(vol, map_weight, None, self.stride, self.padding)
+        conv = func.conv3d(vol, map_weight, None, 1, self.padding)
         conv = conv.reshape(-1, self.group_channels, self.out_channels, *conv.shape[2:])
         return conv
 
@@ -55,12 +54,28 @@ class GConvPrime(nn.Module):
 
     def extra_repr(self):
         return f"in_channels={self.in_channels}, out_channels={self.out_channels}, group={self.group_channels}, " \
-               f"kernel_size={self.kernel_size}, stride={self.stride}, padding={self.padding}"
+               f"kernel_size={self.kernel_size}, padding={self.padding}"
+
+
+class GPool(nn.Module):
+
+    def __init__(self, kind='max', kernel_size=2, stride=2):
+        super().__init__()
+
+        if kind == 'max':
+            self.pool = nn.MaxPool3d(kernel_size=kernel_size, stride=stride)
+        else:
+            self.pool = nn.AvgPool3d(kernel_size=kernel_size, stride=stride)
+
+    def forward(self, x):
+        new_x = x.flatten(start_dim=1, end_dim=2)
+        pooled = self.pool(new_x)
+        return pooled.view(*x.shape[:3], *pooled.shape[-3:])
 
 
 class GConv(nn.Module):
 
-    def __init__(self, in_channels, out_channels, group_grids, mapping, pairs, kernel_size=3, stride=1, padding=1):
+    def __init__(self, in_channels, out_channels, group_grids, mapping, pairs, padding):
         super().__init__()
 
         assert isinstance(group_grids, nn.Parameter), 'group_grids needs to be parameter'
@@ -69,8 +84,7 @@ class GConv(nn.Module):
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.group_channels = group_grids.shape[0]
-        self.kernel_size = kernel_size
-        self.stride = stride
+        self.kernel_size = group_grids.shape[1]
         self.padding = padding
 
         self.mapping = mapping
@@ -94,7 +108,7 @@ class GConv(nn.Module):
                                         *self.weight.shape[3:])
 
         feature_maps = feature_maps.flatten(start_dim=1, end_dim=2)
-        conv = func.conv3d(feature_maps, new_weight, None, self.stride, self.padding)
+        conv = func.conv3d(feature_maps, new_weight, None, 1, self.padding)
         conv = conv.reshape(-1, self.group_channels, self.out_channels, *conv.shape[2:])
         return conv
 
@@ -152,6 +166,15 @@ class GSEAttention(nn.Module):
     def forward(self, x):
         att = self.se(x).reshape(-1, 1, self.channels, 1, 1, 1)
         return att * x
+
+
+class GUp(nn.Upsample):
+
+    def forward(self, x):
+        new_x = x.flatten(start_dim=1, end_dim=2)
+        new_x = super().forward(new_x)
+        new_x = new_x.view(*x.shape[:3], *new_x.shape[-3:])
+        return new_x
 
 
 def create_grid(group, kernel):
