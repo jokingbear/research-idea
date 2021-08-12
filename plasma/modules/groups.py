@@ -1,14 +1,26 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as func
+
 import numpy as np
+import pandas as pd
 
 from .commons import GlobalAverage
 
 
+print('loading group')
+s4 = torch.tensor(np.load('plasma/resources/groups/groups.npy'), dtype=torch.float)
+
+print('loading Cayley table')
+mapping = pd.read_csv('plasma/resources/groups/cayley.csv', index_col=0)
+
+print('loading inverse pairs')
+pairs = pd.read_json('plasma/resources/groups/pairs.json', typ="series")
+
+
 class GConvPrime(nn.Module):
 
-    def __init__(self, in_channels, out_channels, group_grids, pairs, padding):
+    def __init__(self, in_channels, out_channels, group_grids, padding):
         super().__init__()
 
         assert isinstance(group_grids, nn.Parameter), 'group_grids needs to be parameter'
@@ -19,7 +31,6 @@ class GConvPrime(nn.Module):
         self.group_channels = group_grids.shape[0]
         self.kernel_size = group_grids.shape[1]
         self.padding = padding
-        self.pairs = pairs
 
         self.grid = group_grids
         self._init_parameter()
@@ -32,7 +43,7 @@ class GConvPrime(nn.Module):
         flatten = torch.stack([flatten] * self.group_channels, dim=0)
 
         # grid: G x 3 x 4
-        grid = self.grid[self.pairs.values]
+        grid = self.grid[pairs.values]
 
         # map_weight: G x CoutCin x k3
         #             GCout x Cin x k3
@@ -75,7 +86,7 @@ class GPool(nn.Module):
 
 class GConv(nn.Module):
 
-    def __init__(self, in_channels, out_channels, group_grids, mapping, pairs, padding):
+    def __init__(self, in_channels, out_channels, group_grids, padding):
         super().__init__()
 
         assert isinstance(group_grids, nn.Parameter), 'group_grids needs to be parameter'
@@ -87,20 +98,17 @@ class GConv(nn.Module):
         self.kernel_size = group_grids.shape[1]
         self.padding = padding
 
-        self.mapping = mapping
-        self.pairs = pairs
-
         self._create_weight()
         self.grids = group_grids
 
     def forward(self, feature_maps):
-        inverse_group = self.mapping.iloc[self.pairs.values]
+        inverse_group = mapping.iloc[pairs.values]
         permute_weights = [self.weight[:, inverse_group.iloc[g].values] for g in range(self.group_channels)]
 
         # G x out x G x in x spatial
         new_weight = torch.stack(permute_weights, dim=0)
         new_weight = torch.flatten(new_weight, start_dim=1, end_dim=3)
-        grid = self.grids[self.pairs.values]
+        grid = self.grids[pairs.values]
 
         new_weight = func.grid_sample(new_weight, grid, align_corners=True)
         new_weight = new_weight.reshape(self.group_channels * self.out_channels,
@@ -177,7 +185,8 @@ class GUp(nn.Upsample):
         return new_x
 
 
-def create_grid(group, kernel):
+def create_grid(kernel):
+    group = s4
     half = kernel // 2
     coords = [-1 + i / half for i in range(half)] + [0] + [(i + 1) / half for i in range(half)]
     coords = np.array(coords)
