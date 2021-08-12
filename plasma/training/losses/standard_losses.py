@@ -62,10 +62,14 @@ class FbetaLoss(nn.Module):
 
 class WBCE(nn.Module):
 
-    def __init__(self, weights_path, smooth=None, device="cpu"):
+    def __init__(self, weights_path=None, smooth=None, device="cpu"):
         super().__init__()
 
-        if ".csv" in weights_path:
+        if weights_path is None:
+            weights = np.array([[1, 1]])
+            print('using default weight')
+            print(pd.DataFrame(weights, index=['default']))
+        elif ".csv" in weights_path:
             weights = pd.read_csv(weights_path, index_col=0)
             print(weights)
             weights = weights.values

@@ -1,14 +1,26 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as func
+
 import numpy as np
+import pandas as pd
 
 from .commons import GlobalAverage
 
 
+print('loading group')
+s4 = torch.tensor(np.load('plasma/resources/groups/groups.npy'), dtype=torch.float)
+
+print('loading Cayley table')
+mapping = pd.read_csv('plasma/resources/groups/cayley.csv', index_col=0)
+
+print('loading inverse pairs')
+pairs = pd.read_json('plasma/resources/groups/pairs.json', typ="series")
+
+
 class GConvPrime(nn.Module):
 
-    def __init__(self, in_channels, out_channels, group_grids, pairs, kernel_size=3, stride=1, padding=1):
+    def __init__(self, in_channels, out_channels, group_grids, padding):
         super().__init__()
 
         assert isinstance(group_grids, nn.Parameter), 'group_grids needs to be parameter'
@@ -17,10 +29,8 @@ class GConvPrime(nn.Module):
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.group_channels = group_grids.shape[0]
-        self.kernel_size = kernel_size
-        self.stride = stride
+        self.kernel_size = group_grids.shape[1]
         self.padding = padding
-        self.pairs = pairs
 
         self.grid = group_grids
         self._init_parameter()
@@ -33,7 +43,7 @@ class GConvPrime(nn.Module):
         flatten = torch.stack([flatten] * self.group_channels, dim=0)
 
         # grid: G x 3 x 4
-        grid = self.grid[self.pairs.values]
+        grid = self.grid[pairs.values]
 
         # map_weight: G x CoutCin x k3
         #             GCout x Cin x k3
@@ -42,7 +52,7 @@ class GConvPrime(nn.Module):
 
         # conv: B x GCout x D x H x W
         #       B x G x Cout x D x H x W
-        conv = func.conv3d(vol, map_weight, None, self.stride, self.padding)
+        conv = func.conv3d(vol, map_weight, None, 1, self.padding)
         conv = conv.reshape(-1, self.group_channels, self.out_channels, *conv.shape[2:])
         return conv
 
@@ -55,12 +65,28 @@ class GConvPrime(nn.Module):
 
     def extra_repr(self):
         return f"in_channels={self.in_channels}, out_channels={self.out_channels}, group={self.group_channels}, " \
-               f"kernel_size={self.kernel_size}, stride={self.stride}, padding={self.padding}"
+               f"kernel_size={self.kernel_size}, padding={self.padding}"
+
+
+class GPool(nn.Module):
+
+    def __init__(self, kind='max', kernel_size=2, stride=2):
+        super().__init__()
+
+        if kind == 'max':
+            self.pool = nn.MaxPool3d(kernel_size=kernel_size, stride=stride)
+        else:
+            self.pool = nn.AvgPool3d(kernel_size=kernel_size, stride=stride)
+
+    def forward(self, x):
+        new_x = x.flatten(start_dim=1, end_dim=2)
+        pooled = self.pool(new_x)
+        return pooled.view(*x.shape[:3], *pooled.shape[-3:])
 
 
 class GConv(nn.Module):
 
-    def __init__(self, in_channels, out_channels, group_grids, mapping, pairs, kernel_size=3, stride=1, padding=1):
+    def __init__(self, in_channels, out_channels, group_grids, padding):
         super().__init__()
 
         assert isinstance(group_grids, nn.Parameter), 'group_grids needs to be parameter'
@@ -69,24 +95,20 @@ class GConv(nn.Module):
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.group_channels = group_grids.shape[0]
-        self.kernel_size = kernel_size
-        self.stride = stride
+        self.kernel_size = group_grids.shape[1]
         self.padding = padding
-
-        self.mapping = mapping
-        self.pairs = pairs
 
         self._create_weight()
         self.grids = group_grids
 
     def forward(self, feature_maps):
-        inverse_group = self.mapping.iloc[self.pairs.values]
+        inverse_group = mapping.iloc[pairs.values]
         permute_weights = [self.weight[:, inverse_group.iloc[g].values] for g in range(self.group_channels)]
 
         # G x out x G x in x spatial
         new_weight = torch.stack(permute_weights, dim=0)
         new_weight = torch.flatten(new_weight, start_dim=1, end_dim=3)
-        grid = self.grids[self.pairs.values]
+        grid = self.grids[pairs.values]
 
         new_weight = func.grid_sample(new_weight, grid, align_corners=True)
         new_weight = new_weight.reshape(self.group_channels * self.out_channels,
@@ -94,7 +116,7 @@ class GConv(nn.Module):
                                         *self.weight.shape[3:])
 
         feature_maps = feature_maps.flatten(start_dim=1, end_dim=2)
-        conv = func.conv3d(feature_maps, new_weight, None, self.stride, self.padding)
+        conv = func.conv3d(feature_maps, new_weight, None, 1, self.padding)
         conv = conv.reshape(-1, self.group_channels, self.out_channels, *conv.shape[2:])
         return conv
 
@@ -154,7 +176,17 @@ class GSEAttention(nn.Module):
         return att * x
 
 
-def create_grid(group, kernel):
+class GUp(nn.Upsample):
+
+    def forward(self, x):
+        new_x = x.flatten(start_dim=1, end_dim=2)
+        new_x = super().forward(new_x)
+        new_x = new_x.view(*x.shape[:3], *new_x.shape[-3:])
+        return new_x
+
+
+def create_grid(kernel):
+    group = s4
     half = kernel // 2
     coords = [-1 + i / half for i in range(half)] + [0] + [(i + 1) / half for i in range(half)]
     coords = np.array(coords)

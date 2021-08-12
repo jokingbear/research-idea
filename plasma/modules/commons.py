@@ -94,8 +94,22 @@ class ClipHU(nn.Module):
     def __init__(self, clip_max, clip_min):
         super().__init__()
 
-        self.clip_max = nn.Parameter(clip_max, requires_grad=False)
-        self.clip_min = nn.Parameter(clip_min, requires_grad=False)
+        self.clip_max = clip_max
+        self.clip_min = clip_min
 
     def forward(self, vol: torch.Tensor):
         return vol.clamp(self.clip_min, self.clip_max)
+
+
+class LocalNorm(nn.Module):
+
+    def __init__(self, dims=-1, eps=1e-8):
+        super().__init__()
+
+        self.dims = dims
+        self.eps = eps
+
+    def foward(self, x):
+        std, mean = torch.std_mean(x, self.dims, keepdim=True)
+
+        return (x - mean) / (std + self.eps)
