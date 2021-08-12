@@ -6,16 +6,17 @@ import numpy as np
 import pandas as pd
 
 from .commons import GlobalAverage
+from ..resources import mapping as path_mapping
 
 
 print('loading group')
-s4 = torch.tensor(np.load('plasma/resources/groups/groups.npy'), dtype=torch.float)
+s4 = torch.tensor(np.load(path_mapping.get('groups/groups.npy')), dtype=torch.float)
 
 print('loading Cayley table')
-mapping = pd.read_csv('plasma/resources/groups/cayley.csv', index_col=0)
+mapping = pd.read_csv(path_mapping.get('groups/cayley.csv'), index_col=0)
 
 print('loading inverse pairs')
-pairs = pd.read_json('plasma/resources/groups/pairs.json', typ="series")
+pairs = pd.read_json(path_mapping.get('groups/pairs.json'), typ="series")
 
 
 class GConvPrime(nn.Module):
