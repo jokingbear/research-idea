@@ -1,23 +1,34 @@
 import numpy as np
+import matplotlib.pyplot as plt
+import torch.nn.functional as func
 
 from plasma.modules import *
 
-a = np.random.rand(36, 36, 36)
-b = np.rot90(a, axes=(1, 2)).copy()
 
-at = torch.tensor(a, dtype=torch.float, device='cuda')[np.newaxis, np.newaxis]
-bt = torch.tensor(b, dtype=torch.float, device='cuda')[np.newaxis, np.newaxis]
+a = torch.zeros(36, 36)
+a[:, 17] = 1
+a[17, :] = 1
+a = a[np.newaxis, np.newaxis]
 
-grids7 = groups.create_grid(7)
-grids3 = groups.create_grid(3)
+alpha = (np.random.rand() * 2 - 1) * (10 * np.pi / 180)
 
-model = nn.Sequential(*[
-    groups.GConvPrime(1, 5, grids7, padding=3),
-    groups.GPool(),
-    groups.GConv(5, 8, grids3, padding=1),
-    GlobalAverage([1, -1, -2, -3])
-]).cuda()
+R = torch.tensor([
+    [np.cos(alpha), -np.sin(alpha)],
+    [np.sin(alpha), np.cos(alpha)]
+], dtype=torch.float)
 
-with torch.no_grad():
-    print(model(at))
-    print(model(bt))
+theta = func.pad(R, (0, 1))
+inv_theta = func.pad(R.transpose(0, 1), (0, 1))
+
+grids = func.affine_grid(theta[np.newaxis], a.shape, align_corners=True)
+inv_grids = func.affine_grid(inv_theta[np.newaxis], a.shape, align_corners=True)
+
+b = func.grid_sample(a, grids, align_corners=True)
+c = func.grid_sample(b, inv_grids, align_corners=True)
+
+_, axes = plt.subplots(ncols=3, figsize=(15, 15))
+
+axes[0].imshow(a[0, 0])
+axes[1].imshow(b[0, 0])
+axes[2].imshow(c[0, 0])
+plt.show()

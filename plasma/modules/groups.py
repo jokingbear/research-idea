@@ -186,6 +186,21 @@ class GUp(nn.Upsample):
         return new_x
 
 
+class GEnd(nn.Conv3d):
+
+    def __init__(self, in_channels, out_channels, kernel_size=3, padding=1, bias=True):
+        super().__init__(in_channels, out_channels, kernel_size, padding=padding, bias=bias)
+
+    def forward(self, x):
+        weight = self.weight[:, np.newaxis]
+        weight = weight.repeat(1, x.shape[1], 1, 1, 1, 1) / x.shape[1]
+        weight = weight.flatten(start_dim=1, end_dim=2)
+        x = x.flatten(start_dim=1, end_dim=2)
+
+        # print(x.shape, weight.shape)
+        return func.conv3d(x, weight, self.bias, self.stride, self.padding)
+
+
 def create_grid(kernel):
     group = s4
     half = kernel // 2

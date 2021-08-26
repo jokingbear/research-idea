@@ -91,7 +91,7 @@ class Normalization(nn.Module):
 
 class ClipHU(nn.Module):
 
-    def __init__(self, clip_max, clip_min):
+    def __init__(self, clip_min, clip_max):
         super().__init__()
 
         self.clip_max = clip_max
@@ -99,6 +99,9 @@ class ClipHU(nn.Module):
 
     def forward(self, vol: torch.Tensor):
         return vol.clamp(self.clip_min, self.clip_max)
+
+    def extra_repr(self):
+        return f'clip_min={self.clip_min}, clip_max={self.clip_max}'
 
 
 class LocalNorm(nn.Module):
@@ -113,3 +116,6 @@ class LocalNorm(nn.Module):
         std, mean = torch.std_mean(x, self.dims, keepdim=True)
 
         return (x - mean) / (std + self.eps)
+
+    def extra_repr(self):
+        return f'dims={self.dims}, eps={self.eps}'

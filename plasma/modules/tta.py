@@ -35,16 +35,16 @@ class Compose(nn.Module):
         self.main_module = main_module
         self.aug_modules = nn.ModuleList(aug_modules)
 
-    def forward(self, x):
+    def forward(self, x, reverse=False):
         augs = torch.cat([x] + [aug_module(x, reverse=False) for aug_module in self.aug_modules], dim=0)
         results = self.main_module(augs)
         results = results.view(1 + len(self.aug_modules), -1, *results.shape[1:])
 
-        if results.shape[3:] == x.shape[2:]:
+        if reverse:
             results = [results[0]] + [aug_module(r, reverse=True)
                                       for aug_module, r in zip(self.aug_modules, results[1:])]
-            results = torch.stack(results, dim=1)
-        else:
-            results = results.transpose(0, 1)
+            results = torch.stack(results, dim=0)
+
+        results = results.transpose(0, 1)
 
         return results
