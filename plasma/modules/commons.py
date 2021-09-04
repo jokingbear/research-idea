@@ -81,8 +81,8 @@ class Normalization(nn.Module):
         if x.dtype != torch.float:
             x = x.float()
 
-        mean = self.mean.view(1, -1, *[1] * x.shape[2:])
-        std = self.std.view(1, -1, *[1] * x.shape[2:])
+        mean = self.mean.view(1, -1, *[1] * len(x.shape[2:]))
+        std = self.std.view(1, -1, *[1] * len(x.shape[2:]))
         return (x - mean) / std
 
     def extra_repr(self):

@@ -1,9 +1,9 @@
 {
   "repo": {
-    "path": "train_examples/repo"
+    "path": "train_examples/repo.py"
   },
   "model": {
-    "path":"train_examples/model",
+    "path":"train_examples/model.py",
     "name": "model",
     "a": 1,
     "b": 2,
@@ -14,7 +14,7 @@
     "name": "bce"
   },
   "optimizer": {
-    "name": "sgd gc",
+    "name": "sgd",
     "lr": 1e-1,
     "momentum": 0.9,
     "weight_decay": 1e-6,
