@@ -100,9 +100,13 @@ class BaseTrainer:
 
             if torch.is_tensor(eval_caches[0]):
                 eval_caches = torch.cat(eval_caches, dim=0)
-            else:
+            elif isinstance(eval_caches[0], (tuple, list)):
                 n_pred = len(eval_caches[0])
                 eval_caches = [torch.cat([c[i] for c in eval_caches], dim=0) for i in range(n_pred)]
+            elif isinstance(eval_caches[0], dict):
+                eval_caches = {k: torch.cat([c[k] for c in eval_caches], dim=0) for k in eval_caches[0]}
+            else:
+                raise 'only support tensor, tuple, list and dict cache'
 
             logs = self._get_eval_logs(eval_caches)
 

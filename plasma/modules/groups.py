@@ -34,14 +34,14 @@ class GConvPrime(nn.Module):
         self.padding = padding
 
         self.grid = group_grids
-        self._init_parameter()
+        self._reset_parameters()
 
     def forward(self, vol):
         # x: B x Cin x D x H x W
         # flatten: CoutCin x k3
         #          G x CoutCin x k3
-        flatten = self.weight.flatten(end_dim=1)
-        flatten = torch.stack([flatten] * self.group_channels, dim=0)
+        flatten = torch.flatten(self.weight, end_dim=1)
+        flatten = flatten[np.newaxis].expand(self.group_channels, -1, -1, -1, -1)
 
         # grid: G x 3 x 4
         grid = self.grid[pairs.values]
@@ -57,10 +57,10 @@ class GConvPrime(nn.Module):
         conv = conv.reshape(-1, self.group_channels, self.out_channels, *conv.shape[2:])
         return conv
 
-    def _init_parameter(self, nonlinearity='relu'):
+    def _reset_parameters(self, nonlinearity='leaky_relu', a=0):
         k = self.kernel_size
         weight = torch.randn(self.out_channels, self.in_channels, k, k, k, dtype=torch.float)
-        nn.init.kaiming_normal_(weight, nonlinearity=nonlinearity)
+        nn.init.kaiming_normal_(weight, nonlinearity=nonlinearity, a=a)
 
         self.weight = nn.Parameter(weight, requires_grad=True)
 
@@ -99,7 +99,7 @@ class GConv(nn.Module):
         self.kernel_size = group_grids.shape[1]
         self.padding = padding
 
-        self._create_weight()
+        self._reset_parameters()
         self.grids = group_grids
 
     def forward(self, feature_maps):
@@ -121,11 +121,11 @@ class GConv(nn.Module):
         conv = conv.reshape(-1, self.group_channels, self.out_channels, *conv.shape[2:])
         return conv
 
-    def _create_weight(self, nonlinearity='relu'):
+    def _reset_parameters(self, nonlinearity='leaky_relu', a=0):
         k = self.kernel_size
 
         weight = torch.zeros(self.out_channels, self.group_channels * self.in_channels, *[k] * 3, dtype=torch.float)
-        nn.init.kaiming_normal_(weight, nonlinearity=nonlinearity)
+        nn.init.kaiming_normal_(weight, nonlinearity=nonlinearity, a=a)
         weight = weight.reshape(self.out_channels, self.group_channels, self.in_channels, *[k] * 3)
 
         self.weight = nn.Parameter(weight, requires_grad=True)
@@ -133,6 +133,19 @@ class GConv(nn.Module):
     def extra_repr(self):
         return f"in_channels={self.in_channels}, out_channels={self.out_channels}, group={self.group_channels}, " \
                f"kernel_size={self.kernel_size}, stride={self.stride}, padding={self.padding}"
+
+
+class GLinear(nn.Linear):
+
+    def forward(self, x):
+        # input: B x G x in x D x H x W
+        transformed = torch.einsum('bgcdhw,zc->bgzdhw', x, self.weight)
+
+        if self.bias is not None:
+            bias = self.bias.view(1, 1, -1, 1, 1, 1)
+            transformed = transformed + bias
+
+        return transformed
 
 
 class GNorm(nn.Module):
@@ -157,26 +170,6 @@ class GNorm(nn.Module):
         return f'channels={self.channels}, eps={self.eps}'
 
 
-class GSEAttention(nn.Module):
-
-    def __init__(self, channels, ratio=0.5):
-        super().__init__()
-
-        self.channels = channels
-        squeeze = int(ratio * channels)
-        self.se = nn.Sequential(*[
-            GlobalAverage([1, -1, -2, -3]),
-            nn.Linear(channels, squeeze),
-            nn.ReLU(inplace=True),
-            nn.Linear(squeeze, channels),
-            nn.Sigmoid(),
-        ])
-
-    def forward(self, x):
-        att = self.se(x).reshape(-1, 1, self.channels, 1, 1, 1)
-        return att * x
-
-
 class GUp(nn.Upsample):
 
     def forward(self, x):
@@ -184,21 +177,6 @@ class GUp(nn.Upsample):
         new_x = super().forward(new_x)
         new_x = new_x.view(*x.shape[:3], *new_x.shape[-3:])
         return new_x
-
-
-class GEnd(nn.Conv3d):
-
-    def __init__(self, in_channels, out_channels, kernel_size=3, padding=1, bias=True):
-        super().__init__(in_channels, out_channels, kernel_size, padding=padding, bias=bias)
-
-    def forward(self, x):
-        weight = self.weight[:, np.newaxis]
-        weight = weight.repeat(1, x.shape[1], 1, 1, 1, 1) / x.shape[1]
-        weight = weight.flatten(start_dim=1, end_dim=2)
-        x = x.flatten(start_dim=1, end_dim=2)
-
-        # print(x.shape, weight.shape)
-        return func.conv3d(x, weight, self.bias, self.stride, self.padding)
 
 
 def create_grid(kernel):

@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as func
@@ -7,24 +8,40 @@ from .commons import GlobalAverage
 
 class SEAttention(nn.Module):
 
-    def __init__(self, in_channels, ratio=0.5, rank=2):
+    def __init__(self, in_channels, ratio=0.5, dims=(-1, -2)):
         super().__init__()
 
         self.in_channels = in_channels
         self.ratio = ratio
-        self.rank = rank
+        self.dims = dims
 
+        bottleneck = int(np.round(in_channels * ratio))
         self.channel_attention = nn.Sequential(*[
-            GlobalAverage(rank),
-            nn.Linear(in_channels, int(in_channels * ratio)),
+            GlobalAverage(dims),
+            nn.Linear(in_channels, bottleneck),
             nn.ReLU(inplace=True),
-            nn.Linear(int(in_channels * ratio), in_channels),
+            nn.Linear(bottleneck, in_channels),
             nn.Sigmoid()
         ])
 
     def forward(self, x):
         att = self.channel_attention(x)
-        result = att.reshape(*att.shape, *[1] * self.rank) * x
+
+        dims = [d if d >= 0 else (len(x.shape) + d) for d in self.dims]
+        original_shapes = x.shape
+        att_dim = att.shape[-1]
+
+        shapes = []
+        for i, s in enumerate(original_shapes):
+            if i in dims:
+                shapes.append(1)
+            elif s == att_dim:
+                shapes.append(att_dim)
+            else:
+                shapes.append(s)
+
+        print(shapes)
+        result = att.view(*shapes) * x
 
         return result
 

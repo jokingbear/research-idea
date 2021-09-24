@@ -25,7 +25,7 @@ class Accuracy(nn.Module):
 
 class FbetaScore(nn.Module):
 
-    def __init__(self, beta=1, axes=(0,), binary=False, smooth=1e-7, classes=None):
+    def __init__(self, beta=1, axes=(0,), binary=False, smooth=1e-7, classes=None, threshold=0.5):
         super().__init__()
 
         self.beta = beta
@@ -33,16 +33,18 @@ class FbetaScore(nn.Module):
         self.binary = binary
         self.smooth = smooth
         self.classes = classes
+        self.threshold = threshold
 
     def forward(self, preds, trues):
         beta2 = self.beta ** 2
 
-        if self.binary:
-            preds = (preds >= 0.5).float()
-        else:
-            trues = trues[:, 1:, ...]
-            preds = preds.argmax(dim=1)
-            preds = torch.stack([(preds == i).float() for i in range(1, trues.shape[1])], dim=1)
+        if self.threshold is not None:
+            if self.binary:
+                preds = (preds >= self.threshold).float()
+            else:
+                trues = trues[:, 1:, ...]
+                preds = preds.argmax(dim=1)
+                preds = torch.stack([(preds == i).float() for i in range(1, trues.shape[1])], dim=1)
 
         p = (beta2 + 1) * (trues * preds).sum(dim=self.axes)
         s = (beta2 * trues + preds).sum(dim=self.axes)

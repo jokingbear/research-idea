@@ -136,15 +136,17 @@ class ConfigRunner:
 
     def _get_optimizer(self, opt_config):
         name = opt_config["name"].lower()
-        kwargs = self.get_kwargs(opt_config)
+        kwargs = self.get_kwargs(opt_config, excludes=['name', 'checkpoint'])
 
         if name in optimizer_map:
             opt = optimizer_map[name]
         else:
             raise NotImplementedError(f"only support {optimizer_map.keys()}")
 
-        opt = opt([p for p in self.model.parameters() if p.requires_grad], **kwargs)
+        if 'checkpoint' in opt_config:
+            opt.load_state_dict(torch.load(opt_config['checkpoint'], map_location='cpu'))
 
+        opt = opt([p for p in self.model.parameters() if p.requires_grad], **kwargs)
         return opt
 
     def _get_trainer(self, trainer_config):
