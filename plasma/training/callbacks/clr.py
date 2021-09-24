@@ -36,7 +36,7 @@ class LrFinder(Callback):
 
         self.gamma = (self.max_lr - self.min_lr) / (epochs * iterations)
 
-    def on_training_batch_end(self, epoch, step, inputs, targets, caches, logs=None):
+    def on_training_batch_end(self, epoch, step, data, caches, logs=None):
         for i, g in enumerate(self.optimizers[0].param_groups):
             if i in self.history:
                 self.history[i].append((g["lr"], logs))
@@ -175,7 +175,7 @@ class SuperConvergence(Callback):
         if not os.path.exists(self.dir) and self.snapshot:
             os.mkdir(self.dir)
 
-    def on_training_batch_end(self, epoch, step, inputs, targets, caches, logs=None):
+    def on_training_batch_end(self, epoch, step, data, caches, logs=None):
         self.scheduler.step()
 
     def on_epoch_end(self, epoch, logs=None):
@@ -212,12 +212,12 @@ class Warmup(Callback):
         self.lrs = np.linspace(self.init_lr, self.final_lr, num=steps * self.n_epoch)
         self.total_step = steps * self.n_epoch
 
-    def on_training_batch_begin(self, epoch, step, inputs, targets):
+    def on_training_batch_begin(self, epoch, step, data):
         if self.step < self.total_step:
             for g in self.optimizers[0].param_groups:
                 g["lr"] = self.lrs[self.step]
 
-    def on_training_batch_end(self, epoch, step, inputs, targets, caches, logs=None):
+    def on_training_batch_end(self, epoch, step, data, caches, logs=None):
         self.step += 1
 
     def on_epoch_end(self, epoch, logs=None):

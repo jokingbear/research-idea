@@ -9,7 +9,7 @@ from .utils import get_batch_tensors, get_dict
 class StandardTrainer(BaseTrainer):
 
     def __init__(self, model, optimizer, loss, metrics=None,
-                 x_device=None, x_type=torch.float, y_device=None, y_type=torch.long):
+                 x_device=None, x_type=torch.float, y_device=None, y_type=torch.float):
         """
         :param model: torch module
         :param optimizer: torch optimizer
@@ -20,7 +20,7 @@ class StandardTrainer(BaseTrainer):
         :param y_device: device to put labels
         :param y_type: type to cast labels
         """
-        super().__init__([model], [optimizer], loss, metrics)
+        super().__init__([model], [optimizer], loss, metrics, [x_type, y_type], [x_device, y_device])
 
         self.x_device = x_device
         self.x_type = x_type
@@ -29,13 +29,11 @@ class StandardTrainer(BaseTrainer):
 
         self.training = True
 
-    def _extract_data(self, batch_data):
-        return get_batch_tensors(batch_data, self.x_type, self.x_device, self.y_type, self.y_device)
-
-    def _train_one_batch(self, inputs, targets) -> Tuple[dict, object]:
+    def _train_one_batch(self, data) -> Tuple[dict, object]:
+        inputs, targets = data
         if isinstance(inputs, dict):
             preds = self.models[0](**inputs)
-        elif isinstance(inputs, list):
+        elif isinstance(inputs, (list, tuple)):
             preds = self.models[0](*inputs)
         else:
             preds = self.models[0](inputs)
@@ -53,9 +51,9 @@ class StandardTrainer(BaseTrainer):
 
         return loss_dict, preds
 
-    def _get_train_measures(self, inputs, targets, loss_dict, cache) -> dict:
+    def _get_train_measures(self, data, loss_dict, cache) -> dict:
         preds = cache
-
+        _, targets = data
         measures = loss_dict
         for m in self.metrics:
             m_value = m(preds, targets)
@@ -64,10 +62,12 @@ class StandardTrainer(BaseTrainer):
 
         return measures
 
-    def _get_eval_cache(self, inputs, targets):
+    def _get_eval_cache(self, data):
+        inputs, targets = data
+
         if isinstance(inputs, dict):
             preds = self.models[0](**inputs)
-        elif isinstance(inputs, list):
+        elif isinstance(inputs, (list, tuple)):
             preds = self.models[0](*inputs)
         else:
             preds = self.models[0](inputs)
@@ -83,7 +83,7 @@ class StandardTrainer(BaseTrainer):
         measures = loss_dict
         for m in self.metrics:
             m_value = m(preds, trues)
-            m_dict = get_dict(m_value, prefix="val ", name=m._get_name())
+            m_dict = get_dict(m_value, prefix="Val_", name=m._get_name())
             measures.update(m_dict)
 
         return measures

@@ -1,6 +1,7 @@
 import multiprocessing as mp
 import os
 
+import numpy as np
 import torch
 from tqdm import tqdm
 from .data.adhoc_data import AdhocData
@@ -29,25 +30,39 @@ def eval_modules(*modules):
     return torch.no_grad()
 
 
-def parallel_iterate(arr, iter_func, workers=8, use_index=False, **kwargs):
+def parallel_iterate(arr, iter_func, workers=8, batch_size=32, use_index=False, **kwargs):
     """
     parallel iterate array
     :param arr: array to be iterated
     :param iter_func: function to be called for each data, signature (idx, arg) or arg
     :param workers: number of worker to run
+    :param batch_size: chunk size
     :param use_index: whether to add index to each call of iter func
     :return list of result if not all is None
     """
-    pool = mp.Pool(workers)
-    jobs = [pool.apply_async(iter_func, args=(i, arg) if use_index else (arg,), kwds=kwargs)
-            for i, arg in enumerate(arr)]
+    n = len(arr)
+    n_chunk = n // batch_size
+    if n_chunk * batch_size != n:
+        n_chunk += 1
 
-    results = [j.get() for j in get_progress(jobs)]
+    pool = mp.Pool(workers)
+    chunks = np.split(arr, n_chunk)
+    offset = 0
+    final_results = []
+
+    for c in get_progress(chunks):
+        jobs = [pool.apply_async(iter_func, args=(offset + i, arg) if use_index else (arg,), kwds=kwargs)
+                for i, arg in enumerate(c)]
+
+        results = [j.get() for j in get_progress(jobs)]
+        final_results = final_results + results
+        offset += len(c)
+
     pool.close()
     pool.join()
 
-    if not all([r is None for r in results]):
-        return results
+    if not all([r is None for r in final_results]):
+        return final_results
 
 
 def get_loader(arr, mapper=None, imapper=None, batch_size=32, pin_memory=True, workers=None, **kwargs):

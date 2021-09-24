@@ -6,19 +6,20 @@ import numpy as np
 import pandas as pd
 
 from .commons import GlobalAverage
+from ..resources import mapping as path_mapping
 
 
 print('loading group')
-s4 = torch.tensor(np.load('plasma/resources/groups/groups.npy'), dtype=torch.float)
+elements = torch.tensor(np.load(path_mapping.get('groups/groups.npy')), dtype=torch.float)
 
 print('loading Cayley table')
-mapping = pd.read_csv('plasma/resources/groups/cayley.csv', index_col=0)
+mapping = pd.read_csv(path_mapping.get('groups/cayley.csv'), index_col=0)
 
 print('loading inverse pairs')
-pairs = pd.read_json('plasma/resources/groups/pairs.json', typ="series")
+pairs = pd.read_json(path_mapping.get('groups/pairs.json'), typ="series")
 
 
-class GConvPrime(nn.Module):
+class S4Prime(nn.Module):
 
     def __init__(self, in_channels, out_channels, group_grids, padding):
         super().__init__()
@@ -33,14 +34,14 @@ class GConvPrime(nn.Module):
         self.padding = padding
 
         self.grid = group_grids
-        self._init_parameter()
+        self._reset_parameters()
 
     def forward(self, vol):
         # x: B x Cin x D x H x W
         # flatten: CoutCin x k3
         #          G x CoutCin x k3
-        flatten = self.weight.flatten(end_dim=1)
-        flatten = torch.stack([flatten] * self.group_channels, dim=0)
+        flatten = torch.flatten(self.weight, end_dim=1)
+        flatten = flatten[np.newaxis].expand(self.group_channels, -1, -1, -1, -1)
 
         # grid: G x 3 x 4
         grid = self.grid[pairs.values]
@@ -56,10 +57,10 @@ class GConvPrime(nn.Module):
         conv = conv.reshape(-1, self.group_channels, self.out_channels, *conv.shape[2:])
         return conv
 
-    def _init_parameter(self, nonlinearity='relu'):
+    def _reset_parameters(self, nonlinearity='leaky_relu', a=0):
         k = self.kernel_size
         weight = torch.randn(self.out_channels, self.in_channels, k, k, k, dtype=torch.float)
-        nn.init.kaiming_normal_(weight, nonlinearity=nonlinearity)
+        nn.init.kaiming_normal_(weight, nonlinearity=nonlinearity, a=a)
 
         self.weight = nn.Parameter(weight, requires_grad=True)
 
@@ -68,7 +69,7 @@ class GConvPrime(nn.Module):
                f"kernel_size={self.kernel_size}, padding={self.padding}"
 
 
-class GPool(nn.Module):
+class S4Pool(nn.Module):
 
     def __init__(self, kind='max', kernel_size=2, stride=2):
         super().__init__()
@@ -84,9 +85,9 @@ class GPool(nn.Module):
         return pooled.view(*x.shape[:3], *pooled.shape[-3:])
 
 
-class GConv(nn.Module):
+class S4Conv(nn.Module):
 
-    def __init__(self, in_channels, out_channels, group_grids, padding):
+    def __init__(self, in_channels, out_channels, group_grids, padding, partition=1):
         super().__init__()
 
         assert isinstance(group_grids, nn.Parameter), 'group_grids needs to be parameter'
@@ -97,8 +98,9 @@ class GConv(nn.Module):
         self.group_channels = group_grids.shape[0]
         self.kernel_size = group_grids.shape[1]
         self.padding = padding
+        self.partition = partition
 
-        self._create_weight()
+        self._reset_parameters()
         self.grids = group_grids
 
     def forward(self, feature_maps):
@@ -116,25 +118,39 @@ class GConv(nn.Module):
                                         *self.weight.shape[3:])
 
         feature_maps = feature_maps.flatten(start_dim=1, end_dim=2)
-        conv = func.conv3d(feature_maps, new_weight, None, 1, self.padding)
+        conv = func.conv3d(feature_maps, new_weight, None, 1, self.padding, groups=self.partition)
         conv = conv.reshape(-1, self.group_channels, self.out_channels, *conv.shape[2:])
         return conv
 
-    def _create_weight(self, nonlinearity='relu'):
+    def _reset_parameters(self, nonlinearity='leaky_relu', a=0):
         k = self.kernel_size
 
         weight = torch.zeros(self.out_channels, self.group_channels * self.in_channels, *[k] * 3, dtype=torch.float)
-        nn.init.kaiming_normal_(weight, nonlinearity=nonlinearity)
+        nn.init.kaiming_normal_(weight, nonlinearity=nonlinearity, a=a)
         weight = weight.reshape(self.out_channels, self.group_channels, self.in_channels, *[k] * 3)
 
         self.weight = nn.Parameter(weight, requires_grad=True)
 
     def extra_repr(self):
         return f"in_channels={self.in_channels}, out_channels={self.out_channels}, group={self.group_channels}, " \
-               f"kernel_size={self.kernel_size}, stride={self.stride}, padding={self.padding}"
+               f"kernel_size={self.kernel_size}, stride={self.stride}, padding={self.padding}, " \
+               f"partition={self.partition}"
 
 
-class GNorm(nn.Module):
+class S4Linear(nn.Linear):
+
+    def forward(self, x):
+        # input: B x G x in x D x H x W
+        transformed = torch.einsum('bgcdhw,zc->bgzdhw', x, self.weight)
+
+        if self.bias is not None:
+            bias = self.bias.view(1, 1, -1, 1, 1, 1)
+            transformed = transformed + bias
+
+        return transformed
+
+
+class S4Norm(nn.Module):
 
     def __init__(self, channels, eps=1e-8):
         super().__init__()
@@ -156,27 +172,7 @@ class GNorm(nn.Module):
         return f'channels={self.channels}, eps={self.eps}'
 
 
-class GSEAttention(nn.Module):
-
-    def __init__(self, channels, ratio=0.5):
-        super().__init__()
-
-        self.channels = channels
-        squeeze = int(ratio * channels)
-        self.se = nn.Sequential(*[
-            GlobalAverage([1, -1, -2, -3]),
-            nn.Linear(channels, squeeze),
-            nn.ReLU(inplace=True),
-            nn.Linear(squeeze, channels),
-            nn.Sigmoid(),
-        ])
-
-    def forward(self, x):
-        att = self.se(x).reshape(-1, 1, self.channels, 1, 1, 1)
-        return att * x
-
-
-class GUp(nn.Upsample):
+class S4Up(nn.Upsample):
 
     def forward(self, x):
         new_x = x.flatten(start_dim=1, end_dim=2)
@@ -186,7 +182,6 @@ class GUp(nn.Upsample):
 
 
 def create_grid(kernel):
-    group = s4
     half = kernel // 2
     coords = [-1 + i / half for i in range(half)] + [0] + [(i + 1) / half for i in range(half)]
     coords = np.array(coords)
@@ -203,6 +198,6 @@ def create_grid(kernel):
     grids = np.stack([x_grid, y_grid, z_grid], axis=-1)
     grids = torch.tensor(grids, dtype=torch.float)
 
-    affine_grids = torch.einsum("ijka,rba->rijkb", grids, group)
+    affine_grids = torch.einsum("ijka,rba->rijkb", grids, elements)
     affine_grids = nn.Parameter(affine_grids, requires_grad=False)
     return affine_grids

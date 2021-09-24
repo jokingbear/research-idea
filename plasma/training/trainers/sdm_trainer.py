@@ -10,15 +10,13 @@ class SDM(BaseTrainer):
 
     def __init__(self, model, optimizer, loss=None, alpha=1, device=None):
         loss = loss or nn.MSELoss()
-        super().__init__([model], [optimizer], loss)
+        super().__init__([model], [optimizer], loss, types=[torch.float, torch.float], devices=[device, device])
 
         self.alpha = alpha
         self.device = device
 
-    def _extract_data(self, batch_data):
-        return get_batch_tensors(batch_data, "float", self.device, "float", self.device)
-
-    def _train_one_batch(self, inputs, targets) -> Tuple[dict, object]:
+    def _train_one_batch(self, data) -> Tuple[dict, object]:
+        inputs, targets = data
         inputs = {
             "student_inputs": inputs,
             "teacher_inputs": targets
@@ -60,10 +58,10 @@ class SDM(BaseTrainer):
             "loss": float(total_loss),
         }, None
 
-    def _get_train_measures(self, inputs, targets, loss_dict, cache) -> dict:
+    def _get_train_measures(self, data, loss_dict, cache) -> dict:
         return loss_dict
 
-    def _get_eval_cache(self, inputs, targets):
+    def _get_eval_cache(self, data):
         return None
 
     def _get_eval_logs(self, eval_caches) -> dict:

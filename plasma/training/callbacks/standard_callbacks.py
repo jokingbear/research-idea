@@ -31,10 +31,10 @@ class ReduceLROnPlateau(Callback):
         for i, param_group in enumerate(self.optimizers[0].param_groups):
             logs[f"group {i} lr"] = param_group["lr"]
 
-        self.scheduler.step(logs[self.monitor], epoch + 1)
+        self.scheduler.step(logs[self.monitor])
 
     def extra_repr(self):
-        return f"monitor={self.monitor}, patience={self.patience}, mode={self.mode}, factor={self.factor}" \
+        return f"monitor={self.monitor}, patience={self.patience}, mode={self.mode}, factor={self.factor}, " \
                f"verbose={self.verbose}"
 
 
@@ -224,7 +224,7 @@ class Tensorboard(Callback):
         if self.inputs is not None:
             self.train_writer.add_graph(self.models, self.inputs)
 
-    def on_training_batch_end(self, epoch, step, inputs, targets, caches, logs=None):
+    def on_training_batch_end(self, epoch, step, data, caches, logs=None):
         if self.current_step % self.steps == 0:
             for k in logs.keys():
                 self.train_writer.add_scalar(f"train/{k}", logs[k], self.current_step)
