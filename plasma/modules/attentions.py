@@ -40,7 +40,6 @@ class SEAttention(nn.Module):
             else:
                 shapes.append(s)
 
-        print(shapes)
         result = att.view(*shapes) * x
 
         return result

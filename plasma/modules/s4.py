@@ -5,7 +5,6 @@ import torch.nn.functional as func
 import numpy as np
 import pandas as pd
 
-from .commons import GlobalAverage
 from ..resources import mapping as path_mapping
 
 
@@ -146,8 +145,7 @@ class S4Conv(nn.Module):
 
     def extra_repr(self):
         return f"in_channels={self.in_channels}, out_channels={self.out_channels}, group={self.group_channels}, " \
-               f"kernel_size={self.kernel_size}, stride={self.stride}, padding={self.padding}, " \
-               f"partition={self.partition}"
+               f"kernel_size={self.kernel_size}, padding={self.padding}, partition={self.partition}"
 
 
 class S4Linear(nn.Linear):
