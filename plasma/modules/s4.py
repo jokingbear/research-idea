@@ -37,24 +37,28 @@ class S4Prime(nn.Module):
         self._reset_parameters()
 
     def forward(self, vol):
-        # x: B x Cin x D x H x W
-        # flatten: CoutCin x k3
-        #          G x CoutCin x k3
+        # x: B x in x D x H x W
+        # flatten: out_in x k3
+        #          G x out_in x k3
         flatten = torch.flatten(self.weight, end_dim=1)
         flatten = flatten[np.newaxis].expand(self.group_channels, -1, -1, -1, -1)
 
         # grid: G x 3 x 4
         grid = self.grid[pairs.values]
 
-        # map_weight: G x CoutCin x k3
-        #             GCout x Cin x k3
+        # map_weight: G x out_in x k3
+        #             G x out x in x k3
+        #             out x G x in x k3
+        #             out_G x in x k3
         map_weight = func.grid_sample(flatten, grid, align_corners=True)
+        map_weight = map_weight.reshape(elements.shape[0], *self.weight.shape)
+        map_weight = map_weight.transpose(0, 1)
         map_weight = map_weight.reshape(-1, *self.weight.shape[1:])
 
-        # conv: B x GCout x D x H x W
-        #       B x G x Cout x D x H x W
+        # conv: B x outG x D x H x W
+        #       B x out x G x D x H x W
         conv = func.conv3d(vol, map_weight, None, 1, self.padding)
-        conv = conv.reshape(-1, self.group_channels, self.out_channels, *conv.shape[2:])
+        conv = conv.view(-1, self.out_channels, elements.shape[0], *conv.shape[-3:])
         return conv
 
     def _reset_parameters(self, nonlinearity='leaky_relu', a=0):
@@ -71,7 +75,7 @@ class S4Prime(nn.Module):
 
 class S4Pool(nn.Module):
 
-    def __init__(self, kind='max', kernel_size=2, stride=2):
+    def __init__(self, kind='average', kernel_size=2, stride=2):
         super().__init__()
 
         if kind == 'max':
@@ -105,21 +109,30 @@ class S4Conv(nn.Module):
 
     def forward(self, feature_maps):
         inverse_group = mapping.iloc[pairs.values]
-        permute_weights = [self.weight[:, inverse_group.iloc[g].values] for g in range(self.group_channels)]
+        permute_weights = [self.weight[:, :, inverse_group.iloc[g].values] for g in range(self.group_channels)]
 
-        # G x out x G x in x spatial
+        # G x out x in x G x spatial
         new_weight = torch.stack(permute_weights, dim=0)
         new_weight = torch.flatten(new_weight, start_dim=1, end_dim=3)
         grid = self.grids[pairs.values]
 
+        # G x out_in_G x spatial
+        # G x out x in x G x spatial
+        # out x G x in x G x spatial
+        # out_G x in_G x spatial
         new_weight = func.grid_sample(new_weight, grid, align_corners=True)
-        new_weight = new_weight.reshape(self.group_channels * self.out_channels,
-                                        self.group_channels * self.in_channels,
-                                        *self.weight.shape[3:])
+        new_weight = new_weight.view(elements.shape[0], *self.weight.shape)
+        new_weight = new_weight.transpose(0, 1)
+        new_weight = new_weight.reshape(self.out_channels * elements.shape[0], self.in_channels * elements.shape[0],
+                                        *self.weight.shape[-3:])
 
+        # B x in_G x spatial
         feature_maps = feature_maps.flatten(start_dim=1, end_dim=2)
+
+        # B x out_G x spatial
+        # B x out x G x spatial
         conv = func.conv3d(feature_maps, new_weight, None, 1, self.padding, groups=self.partition)
-        conv = conv.reshape(-1, self.group_channels, self.out_channels, *conv.shape[2:])
+        conv = conv.view(-1, self.out_channels, elements.shape[0], *conv.shape[-3:])
         return conv
 
     def _reset_parameters(self, nonlinearity='leaky_relu', a=0):
@@ -127,7 +140,7 @@ class S4Conv(nn.Module):
 
         weight = torch.zeros(self.out_channels, self.group_channels * self.in_channels, *[k] * 3, dtype=torch.float)
         nn.init.kaiming_normal_(weight, nonlinearity=nonlinearity, a=a)
-        weight = weight.reshape(self.out_channels, self.group_channels, self.in_channels, *[k] * 3)
+        weight = weight.reshape(self.out_channels, self.in_channels, elements.shape[0], *[k] * 3)
 
         self.weight = nn.Parameter(weight, requires_grad=True)
 
@@ -140,11 +153,11 @@ class S4Conv(nn.Module):
 class S4Linear(nn.Linear):
 
     def forward(self, x):
-        # input: B x G x in x D x H x W
-        transformed = torch.einsum('bgcdhw,zc->bgzdhw', x, self.weight)
+        # input: B x in x G x D x H x W
+        transformed = torch.einsum('bigdhw,oi->bogdhw', x, self.weight)
 
         if self.bias is not None:
-            bias = self.bias.view(1, 1, -1, 1, 1, 1)
+            bias = self.bias.view(1, -1, 1, 1, 1, 1)
             transformed = transformed + bias
 
         return transformed
@@ -162,9 +175,9 @@ class S4Norm(nn.Module):
         self.bias = nn.Parameter(torch.zeros(channels, dtype=torch.float), requires_grad=True)
 
     def forward(self, feature_maps):
-        std, mean = torch.std_mean(feature_maps, dim=[1, -1, -2, -3], keepdim=True)
-        weight = self.weight.view(1, 1, -1, 1, 1, 1)
-        bias = self.bias.view(1, 1, -1, 1, 1, 1)
+        std, mean = torch.std_mean(feature_maps, dim=[-1, -2, -3, -4], keepdim=True)
+        weight = self.weight.view(1, -1, 1, 1, 1, 1)
+        bias = self.bias.view(1, -1, 1, 1, 1, 1)
 
         return weight * (feature_maps - mean) / (std + self.eps) + bias
 
