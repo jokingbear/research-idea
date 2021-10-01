@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 
-from model_8 import GSegmentator
+from default_model import Segmentator
 
 b = torch.randn(1, 1, 64, 64, 64, device='cuda:0')
 b = torch.cat([
@@ -10,7 +10,7 @@ b = torch.cat([
     b.rot90(k=1, dims=[-1, -2])
 ], dim=0)
 
-a = GSegmentator().cuda()
+a = Segmentator().cuda()
 
 with torch.no_grad():
     c = a(b)

@@ -7,14 +7,10 @@ import pandas as pd
 
 from ..resources import mapping as path_mapping
 
-
-print('loading group')
 elements = torch.tensor(np.load(path_mapping.get('groups/groups.npy')), dtype=torch.float)
 
-print('loading Cayley table')
 mapping = pd.read_csv(path_mapping.get('groups/cayley.csv'), index_col=0)
 
-print('loading inverse pairs')
 pairs = pd.read_json(path_mapping.get('groups/pairs.json'), typ="series")
 
 
@@ -122,8 +118,7 @@ class S4Conv(nn.Module):
         new_weight = func.grid_sample(new_weight, grid, align_corners=True)
         new_weight = new_weight.view(elements.shape[0], *self.weight.shape)
         new_weight = new_weight.transpose(0, 1)
-        new_weight = new_weight.reshape(self.out_channels * elements.shape[0], self.in_channels * elements.shape[0],
-                                        *self.weight.shape[-3:])
+        new_weight = new_weight.reshape(self.out_channels * elements.shape[0], -1, *self.weight.shape[-3:])
 
         # B x in_G x spatial
         feature_maps = feature_maps.flatten(start_dim=1, end_dim=2)
@@ -137,9 +132,12 @@ class S4Conv(nn.Module):
     def _reset_parameters(self, nonlinearity='leaky_relu', a=0):
         k = self.kernel_size
 
-        weight = torch.zeros(self.out_channels, self.group_channels * self.in_channels, *[k] * 3, dtype=torch.float)
+        assert self.in_channels % self.partition == 0
+
+        in_channels = self.in_channels // self.partition
+        weight = torch.zeros(self.out_channels, elements.shape[0] * in_channels, *[k] * 3, dtype=torch.float)
         nn.init.kaiming_normal_(weight, nonlinearity=nonlinearity, a=a)
-        weight = weight.reshape(self.out_channels, self.in_channels, elements.shape[0], *[k] * 3)
+        weight = weight.reshape(self.out_channels, in_channels, elements.shape[0], *[k] * 3)
 
         self.weight = nn.Parameter(weight, requires_grad=True)
 
