@@ -42,6 +42,9 @@ class ConfigRunner:
             with open("model.txt", "w") as handle:
                 handle.write(str(self.model))
 
+            num = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
+            print('parameters:', num)
+
         self.loss = self._get_loss(loss_config)
         print("loss: ", self.loss) if verbose else None
 
