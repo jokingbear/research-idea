@@ -102,20 +102,3 @@ class ClipHU(nn.Module):
 
     def extra_repr(self):
         return f'clip_min={self.clip_min}, clip_max={self.clip_max}'
-
-
-class LocalNorm(nn.Module):
-
-    def __init__(self, dims=-1, eps=1e-8):
-        super().__init__()
-
-        self.dims = dims
-        self.eps = eps
-
-    def foward(self, x):
-        std, mean = torch.std_mean(x, self.dims, keepdim=True)
-
-        return (x - mean) / (std + self.eps)
-
-    def extra_repr(self):
-        return f'dims={self.dims}, eps={self.eps}'
