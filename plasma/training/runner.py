@@ -13,7 +13,7 @@ from .optimizers import __mapping__ as optimizer_map
 
 class ConfigRunner:
 
-    def __init__(self, config, save_config_path=None, name=None, verbose=1):
+    def __init__(self, config, save_config_path=None, name=None, rank=0, verbose=1):
         self.config = config
         self.save_config_path = save_config_path
         self.name = name or "train_config"
@@ -26,7 +26,7 @@ class ConfigRunner:
                                               "lr": 1e-1, "momentum": 9e-1,
                                               "weight_decay": 1e-6, "nesterov": True})
         callbacks_configs = config.get("callbacks", [])
-        trainer_config = config.get("trainer", {"name": "standard"})
+        trainer_config = config.get("trainer", {"name": "standard", 'rank': rank})
 
         print("creating train, valid loader") if verbose else None
         self.train, self.valid = self._get_repo(repo_config)
