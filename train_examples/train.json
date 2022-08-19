@@ -8,7 +8,7 @@
     "a": 1,
     "b": 2,
     "c": 3,
-    "gpu": true
+    "gpu": false
   },
   "loss": {
     "name": "bce"
@@ -27,8 +27,6 @@
     }
   ],
   "trainer": {
-    "y_type": "float",
-    "x_device": "cuda:0",
-    "y_device": "cuda:0"
+    "device": "cpu"
   }
 }

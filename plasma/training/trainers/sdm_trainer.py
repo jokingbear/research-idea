@@ -10,7 +10,7 @@ class SDM(BaseTrainer):
 
     def __init__(self, model, optimizer, loss=None, alpha=1, device=None):
         loss = loss or nn.MSELoss()
-        super().__init__([model], [optimizer], loss, types=[torch.float, torch.float], devices=[device, device])
+        super().__init__([model], [optimizer], loss, dtype=[torch.float, torch.float], device=[device, device])
 
         self.alpha = alpha
         self.device = device

@@ -9,6 +9,7 @@ import torch.optim.lr_scheduler as schedulers
 from torch.utils.tensorboard import SummaryWriter
 
 from .base_class import Callback
+from ..utils import get_progress
 
 
 class ReduceLROnPlateau(Callback):
@@ -245,3 +246,47 @@ class Tensorboard(Callback):
     def extra_repr(self):
         return f"log_dir={self.log_dir}, steps={self.steps}, flushes={self.flushes}, " \
                f"inputs={self.inputs.shape if self.inputs is not None else None}, current_step={self.current_step}"
+
+
+class ProgressBar(Callback):
+
+    def __init__(self):
+        super().__init__()
+
+        self.rank = 0
+        self.n_train = 0
+        self.n_valid = 0
+
+        self.running_metrics = np.zeros([])
+        self.train_pbar = None
+        self.valid_pbar = None
+
+    def on_train_begin(self, **train_configs):
+        self.n_train = len(train_configs['train_loader'])
+        self.n_valid = len(train_configs['valid_loader'] or [])
+    
+    def on_epoch_begin(self, epoch):
+        pbar = get_progress(total=self.n_train, desc=f'Epoch {epoch}')
+        self.train_pbar = pbar
+        self.running_metrics = np.zeros([])
+    
+    def on_training_batch_end(self, epoch, step, data, caches, logs=None):
+        if self.trainer.rank == 0:
+            self.running_metrics = self.running_metrics + logs
+            self.train_pbar.set_postfix(self.running_metrics / (step + 1))
+            self.train_pbar.update()
+    
+    def on_validation_batch_begin(self, epoch, step, data):
+        if step == 0:
+            self.valid_pbar = get_progress(total=self.n_valid, desc=f'Valid Epoch {epoch}')
+
+    def on_validation_batch_end(self, epoch, step, data, caches):
+        self.valid_pbar.update()
+    
+    def on_epoch_end(self, epoch, logs=None):
+        if self.valid_pbar is not None:
+            self.valid_pbar.set_postfix(logs)
+
+    def on_train_end(self):
+        self.train_pbar = None
+        self.valid_pbar = None

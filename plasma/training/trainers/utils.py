@@ -18,16 +18,13 @@ def to_device(xs, dtype=None, device=None):
         return x
 
 
-def get_batch_tensors(batch_values, types, devices):
-    assert len(batch_values) == len(types)
-    assert len(batch_values) == len(devices)
-
+def get_batch_tensors(batch_values, dtype, device):
     if isinstance(batch_values, tuple):
-        return tuple([to_device(v, t, d) for v, t, d in zip(batch_values, types, devices)])
+        return tuple([to_device(v, dtype, device) for v in batch_values])
     elif isinstance(batch_values, list):
-        return [to_device(v, t, d) for v, t, d in zip(batch_values, types, devices)]
+        return [to_device(v, dtype, device) for v in batch_values]
     elif isinstance(batch_values, dict):
-        return {k: to_device(batch_values[k], t, d) for k, t, d in zip(batch_values, types, devices)}
+        return {k: to_device(batch_values[k], dtype, device) for k in batch_values}
 
     raise 'only support type tuple, list and dict'
 

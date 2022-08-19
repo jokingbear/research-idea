@@ -3,13 +3,12 @@ from typing import Tuple
 import torch
 
 from .base_trainer import BaseTrainer
-from .utils import get_batch_tensors, get_dict
+from .utils import get_dict
 
 
 class StandardTrainer(BaseTrainer):
 
-    def __init__(self, model, optimizer, loss, metrics=None,
-                 x_device=None, x_type=torch.float, y_device=None, y_type=torch.float):
+    def __init__(self, model, optimizer, loss, metrics=None, dtype='float', device='cuda:0'):
         """
         :param model: torch module
         :param optimizer: torch optimizer
@@ -20,12 +19,7 @@ class StandardTrainer(BaseTrainer):
         :param y_device: device to put labels
         :param y_type: type to cast labels
         """
-        super().__init__([model], [optimizer], loss, metrics, [x_type, y_type], [x_device, y_device])
-
-        self.x_device = x_device
-        self.x_type = x_type
-        self.y_device = y_device
-        self.y_type = y_type
+        super().__init__([model], [optimizer], loss, metrics, dtype, device)
 
         self.training = True
 
@@ -87,7 +81,3 @@ class StandardTrainer(BaseTrainer):
             measures.update(m_dict)
 
         return measures
-
-    def extra_repr(self):
-        return f"x_device={self.x_device}, x_type={self.x_type}, " \
-               f"y_device={self.y_device}, y_type={self.y_type}"

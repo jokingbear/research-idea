@@ -1,7 +1,5 @@
 import torch.nn as nn
 
-from ..trainers.base_trainer import BaseTrainer
-
 
 class Callback:
 
@@ -35,7 +33,7 @@ class Callback:
     def on_validation_batch_end(self, epoch, step, data, caches):
         pass
 
-    def set_trainer(self, trainer: BaseTrainer):
+    def set_trainer(self, trainer):
         self.models = [m.module if isinstance(m, nn.DataParallel) else m for m in trainer.models]
         self.optimizers = trainer.optimizers
         self.trainer = trainer
