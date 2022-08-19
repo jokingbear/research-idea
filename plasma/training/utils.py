@@ -1,11 +1,15 @@
 import multiprocessing as mp
+from multiprocessing.dummy import Pool
 import os
 
 import numpy as np
 import torch
 from tqdm import tqdm
+from tqdm.notebook import tqdm as tqdm_nb
 from .data.adhoc_data import AdhocData
-from cleanlab.pruning import get_noise_indices
+
+
+notebook = False
 
 
 def get_progress(iterable=None, total=None, desc=None):
@@ -16,6 +20,10 @@ def get_progress(iterable=None, total=None, desc=None):
     :param desc: description of the progress bar
     :return: progress bar
     """
+
+    if notebook:
+        return tqdm_nb(iterable=iterable, total=total, desc=desc)
+
     return tqdm(iterable=iterable, total=total, desc=desc)
 
 
@@ -30,7 +38,7 @@ def eval_modules(*modules):
     return torch.no_grad()
 
 
-def parallel_iterate(arr, iter_func, workers=8, batch_size=32, use_index=False, **kwargs):
+def parallel_iterate(arr, iter_func, workers=8, batch_size=1, **kwargs):
     """
     parallel iterate array
     :param arr: array to be iterated
@@ -45,24 +53,9 @@ def parallel_iterate(arr, iter_func, workers=8, batch_size=32, use_index=False, 
     if n_chunk * batch_size != n:
         n_chunk += 1
 
-    pool = mp.Pool(workers)
-    chunks = np.split(arr, n_chunk)
-    offset = 0
-    final_results = []
-
-    for c in get_progress(chunks):
-        jobs = [pool.apply_async(iter_func, args=(offset + i, arg) if use_index else (arg,), kwds=kwargs)
-                for i, arg in enumerate(c)]
-
-        results = [j.get() for j in get_progress(jobs)]
-        final_results = final_results + results
-        offset += len(c)
-
-    pool.close()
-    pool.join()
-
-    if not all([r is None for r in final_results]):
-        return final_results
+    with mp.Pool(workers) as p:
+        runners = p.imap(iter_func, arr, batch_size)
+        return [r for r in get_progress(runners, total=len(arr))]
 
 
 def get_loader(arr, mapper=None, imapper=None, batch_size=32, pin_memory=True, workers=None, **kwargs):
@@ -90,21 +83,3 @@ def set_devices(*device_ids):
     assert len(device_ids) > 0, "there must be at least 1 id"
 
     os.environ['CUDA_VISIBLE_DEVICES'] = ','.join([str(d) for d in device_ids])
-
-
-def detect_outliers(preds, trues, multi_label=False):
-    """
-    detect outliers in data using prediction probability and ground truth
-    Args:
-        preds: prediction probability [N, class]
-        trues: ground truth [N] or [N, class] in case of multi_class
-        multi_label: whether to treat trues as multi-label or not
-    Returns:
-        indices of outliers
-    """
-    if multi_label:
-        trues = [trues[:, i] for i in range(trues.shape[-1])]
-
-    idc = get_noise_indices(trues, preds, multi_label=multi_label, sorted_index_method='normalized_margin')
-
-    return idc
