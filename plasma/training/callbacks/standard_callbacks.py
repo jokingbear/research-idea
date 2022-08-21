@@ -154,43 +154,45 @@ class CSVLogger(Callback):
         self.csv_file = None
 
     def on_train_begin(self, **train_configs):
-        if self.append:
-            if os.path.exists(self.filename):
-                with open(self.filename, 'r' + self.file_flags) as f:
-                    self.append_header = not bool(len(f.readline()))
-            mode = 'a'
-        else:
-            mode = 'w'
-        self.csv_file = io.open(self.filename,
-                                mode + self.file_flags,
-                                **self._open_args)
+        if self.trainer.rank == 0:
+            if self.append:
+                if os.path.exists(self.filename):
+                    with open(self.filename, 'r' + self.file_flags) as f:
+                        self.append_header = not bool(len(f.readline()))
+                mode = 'a'
+            else:
+                mode = 'w'
+            self.csv_file = io.open(self.filename,
+                                    mode + self.file_flags,
+                                    **self._open_args)
 
     def on_epoch_end(self, epoch, logs=None):
-        logs = logs or {}
+        if self.trainer.rank == 0:
+            logs = logs or {}
 
-        def handle_value(k):
-            is_zero_dim_ndarray = isinstance(k, np.ndarray) and k.ndim == 0
-            if isinstance(k, collections.Iterable) and not is_zero_dim_ndarray:
-                return '"[%s]"' % (', '.join(map(str, k)))
-            else:
-                return k
+            def handle_value(k):
+                is_zero_dim_ndarray = isinstance(k, np.ndarray) and k.ndim == 0
+                if isinstance(k, collections.Iterable) and not is_zero_dim_ndarray:
+                    return '"[%s]"' % (', '.join(map(str, k)))
+                else:
+                    return k
 
-        if self.keys is None:
-            self.keys = sorted(logs.keys())
+            if self.keys is None:
+                self.keys = sorted(logs.keys())
 
-        if not self.writer:
+            if not self.writer:
 
-            class CustomDialect(csv.excel):
-                delimiter = self.sep
+                class CustomDialect(csv.excel):
+                    delimiter = self.sep
 
-            fieldnames = ['epoch'] + self.keys
+                fieldnames = ['epoch'] + self.keys
 
-            self.writer = csv.DictWriter(
-                self.csv_file,
-                fieldnames=fieldnames,
-                dialect=CustomDialect)
-            if self.append_header:
-                self.writer.writeheader()
+                self.writer = csv.DictWriter(
+                    self.csv_file,
+                    fieldnames=fieldnames,
+                    dialect=CustomDialect)
+                if self.append_header:
+                    self.writer.writeheader()
 
         row_dict = collections.OrderedDict({'epoch': epoch})
         row_dict.update((key, handle_value(logs[key])) for key in self.keys)
@@ -198,8 +200,9 @@ class CSVLogger(Callback):
         self.csv_file.flush()
 
     def on_train_end(self, logs=None):
-        self.csv_file.close()
-        self.writer = None
+        if self.trainer.rank == 0:
+            self.csv_file.close()
+            self.writer = None
 
     def extra_repr(self):
         return f"filename={self.filename}, separator={self.sep}, append={self.append}"
@@ -252,8 +255,6 @@ class ProgressBar(Callback):
 
     def __init__(self):
         super().__init__()
-
-        self.rank = 0
         self.n_train = 0
         self.n_valid = 0
 
@@ -266,9 +267,10 @@ class ProgressBar(Callback):
         self.n_valid = len(train_configs['valid_loader'] or [])
     
     def on_epoch_begin(self, epoch):
-        pbar = get_progress(total=self.n_train, desc=f'Epoch {epoch}')
-        self.train_pbar = pbar
-        self.running_metrics = np.zeros([])
+        if self.trainer.rank == 0:
+            pbar = get_progress(total=self.n_train, desc=f'Epoch {epoch}')
+            self.train_pbar = pbar
+            self.running_metrics = np.zeros([])
     
     def on_training_batch_end(self, epoch, step, data, caches, logs=None):
         if self.trainer.rank == 0:
@@ -277,7 +279,7 @@ class ProgressBar(Callback):
             self.train_pbar.update()
     
     def on_validation_batch_begin(self, epoch, step, data):
-        if step == 0:
+        if step == 0 and self.trainer.rank == 0:
             self.valid_pbar = get_progress(total=self.n_valid, desc=f'Valid Epoch {epoch}')
 
     def on_validation_batch_end(self, epoch, step, data, caches):

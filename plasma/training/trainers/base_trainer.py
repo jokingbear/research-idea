@@ -22,6 +22,9 @@ class BaseTrainer:
         self.metrics = metrics or []
         self.training = True
         self.dtype = dtype
+
+        if 'cuda' in device and rank != 0:
+            device = device.replace(':0', f':{rank}')
         self.device = device
         self.rank = rank
 

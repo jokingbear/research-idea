@@ -1,7 +1,11 @@
+from distutils.log import warn
 import json
+import os
 
 import torch
 import torch.nn as nn
+import torch.distributed as dist
+import torch.multiprocessing as mp
 
 from .callbacks import __mapping__ as callback_map
 from .losses import __mapping__ as loss_maps
@@ -13,12 +17,16 @@ from .optimizers import __mapping__ as optimizer_map
 
 class ConfigRunner:
 
-    def __init__(self, config, save_config_path=None, name=None, rank=0, verbose=1):
+    def __init__(self, config, save_config_path=None, name=None, rank=None, ddp=False, verbose=1):
         self.config = config
         self.save_config_path = save_config_path
         self.name = name or "train_config"
+        self.rank = rank
+        self.ddp = ddp
 
         repo_config = config["repo"]
+        repo_config['rank'] = rank
+
         model_config = config["model"]
         loss_config = config["loss"]
         metrics_configs = config.get("metrics", [])
@@ -26,13 +34,15 @@ class ConfigRunner:
                                               "lr": 1e-1, "momentum": 9e-1,
                                               "weight_decay": 1e-6, "nesterov": True})
         callbacks_configs = config.get("callbacks", [])
-        trainer_config = config.get("trainer", {"name": "standard", 'rank': rank})
+        trainer_config = config.get("trainer", {"name": "standard"})
+        trainer_config['rank'] = rank or 0
 
         print("creating train, valid loader") if verbose else None
         self.train, self.valid = self._get_repo(repo_config)
         if verbose:
             print("train: ", len(self.train))
-            print("valid: ", len(self.valid)) if self.valid is not None else None
+            print("valid: ", len(self.valid)
+                  ) if self.valid is not None else None
 
         print("creating model") if verbose else None
         self.model = self._get_model(model_config)
@@ -42,7 +52,8 @@ class ConfigRunner:
             with open("model.txt", "w") as handle:
                 handle.write(str(self.model))
 
-            num = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
+            num = sum(p.numel()
+                      for p in self.model.parameters() if p.requires_grad)
             print('parameters:', num)
 
         self.loss = self._get_loss(loss_config)
@@ -73,7 +84,8 @@ class ConfigRunner:
         elif "train" in entries:
             method = "train"
         else:
-            raise NotImplementedError("repo need to have train_valid or train method for empty name config")
+            raise NotImplementedError(
+                "repo need to have train_valid or train method for empty name config")
 
         loaders = repo_entries.load(method, **kwargs)
 
@@ -88,7 +100,8 @@ class ConfigRunner:
     def _get_model(self, model_config):
         model_entries = get_entries(model_config["path"])
 
-        kwargs = self.get_kwargs(model_config, ["path", "name", "parallel", "checkpoint", "gpu"])
+        kwargs = self.get_kwargs(
+            model_config, ["path", "name", "parallel", "checkpoint", "gpu"])
         name = model_config["name"]
         model = model_entries.load(name, **kwargs)
 
@@ -96,10 +109,14 @@ class ConfigRunner:
             w = torch.load(model_config["checkpoint"], map_location="cpu")
             print(model.load_state_dict(w, strict=False))
 
-        if model_config.get("parallel", False):
-            model = nn.DataParallel(model).cuda()
+        if self.ddp:
+            model = model.to(self.rank)
+            model = nn.parallel.DistributedDataParallel(
+                model, device_ids=[self.rank])
+        elif model_config.get("parallel", False):
+            model = nn.DataParallel(model).cuda(self.rank or 0)
         elif model_config.get("gpu", False):
-            model = model.cuda()
+            model = model.cuda(self.rank or 0)
 
         return model
 
@@ -113,7 +130,8 @@ class ConfigRunner:
         elif name in loss_maps:
             loss = loss_maps[name](**kwargs)
         else:
-            raise NotImplementedError(f"currently only support {loss_maps.keys()}")
+            raise NotImplementedError(
+                f"currently only support {loss_maps.keys()}")
 
         return loss
 
@@ -131,7 +149,8 @@ class ConfigRunner:
             entries = get_entries(metrics_configs["path"])
 
             name = metrics_configs["name"]
-            kwargs = self.get_kwargs(metrics_configs, excludes=["name", "path"])
+            kwargs = self.get_kwargs(
+                metrics_configs, excludes=["name", "path"])
 
             metrics = entries.load(name, **kwargs)
 
@@ -147,9 +166,11 @@ class ConfigRunner:
             raise NotImplementedError(f"only support {optimizer_map.keys()}")
 
         if 'checkpoint' in opt_config:
-            opt.load_state_dict(torch.load(opt_config['checkpoint'], map_location='cpu'))
+            opt.load_state_dict(torch.load(
+                opt_config['checkpoint'], map_location='cpu'))
 
-        opt = opt([p for p in self.model.parameters() if p.requires_grad], **kwargs)
+        opt = opt([p for p in self.model.parameters()
+                  if p.requires_grad], **kwargs)
         return opt
 
     def _get_trainer(self, trainer_config):
@@ -159,11 +180,14 @@ class ConfigRunner:
 
         if path is not None:
             entries = get_entries(path)
-            trainer = entries.load(name, self.model, self.optimizer, self.loss, metrics=self.metrics, **kwargs)
+            trainer = entries.load(
+                name, self.model, self.optimizer, self.loss, metrics=self.metrics, **kwargs)
         elif name in trainer_maps:
-            trainer = trainer_maps[name](self.model, self.optimizer, self.loss, metrics=self.metrics, **kwargs)
+            trainer = trainer_maps[name](
+                self.model, self.optimizer, self.loss, metrics=self.metrics, **kwargs)
         else:
-            raise not NotImplementedError("only support standard trainer for empty trainer config")
+            raise not NotImplementedError(
+                "only support standard trainer for empty trainer config")
 
         return trainer
 
@@ -202,19 +226,46 @@ class ConfigRunner:
         return {k: configs[k] for k in configs if k not in excludes}
 
 
-def create(config, save_config_path=None, name=None, verbose=1):
+def run(config, save_config_path=None, name=None, ddp=False, rank=None, backend='nccl', verbose=1):
     """
-    create runner
+    run trainin based on predefined configuration
     Args:
         config: config dict or path to config dict
         save_config_path: where to save config after training
         name: name of saved config
+        ddp: whether to use ddp or not
+        rank: rank of the ddp process
+        backend: ddp backend
         verbose: print creation step
-
-    Returns: ConfigRunner
     """
     if not isinstance(config, dict):
         with open(config) as handle:
             config = json.load(handle)
 
-    return ConfigRunner(config, save_config_path=save_config_path, name=name, verbose=verbose)
+    if ddp:
+        devices = torch.cuda.device_count()
+
+        if rank is None:
+            rank = 0
+
+        if devices < 2:
+            warn(f'found {devices} device, default to 1 process')
+        else:
+            mp.spawn(_run, args=(config, backend, devices), nprocs=devices, join=True)
+    else:
+        runner = ConfigRunner(config, save_config_path=save_config_path, name=name, verbose=verbose)
+        runner.run()
+
+
+def _setup(rank, backend, devices):
+    os.environ['MASTER_ADDR'] = 'localhost'
+    os.environ['MASTER_PORT'] = 12355
+
+    dist.init_process_group(backend, rank=rank, world_size=devices)
+
+
+def _run(rank, config, backend, devices):
+    _setup(rank, backend, devices)
+
+    runner = ConfigRunner(config, verbose=rank == 0)
+    runner.run()
