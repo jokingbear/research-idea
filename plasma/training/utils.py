@@ -2,7 +2,6 @@ import multiprocessing as mp
 from multiprocessing.dummy import Pool
 import os
 
-import numpy as np
 import torch
 from tqdm import tqdm
 from tqdm.notebook import tqdm as tqdm_nb
@@ -38,23 +37,18 @@ def eval_modules(*modules):
     return torch.no_grad()
 
 
-def parallel_iterate(arr, iter_func, workers=8, batch_size=1, **kwargs):
+def parallel_iterate(arr, iter_func, workers=8, chunk_size=1, **kwargs):
     """
     parallel iterate array
     :param arr: array to be iterated
     :param iter_func: function to be called for each data, signature (idx, arg) or arg
     :param workers: number of worker to run
-    :param batch_size: chunk size
+    :param chunk_size: chunk size to commit as a task
     :param use_index: whether to add index to each call of iter func
     :return list of result if not all is None
     """
-    n = len(arr)
-    n_chunk = n // batch_size
-    if n_chunk * batch_size != n:
-        n_chunk += 1
-
     with mp.Pool(workers) as p:
-        runners = p.imap(iter_func, arr, batch_size)
+        runners = p.imap(iter_func, arr, chunk_size)
         return [r for r in get_progress(runners, total=len(arr))]
 
 
