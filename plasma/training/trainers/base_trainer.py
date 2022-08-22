@@ -15,7 +15,7 @@ from ..callbacks.standard_callbacks import ProgressBar
 class BaseTrainer:
 
     def __init__(self, models: List[nn.Module], optimizers, loss: nn.Module, metrics=None, 
-                dtype=torch.float, device='cuda:0', rank=0):
+                dtype=torch.float, rank=0):
         self.models = models
         self.optimizers = optimizers
         self.loss = loss
@@ -23,8 +23,7 @@ class BaseTrainer:
         self.training = True
         self.dtype = dtype
 
-        if 'cuda' in device and rank != 0:
-            device = device.replace(':0', f':{rank}')
+        device = f'cuda:{rank}'
         self.device = device
         self.rank = rank
 

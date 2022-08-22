@@ -17,16 +17,13 @@ from .optimizers import __mapping__ as optimizer_map
 
 class ConfigRunner:
 
-    def __init__(self, config, save_config_path=None, name=None, rank=None, ddp=False, verbose=1):
+    def __init__(self, config, save_config_path=None, rank=0, ddp=False, verbose=1):
         self.config = config
         self.save_config_path = save_config_path
-        self.name = name or "train_config"
         self.rank = rank
         self.ddp = ddp
 
         repo_config = config["repo"]
-        repo_config['rank'] = rank
-
         model_config = config["model"]
         loss_config = config["loss"]
         metrics_configs = config.get("metrics", [])
@@ -35,14 +32,17 @@ class ConfigRunner:
                                               "weight_decay": 1e-6, "nesterov": True})
         callbacks_configs = config.get("callbacks", [])
         trainer_config = config.get("trainer", {"name": "standard"})
-        trainer_config['rank'] = rank or 0
+
+        if ddp:
+            repo_config['rank'] = rank
+            repo_config['num_replicas'] = torch.cuda.device_count()
+            trainer_config['rank'] = rank
 
         print("creating train, valid loader") if verbose else None
         self.train, self.valid = self._get_repo(repo_config)
         if verbose:
             print("train: ", len(self.train))
-            print("valid: ", len(self.valid)
-                  ) if self.valid is not None else None
+            print("valid: ", len(self.valid)) if self.valid is not None else None
 
         print("creating model") if verbose else None
         self.model = self._get_model(model_config)
@@ -111,12 +111,11 @@ class ConfigRunner:
 
         if self.ddp:
             model = model.to(self.rank)
-            model = nn.parallel.DistributedDataParallel(
-                model, device_ids=[self.rank])
+            model = nn.parallel.DistributedDataParallel(model, device_ids=[self.rank])
         elif model_config.get("parallel", False):
-            model = nn.DataParallel(model).cuda(self.rank or 0)
+            model = nn.DataParallel(model).cuda(self.rank)
         elif model_config.get("gpu", False):
-            model = model.cuda(self.rank or 0)
+            model = model.cuda(self.rank)
 
         return model
 
@@ -212,7 +211,7 @@ class ConfigRunner:
         self.trainer.fit(self.train, self.valid, callbacks=self.callbacks)
 
         if self.save_config_path is not None:
-            full_file = f"{self.save_config_path}/{self.name}"
+            full_file = self.save_config_path
             with open(full_file, "w") as handle:
                 json.dump(self.config, handle)
 
@@ -226,13 +225,12 @@ class ConfigRunner:
         return {k: configs[k] for k in configs if k not in excludes}
 
 
-def run(config, save_config_path=None, name=None, ddp=False, rank=None, backend='nccl', verbose=1):
+def run(config, save_config_path=None, ddp=False, backend='nccl', verbose=1):
     """
     run trainin based on predefined configuration
     Args:
         config: config dict or path to config dict
         save_config_path: where to save config after training
-        name: name of saved config
         ddp: whether to use ddp or not
         rank: rank of the ddp process
         backend: ddp backend
@@ -245,15 +243,12 @@ def run(config, save_config_path=None, name=None, ddp=False, rank=None, backend=
     if ddp:
         devices = torch.cuda.device_count()
 
-        if rank is None:
-            rank = 0
-
         if devices < 2:
             warn(f'found {devices} device, default to 1 process')
         else:
             mp.spawn(_run, args=(config, backend, devices), nprocs=devices, join=True)
     else:
-        runner = ConfigRunner(config, save_config_path=save_config_path, name=name, verbose=verbose)
+        runner = ConfigRunner(config, save_config_path=save_config_path, verbose=verbose)
         runner.run()
 
 
@@ -267,5 +262,7 @@ def _setup(rank, backend, devices):
 def _run(rank, config, backend, devices):
     _setup(rank, backend, devices)
 
-    runner = ConfigRunner(config, verbose=rank == 0)
+    runner = ConfigRunner(config, rank=rank, verbose=rank == 0)
     runner.run()
+
+    dist.destroy_process_group()
