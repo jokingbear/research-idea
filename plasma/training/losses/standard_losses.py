@@ -88,7 +88,7 @@ class WBCE(nn.Module):
         ln0 = (1 - preds + 1e-7).log()
         ln1 = (preds + 1e-7).log()
 
-        weights = self.weights
+        weights = self.weights.to(preds.device)
         if self.smooth is not None:
             sm = torch.ones_like(preds).uniform_(1 - self.smooth, 1)
             ln0 = weights[..., 0] * (1 - trues) * (sm * ln0 + (1 - sm) * ln1)

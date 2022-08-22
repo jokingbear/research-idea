@@ -1,7 +1,7 @@
 from abc import abstractmethod
 
 from torch.utils import data
-from torch.utils.data import RandomSampler, SequentialSampler
+from torch.utils.data import RandomSampler, SequentialSampler, DistributedSampler
 
 
 class StandardDataset(data.Dataset):
@@ -23,8 +23,12 @@ class StandardDataset(data.Dataset):
     def get_item(self, idx):
         pass
 
-    def get_torch_loader(self, batch_size=32, workers=20, sampler=None, pin=True, drop_last=True, shuffle=True):
-        sampler = sampler or RandomSampler(self) if shuffle else SequentialSampler(self)
+    def get_torch_loader(self, batch_size=32, workers=20, sampler=None, pin=True, drop_last=True, shuffle=True, 
+                         rank=None, num_replicas=None):
+        if rank is None:
+            sampler = sampler or RandomSampler(self) if shuffle else SequentialSampler(self)
+        else:
+            sampler = DistributedSampler(self, rank=rank, num_replicas=num_replicas, shuffle=shuffle)
 
         return data.DataLoader(self, batch_size, sampler=sampler, num_workers=workers,
                                pin_memory=pin, drop_last=drop_last)

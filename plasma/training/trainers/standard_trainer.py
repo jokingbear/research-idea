@@ -8,7 +8,7 @@ from .utils import get_dict
 
 class StandardTrainer(BaseTrainer):
 
-    def __init__(self, model, optimizer, loss, metrics=None, dtype='float', device='cuda:0', rank=0):
+    def __init__(self, model, optimizer, loss, metrics=None, dtype='float', rank=0):
         """
         :param model: torch module
         :param optimizer: torch optimizer
@@ -19,7 +19,7 @@ class StandardTrainer(BaseTrainer):
         :param y_device: device to put labels
         :param y_type: type to cast labels
         """
-        super().__init__([model], [optimizer], loss, metrics, dtype, device, rank)
+        super().__init__([model], [optimizer], loss, metrics, dtype, rank)
 
         self.training = True
 
