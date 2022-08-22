@@ -194,10 +194,10 @@ class CSVLogger(Callback):
                 if self.append_header:
                     self.writer.writeheader()
 
-        row_dict = collections.OrderedDict({'epoch': epoch})
-        row_dict.update((key, handle_value(logs[key])) for key in self.keys)
-        self.writer.writerow(row_dict)
-        self.csv_file.flush()
+            row_dict = collections.OrderedDict({'epoch': epoch})
+            row_dict.update((key, handle_value(logs[key])) for key in self.keys)
+            self.writer.writerow(row_dict)
+            self.csv_file.flush()
 
     def on_train_end(self, logs=None):
         if self.trainer.rank == 0:

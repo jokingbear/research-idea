@@ -225,9 +225,33 @@ class ConfigRunner:
         return {k: configs[k] for k in configs if k not in excludes}
 
 
-def run(config, save_config_path=None, ddp=False, backend='nccl', verbose=1):
+class DDPRunner:
+
+    def __init__(self, config, backend, devices):
+        self.config = config
+        self.backend = backend
+        self.devices = devices
+    
+    def _setup(self, rank):
+        os.environ['MASTER_ADDR'] = 'localhost'
+        os.environ['MASTER_PORT'] = '12355'
+
+        dist.init_process_group(self.backend, rank=rank, world_size=self.devices)
+        
+    def _run(self, rank):
+        self._setup(rank)
+
+        runner = ConfigRunner(self.config, ddp=True, rank=rank, verbose=rank == 0)
+        runner.run()
+        dist.destroy_process_group()
+
+    def run(self):
+        mp.spawn(self._run, nprocs=self.devices, join=True)
+
+
+def create(config, save_config_path=None, ddp=False, backend='nccl', verbose=1):
     """
-    run trainin based on predefined configuration
+    create runner based on predefined configuration
     Args:
         config: config dict or path to config dict
         save_config_path: where to save config after training
@@ -246,23 +270,6 @@ def run(config, save_config_path=None, ddp=False, backend='nccl', verbose=1):
         if devices < 2:
             warn(f'found {devices} device, default to 1 process')
         else:
-            mp.spawn(_run, args=(config, backend, devices), nprocs=devices, join=True)
+            return DDPRunner(config, backend, devices)
     else:
-        runner = ConfigRunner(config, save_config_path=save_config_path, verbose=verbose)
-        runner.run()
-
-
-def _setup(rank, backend, devices):
-    os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = 12355
-
-    dist.init_process_group(backend, rank=rank, world_size=devices)
-
-
-def _run(rank, config, backend, devices):
-    _setup(rank, backend, devices)
-
-    runner = ConfigRunner(config, rank=rank, verbose=rank == 0)
-    runner.run()
-
-    dist.destroy_process_group()
+        return ConfigRunner(config, save_config_path=save_config_path, verbose=verbose)

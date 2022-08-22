@@ -164,17 +164,16 @@ class SuperConvergence(Callback):
         self.scheduler = None
 
     def on_train_begin(self, **train_configs):
-        if self.trainer.rank == 0:
-            n = len(train_configs["train_loader"])
-            max_lr = [g["lr"] for g in self.optimizers[0].param_groups]
+        n = len(train_configs["train_loader"])
+        max_lr = [g["lr"] for g in self.optimizers[0].param_groups]
 
-            self.scheduler = opts.lr_scheduler.OneCycleLR(self.optimizers[0], max_lr,
-                                                        epochs=self.epochs, steps_per_epoch=n,
-                                                        div_factor=self.div_factor,
-                                                        final_div_factor=self.final_div_factor)
+        self.scheduler = opts.lr_scheduler.OneCycleLR(self.optimizers[0], max_lr,
+                                                    epochs=self.epochs, steps_per_epoch=n,
+                                                    div_factor=self.div_factor,
+                                                    final_div_factor=self.final_div_factor)
 
-            if not os.path.exists(self.dir) and self.snapshot:
-                os.mkdir(self.dir)
+        if self.trainer.rank == 0 and not os.path.exists(self.dir) and self.snapshot:
+            os.makedirs(self.dir)
 
     def on_training_batch_end(self, epoch, step, data, caches, logs=None):
         self.scheduler.step()
