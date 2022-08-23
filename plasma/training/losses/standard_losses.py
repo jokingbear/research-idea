@@ -62,7 +62,7 @@ class FbetaLoss(nn.Module):
 
 class WBCE(nn.Module):
 
-    def __init__(self, weights_path=None, smooth=None, device="cpu"):
+    def __init__(self, weights_path=None, smooth=None):
         super().__init__()
 
         if weights_path is None:
@@ -79,7 +79,7 @@ class WBCE(nn.Module):
         else:
             raise NotImplementedError("only support csv and numpy extension")
 
-        self.weights = torch.tensor(weights, dtype=torch.float, device=device)
+        self.weights = torch.tensor(weights, dtype=torch.float)
         self.smooth = smooth
 
     def forward(self, preds, trues):
