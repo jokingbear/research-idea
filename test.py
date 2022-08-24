@@ -1,5 +1,5 @@
-import time
+import plasma.hub as hub
 
-def check(idx):
-    time.sleep(1)
-    return idx
+entries = hub.get_entries('plasma/hub/hub_entries')
+
+entries.inspect('HubEntries')

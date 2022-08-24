@@ -21,7 +21,8 @@ class HubEntries:
         """
         function = getattr(self.module, entry_name)
 
-        assert insp.isfunction(function), f"{function} is not a function"
+        assert insp.isfunction(function) or insp.isclass(function), \
+            f"{function} is not a function or a class"
 
         return function(*args, **kwargs)
 
@@ -31,8 +32,9 @@ class HubEntries:
         :return: list of entries
         """
         function_names = [name for name, _ in insp.getmembers(self.module, insp.isfunction)]
+        class_names = [name for name, _ in insp.getmembers(self.module, insp.isclass)]
 
-        return function_names
+        return {'functions': function_names, 'classes': class_names}
 
     def inspect(self, entry_name):
         """
@@ -42,7 +44,8 @@ class HubEntries:
         """
         function = getattr(self.module, entry_name)
 
-        assert insp.isfunction(function), f"{function} is not a function"
+        assert insp.isfunction(function) or insp.isclass(function), \
+            f"{function} is not a function or a class"
 
         spec = insp.getfullargspec(function)
         return spec
