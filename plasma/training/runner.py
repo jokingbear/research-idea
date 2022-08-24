@@ -218,9 +218,6 @@ class ConfigRunner:
             with open(full_file, "w") as handle:
                 json.dump(self.config, handle)
 
-    def __call__(self):
-        self.run()
-
     @staticmethod
     def get_kwargs(configs, excludes=("name",)):
         excludes = set(excludes)

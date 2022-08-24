@@ -2,6 +2,8 @@ import os
 import numpy as np
 import torch
 import torch.optim as opts
+import plotly.graph_objects as go
+import matplotlib.pyplot as plt
 
 from .base_class import Callback
 
@@ -28,6 +30,8 @@ class LrFinder(Callback):
         self.history = {}
 
     def on_train_begin(self, **train_configs):
+        assert self.trainer.rank == 0, 'this callback doesnt support ddp'
+
         epochs = self.epochs
         iterations = len(train_configs["train_loader"])
 
@@ -59,12 +63,10 @@ class LrFinder(Callback):
         lrs, targets = zip(*self.get_data(group, target))
 
         if self.use_plotly:
-            import plotly.graph_objects as go
             fig = go.Figure(data=go.Scatter(x=lrs, y=targets))
             fig.update_layout(title=f"lr vs {target}", xaxis_title="lr", yaxis_title=target)
             fig.show("iframe")
         else:
-            import matplotlib.pyplot as plt
             plt.plot(lrs, targets)
             plt.xlabel("lr")
             plt.ylabel(target)
