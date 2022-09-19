@@ -77,3 +77,36 @@ def set_devices(*device_ids):
     assert len(device_ids) > 0, "there must be at least 1 id"
 
     os.environ['CUDA_VISIBLE_DEVICES'] = ','.join([str(d) for d in device_ids])
+
+
+def torch_parallel_iterate(arr, loader_func, iteration_func, batch_size=32, workers=2, loader_kwards={}, 
+                            dtype=torch.float16, **kwargs):
+    loader = get_loader(arr, loader_func, batch_size=batch_size, workers=workers, **loader_kwards)
+
+    class TempModule(torch.nn.Module):
+
+        def __init__(self):
+            super().__init__()
+
+            for k in kwargs:
+                value = kwargs[k]
+                
+                if type(value) is not torch.Tensor:
+                    value = torch.tensor(value, dtype=dtype)
+                
+                self.register_parameter(k, torch.nn.Parameter(value, requires_grad=False))
+        
+        def forward(self, x):
+            return iteration_func(x, **{k: getattr(self, k) for k in kwargs})
+    
+    m = TempModule()
+    m = torch.nn.DataParallel(m)
+    m = m.cuda()
+    results = []
+
+    with torch.no_grad():
+        for d in get_progress(loader, total=len(loader)):
+            d = d.type(dtype)
+            results.append(m(d.cuda()))
+    
+    return results

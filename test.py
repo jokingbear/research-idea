@@ -1,5 +1,5 @@
-import plasma.hub as hub
+import torch.multiprocessing as mp
 
-entries = hub.get_entries('plasma/hub/hub_entries')
+a = mp.Pool()
 
-entries.inspect('HubEntries')
+a.map_async()
