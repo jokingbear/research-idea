@@ -11,7 +11,7 @@ from .data.adhoc_data import AdhocData
 notebook = False
 
 
-def get_progress(iterable=None, total=None, desc=None):
+def get_progress(iterable=None, total=None, desc=None, leave=False):
     """
     get progress bar
     :param iterable: target to be iterated
@@ -21,9 +21,9 @@ def get_progress(iterable=None, total=None, desc=None):
     """
 
     if notebook:
-        return tqdm_nb(iterable=iterable, total=total, desc=desc)
+        return tqdm_nb(iterable=iterable, total=total, desc=desc, leave=leave)
 
-    return tqdm(iterable=iterable, total=total, desc=desc)
+    return tqdm(iterable=iterable, total=total, desc=desc, leave=leave)
 
 
 def eval_modules(*modules):
@@ -37,19 +37,19 @@ def eval_modules(*modules):
     return torch.no_grad()
 
 
-def parallel_iterate(arr, iter_func, workers=8, chunk_size=1, **kwargs):
+def parallel_iterate(arr, iter_func, workers=8, use_index=False, **kwargs):
     """
     parallel iterate array
     :param arr: array to be iterated
     :param iter_func: function to be called for each data, signature (idx, arg) or arg
     :param workers: number of worker to run
-    :param chunk_size: chunk size to commit as a task
     :param use_index: whether to add index to each call of iter func
     :return list of result if not all is None
     """
     with mp.Pool(workers) as p:
-        runners = p.imap(iter_func, arr, chunk_size)
-        return [r for r in get_progress(runners, total=len(arr))]
+        jobs = [p.apply_async(iter_func, args=(i, arg) if use_index else (arg,), kwds=kwargs) for i, arg in enumerate(arr)]
+        results = [j.get() for j in get_progress(jobs)]
+        return results
 
 
 def get_loader(arr, mapper=None, imapper=None, batch_size=32, pin_memory=True, workers=None, **kwargs):
@@ -79,7 +79,7 @@ def set_devices(*device_ids):
     os.environ['CUDA_VISIBLE_DEVICES'] = ','.join([str(d) for d in device_ids])
 
 
-def torch_parallel_iterate(arr, loader_func, iteration_func, batch_size=32, workers=2, loader_kwards={}, 
+def torch_parallel_iterate(arr, loader_func, iteration_func, cleanup_func=None, batch_size=32, workers=2, loader_kwards={}, 
                             dtype=torch.float16, **kwargs):
     loader = get_loader(arr, loader_func, batch_size=batch_size, workers=workers, **loader_kwards)
 
@@ -107,6 +107,11 @@ def torch_parallel_iterate(arr, loader_func, iteration_func, batch_size=32, work
     with torch.no_grad():
         for d in get_progress(loader, total=len(loader)):
             d = d.type(dtype)
-            results.append(m(d.cuda()))
+            result = m(d.cuda())
+            
+            if cleanup_func is not None:
+                cleanup_func(result)
+            else:
+                results.apennd(result)
     
     return results
