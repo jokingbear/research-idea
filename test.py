@@ -1,5 +1,11 @@
-import time
+a = []
 
-def check(idx):
-    time.sleep(1)
-    return idx
+def tmp():
+    print(a)
+    a.append(0)
+    print(a)
+
+tmp()
+
+a = []
+tmp()

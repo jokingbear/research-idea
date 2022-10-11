@@ -34,7 +34,8 @@ class Callback:
         pass
 
     def set_trainer(self, trainer):
-        self.models = [m.module if isinstance(m, nn.DataParallel) else m for m in trainer.models]
+        self.models = [m.module if isinstance(m, (nn.DataParallel, nn.parallel.DistributedDataParallel)) 
+                       else m for m in trainer.models]
         self.optimizers = trainer.optimizers
         self.trainer = trainer
 

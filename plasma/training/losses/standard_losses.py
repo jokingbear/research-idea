@@ -62,7 +62,7 @@ class FbetaLoss(nn.Module):
 
 class WBCE(nn.Module):
 
-    def __init__(self, weights_path=None, smooth=None, device="cpu"):
+    def __init__(self, weights_path=None, smooth=None, sym=False):
         super().__init__()
 
         if weights_path is None:
@@ -79,8 +79,9 @@ class WBCE(nn.Module):
         else:
             raise NotImplementedError("only support csv and numpy extension")
 
-        self.weights = torch.tensor(weights, dtype=torch.float, device=device)
+        self.weights = torch.tensor(weights, dtype=torch.float)
         self.smooth = smooth
+        self.sym = sym
 
     def forward(self, preds, trues):
         _assert_inputs(preds, trues)
@@ -93,15 +94,23 @@ class WBCE(nn.Module):
             sm = torch.ones_like(preds).uniform_(1 - self.smooth, 1)
             ln0 = weights[..., 0] * (1 - trues) * (sm * ln0 + (1 - sm) * ln1)
             ln1 = weights[..., 1] * trues * (sm * ln1 + (1 - sm) * ln0)
+
+            if self.sym:
+                ln0 = ln0 + weights[..., 0] * (1 - trues) * ((1 - preds) * sm.log() + preds * (1 - sm).log())
+                ln1 = ln1 + weights[..., 1] * trues * (preds * sm.log() + (1 - preds) * (1 - sm).log())
         else:
             ln0 = weights[..., 0] * (1 - trues) * ln0
             ln1 = weights[..., 1] * trues * ln1
+
+            if self.sym:
+                ln0 = ln0 + weights[..., 0] * (1 - trues) * preds * (-12)
+                ln1 = ln1 + weights[..., 1] * trues * (1 - preds) * (-12)
 
         ln = ln0 + ln1
         return -ln.mean()
 
     def extra_repr(self):
-        return f"weights_shape={self.weights.shape}, smooth={self.smooth}, device={self.weights.device}"
+        return f"weights_shape={self.weights.shape}, smooth={self.smooth}, sym={self.sym}"
 
     @staticmethod
     def get_class_balance_weight(counts, anchor=0):

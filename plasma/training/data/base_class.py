@@ -28,6 +28,7 @@ class StandardDataset(data.Dataset):
         if rank is None:
             sampler = sampler or RandomSampler(self) if shuffle else SequentialSampler(self)
         else:
+            assert num_replicas is not None, 'num replicas can be None when use rank'
             sampler = DistributedSampler(self, rank=rank, num_replicas=num_replicas, shuffle=shuffle)
 
         return data.DataLoader(self, batch_size, sampler=sampler, num_workers=workers,

@@ -36,6 +36,9 @@ class ConfigRunner:
         if ddp:
             repo_config['rank'] = rank
             repo_config['num_replicas'] = torch.cuda.device_count()
+
+            model_config['rank'] = rank
+
             trainer_config['rank'] = rank
 
         print("creating train, valid loader") if verbose else None
@@ -107,7 +110,7 @@ class ConfigRunner:
 
         if "checkpoint" in model_config:
             w = torch.load(model_config["checkpoint"], map_location="cpu")
-            print(model.load_state_dict(w, strict=False))
+            print(model.load_state_dict(w, strict=False)) if self.rank == 0 else None
 
         if self.ddp:
             model = model.to(self.rank)
@@ -215,9 +218,6 @@ class ConfigRunner:
             with open(full_file, "w") as handle:
                 json.dump(self.config, handle)
 
-    def __call__(self):
-        self.run()
-
     @staticmethod
     def get_kwargs(configs, excludes=("name",)):
         excludes = set(excludes)
@@ -231,10 +231,13 @@ class DDPRunner:
         self.config = config
         self.backend = backend
         self.devices = devices
+
+        self._default_addr = 'localhost'
+        self._default_port = '25389'
     
     def _setup(self, rank):
-        os.environ['MASTER_ADDR'] = 'localhost'
-        os.environ['MASTER_PORT'] = '12355'
+        os.environ['MASTER_ADDR'] = self._default_addr
+        os.environ['MASTER_PORT'] = self._default_port
 
         dist.init_process_group(self.backend, rank=rank, world_size=self.devices)
         
@@ -247,6 +250,13 @@ class DDPRunner:
 
     def run(self):
         mp.spawn(self._run, nprocs=self.devices, join=True)
+    
+    def set_addr_port(self, addr=None, port=None):
+        if addr is not None:
+            self._default_addr = addr
+
+        if port is not None:
+            self._default_port = port
 
 
 def create(config, save_config_path=None, ddp=False, backend='nccl', verbose=1):
@@ -256,7 +266,6 @@ def create(config, save_config_path=None, ddp=False, backend='nccl', verbose=1):
         config: config dict or path to config dict
         save_config_path: where to save config after training
         ddp: whether to use ddp or not
-        rank: rank of the ddp process
         backend: ddp backend
         verbose: print creation step
     """

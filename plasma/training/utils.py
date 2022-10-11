@@ -11,7 +11,7 @@ from .data.adhoc_data import AdhocData
 notebook = False
 
 
-def get_progress(iterable=None, total=None, desc=None):
+def get_progress(iterable=None, total=None, desc=None, leave=False):
     """
     get progress bar
     :param iterable: target to be iterated
@@ -21,9 +21,9 @@ def get_progress(iterable=None, total=None, desc=None):
     """
 
     if notebook:
-        return tqdm_nb(iterable=iterable, total=total, desc=desc)
+        return tqdm_nb(iterable=iterable, total=total, desc=desc, leave=leave)
 
-    return tqdm(iterable=iterable, total=total, desc=desc)
+    return tqdm(iterable=iterable, total=total, desc=desc, leave=leave)
 
 
 def eval_modules(*modules):
@@ -37,19 +37,19 @@ def eval_modules(*modules):
     return torch.no_grad()
 
 
-def parallel_iterate(arr, iter_func, workers=8, chunk_size=1, **kwargs):
+def parallel_iterate(arr, iter_func, workers=8, use_index=False, **kwargs):
     """
     parallel iterate array
     :param arr: array to be iterated
     :param iter_func: function to be called for each data, signature (idx, arg) or arg
     :param workers: number of worker to run
-    :param chunk_size: chunk size to commit as a task
     :param use_index: whether to add index to each call of iter func
     :return list of result if not all is None
     """
     with mp.Pool(workers) as p:
-        runners = p.imap(iter_func, arr, chunk_size)
-        return [r for r in get_progress(runners, total=len(arr))]
+        jobs = [p.apply_async(iter_func, args=(i, arg) if use_index else (arg,), kwds=kwargs) for i, arg in enumerate(arr)]
+        results = [j.get() for j in get_progress(jobs)]
+        return results
 
 
 def get_loader(arr, mapper=None, imapper=None, batch_size=32, pin_memory=True, workers=None, **kwargs):
@@ -77,3 +77,59 @@ def set_devices(*device_ids):
     assert len(device_ids) > 0, "there must be at least 1 id"
 
     os.environ['CUDA_VISIBLE_DEVICES'] = ','.join([str(d) for d in device_ids])
+
+
+def torch_parallel_iterate(arr, iteration_func, loader_func=None, cleanup_func=None, batch_size=32, workers=2, loader_kwargs={}, 
+                            dtype=torch.float16, **kwargs):
+    """
+    parallel iterate over arr using torch
+    :param arr: array to be iterate over
+    :param iteration_func: what to compute on gpu
+    :param loader_func: how to load the data, the default is identity
+    :param cleanup_func: how to clean up the data after each iteration
+    :batch_size: batch size to load on gpus
+    :workers: number of worker for torch loader
+    :loader_kwargs: additional param for torch loader
+    :dtype: cast type on gpu
+    :kwargs: additional arg for iteration_func
+    """
+
+    if loader_func is None:
+        loader_func = lambda x: x
+
+    loader = get_loader(arr, loader_func, batch_size=batch_size, workers=workers, **loader_kwargs)
+
+    class TempModule(torch.nn.Module):
+
+        def __init__(self):
+            super().__init__()
+
+            for k in kwargs:
+                value = kwargs[k]
+                
+                if issubclass(value, torch.nn.Module):
+                    setattr(self, k, value)
+                elif not isinstance(k, torch.Tensor):
+                    value = torch.tensor(value, dtype=dtype)
+                
+                self.register_parameter(k, torch.nn.Parameter(value, requires_grad=False))
+        
+        def forward(self, x):
+            return iteration_func(x, **{k: getattr(self, k) for k in kwargs})
+    
+    m = TempModule()
+    m = torch.nn.DataParallel(m)
+    m = m.cuda()
+    results = []
+
+    with torch.no_grad():
+        for i, d in get_progress(enumerate(loader), total=len(loader)):
+            d = d.type(dtype)
+            result = m(d.cuda())
+            
+            if cleanup_func is not None:
+                cleanup_func(i, result)
+            else:
+                results.apennd(result)
+    
+    return results
