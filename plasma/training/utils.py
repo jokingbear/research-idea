@@ -79,9 +79,25 @@ def set_devices(*device_ids):
     os.environ['CUDA_VISIBLE_DEVICES'] = ','.join([str(d) for d in device_ids])
 
 
-def torch_parallel_iterate(arr, loader_func, iteration_func, cleanup_func=None, batch_size=32, workers=2, loader_kwards={}, 
+def torch_parallel_iterate(arr, iteration_func, loader_func=None, cleanup_func=None, batch_size=32, workers=2, loader_kwargs={}, 
                             dtype=torch.float16, **kwargs):
-    loader = get_loader(arr, loader_func, batch_size=batch_size, workers=workers, **loader_kwards)
+    """
+    parallel iterate over arr using torch
+    :param arr: array to be iterate over
+    :param iteration_func: what to compute on gpu
+    :param loader_func: how to load the data, the default is identity
+    :param cleanup_func: how to clean up the data after each iteration
+    :batch_size: batch size to load on gpus
+    :workers: number of worker for torch loader
+    :loader_kwargs: additional param for torch loader
+    :dtype: cast type on gpu
+    :kwargs: additional arg for iteration_func
+    """
+
+    if loader_func is None:
+        loader_func = lambda x: x
+
+    loader = get_loader(arr, loader_func, batch_size=batch_size, workers=workers, **loader_kwargs)
 
     class TempModule(torch.nn.Module):
 
@@ -91,7 +107,9 @@ def torch_parallel_iterate(arr, loader_func, iteration_func, cleanup_func=None, 
             for k in kwargs:
                 value = kwargs[k]
                 
-                if type(value) is not torch.Tensor:
+                if issubclass(value, torch.nn.Module):
+                    setattr(self, k, value)
+                elif not isinstance(k, torch.Tensor):
                     value = torch.tensor(value, dtype=dtype)
                 
                 self.register_parameter(k, torch.nn.Parameter(value, requires_grad=False))
@@ -105,12 +123,12 @@ def torch_parallel_iterate(arr, loader_func, iteration_func, cleanup_func=None, 
     results = []
 
     with torch.no_grad():
-        for d in get_progress(loader, total=len(loader)):
+        for i, d in get_progress(enumerate(loader), total=len(loader)):
             d = d.type(dtype)
             result = m(d.cuda())
             
             if cleanup_func is not None:
-                cleanup_func(result)
+                cleanup_func(i, result)
             else:
                 results.apennd(result)
     

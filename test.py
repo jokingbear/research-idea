@@ -1,5 +1,11 @@
-import torch.multiprocessing as mp
+a = []
 
-a = mp.Pool()
+def tmp():
+    print(a)
+    a.append(0)
+    print(a)
 
-a.map_async()
+tmp()
+
+a = []
+tmp()
