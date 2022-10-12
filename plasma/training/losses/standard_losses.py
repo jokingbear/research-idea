@@ -1,3 +1,4 @@
+from turtle import forward
 import numpy as np
 import pandas as pd
 import torch
@@ -158,3 +159,40 @@ class CombineLoss(nn.Module):
 
     def extra_repr(self):
         return f"weights={self.weights}"
+
+
+class CrossEntropy(nn.Module):
+
+    def __init__(self, binary=False, logit=False, eps=1e-8):
+        super().__init__()
+
+        self.binary = binary
+        self.logit = logit
+        self.eps = eps
+
+    def forward(self, preds, targets):
+        if not self.binary and len(targets.shape) <= 2:
+            targets = targets[:, 0]
+
+            if targets.dtype != torch.long:
+                targets = targets.type(torch.long)
+
+            targets = nn.functional.one_hot(targets, num_classes=preds.shape[-1])
+        
+        if self.logit:
+            if self.binary:
+                preds = torch.sigmoid(preds)
+            else:
+                preds = torch.softmax(preds, dim=1)
+
+        _assert_inputs(preds, targets)
+        
+        if self.binary:
+            cross_entropy = -targets * (preds + self.eps).log() - (1 - targets) * (1 - preds + self.eps).log()
+        else:
+            cross_entropy = (-targets * (preds + self.eps).log()).sum(dim=1)
+        
+        return cross_entropy.mean()
+    
+    def extra_repr(self) -> str:
+        return f'binary={self.binary}, logit={self.logit}, eps={self.eps}'
