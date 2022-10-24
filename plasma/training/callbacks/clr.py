@@ -108,9 +108,8 @@ class WarmRestart(Callback):
 
     def on_train_begin(self, **train_configs):
         self.run_epoch = train_configs["start_epoch"] - 1
-        train_loader = train_configs["train_loader"]
         self.scheduler = opts.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizers[0],
-                                                                       T_0=len(train_loader),
+                                                                       T_0=self.t0,
                                                                        T_mult=self.factor,
                                                                        eta_min=self.min_lr)
 
