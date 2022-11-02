@@ -47,7 +47,10 @@ def parallel_iterate(arr, iter_func, workers=8, use_index=False, **kwargs):
     :return list of result if not all is None
     """
     with mp.Pool(workers) as p:
-        jobs = [p.apply_async(iter_func, args=(i, arg) if use_index else (arg,), kwds=kwargs) for i, arg in enumerate(arr)]
+        if isinstance(arr, zip):
+            jobs = [p.apply_async(iter_func, args=(i, *arg) if use_index else arg, kwds=kwargs) for i, arg in enumerate(arr)]
+        else:
+            jobs = [p.apply_async(iter_func, args=(i, arg) if use_index else (arg,), kwds=kwargs) for i, arg in enumerate(arr)]
         results = [j.get() for j in get_progress(jobs)]
         return results
 

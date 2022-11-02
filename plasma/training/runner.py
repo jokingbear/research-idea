@@ -1,6 +1,7 @@
 from distutils.log import warn
 import json
 import os
+from cv2 import add
 
 import torch
 import torch.nn as nn
@@ -227,13 +228,13 @@ class ConfigRunner:
 
 class DDPRunner:
 
-    def __init__(self, config, backend, devices):
+    def __init__(self, config, backend, devices, addr='localhost', port='25389'):
         self.config = config
         self.backend = backend
         self.devices = devices
 
-        self._default_addr = 'localhost'
-        self._default_port = '25389'
+        self._default_addr = addr
+        self._default_port = port
     
     def _setup(self, rank):
         os.environ['MASTER_ADDR'] = self._default_addr
@@ -259,7 +260,8 @@ class DDPRunner:
             self._default_port = port
 
 
-def create(config, save_config_path=None, ddp=False, backend='nccl', verbose=1):
+def create(config, save_config_path=None, ddp=False, backend='nccl', verbose=1,
+            addr='localhost', port='25389'):
     """
     create runner based on predefined configuration
     Args:
@@ -279,6 +281,6 @@ def create(config, save_config_path=None, ddp=False, backend='nccl', verbose=1):
         if devices < 2:
             warn(f'found {devices} device, default to 1 process')
         else:
-            return DDPRunner(config, backend, devices)
+            return DDPRunner(config, backend, devices, addr, port)
     else:
         return ConfigRunner(config, save_config_path=save_config_path, verbose=verbose)

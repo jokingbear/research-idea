@@ -1,9 +1,9 @@
-from torch.nn import BCELoss, MSELoss, L1Loss, CrossEntropyLoss
-from .standard_losses import CombineLoss, FbetaLoss, FocalLoss, WBCE
+from torch.nn import BCELoss, MSELoss, L1Loss
+from .standard_losses import CrossEntropy, FbetaLoss, FocalLoss, WBCE
 
 __mapping__ = {
     "wbce": WBCE,
-    'ce': CrossEntropyLoss,
+    'ce': CrossEntropy,
     "focal": FocalLoss,
     "fb": FbetaLoss,
     "bce": BCELoss,
