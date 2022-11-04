@@ -270,6 +270,8 @@ def create(config, save_config_path=None, ddp=False, backend='nccl', verbose=1,
         ddp: whether to use ddp or not
         backend: ddp backend
         verbose: print creation step
+        addr: address for process to communicate, default=localhost
+        port: communication port, default=25389
     """
     if not isinstance(config, dict):
         with open(config) as handle:
