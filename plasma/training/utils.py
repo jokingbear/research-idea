@@ -110,7 +110,7 @@ def torch_parallel_iterate(arr, iteration_func, loader_func=None, cleanup_func=N
             for k in kwargs:
                 value = kwargs[k]
                 
-                if issubclass(value, torch.nn.Module):
+                if issubclass(type(value), torch.nn.Module):
                     setattr(self, k, value)
                 elif not isinstance(k, torch.Tensor):
                     value = torch.tensor(value, dtype=dtype)
