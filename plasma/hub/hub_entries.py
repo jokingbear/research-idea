@@ -34,7 +34,7 @@ class HubEntries:
         function_names = [name for name, _ in insp.getmembers(self.module, insp.isfunction)]
         class_names = [name for name, _ in insp.getmembers(self.module, insp.isclass)]
 
-        return {'functions': function_names, 'classes': class_names}
+        return function_names + class_names
 
     def inspect(self, entry_name):
         """

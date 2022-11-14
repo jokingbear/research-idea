@@ -19,33 +19,33 @@ class StandardTrainer(BaseTrainer):
         :param y_device: device to put labels
         :param y_type: type to cast labels
         """
-        super().__init__([model], [optimizer], loss, metrics, dtype, rank)
+        super().__init__(model, optimizer, loss, metrics, dtype, rank)
 
         self.training = True
 
     def _train_one_batch(self, data) -> Tuple[dict, object]:
         inputs, targets = data
         if isinstance(inputs, dict):
-            preds = self.models[0](**inputs)
+            preds = self.model(**inputs)
         elif isinstance(inputs, (list, tuple)):
-            preds = self.models[0](*inputs)
+            preds = self.model(*inputs)
         else:
-            preds = self.models[0](inputs)
+            preds = self.model(inputs)
 
         loss = self.loss(preds, targets)
 
         if isinstance(loss, dict):
             loss_dict = {k: float(loss[k]) for k in loss}
-            loss = loss["Loss"]
+            loss = loss["loss"]
         else:
-            loss_dict = {"Loss": float(loss)}
+            loss_dict = {"loss": float(loss)}
 
         loss.backward()
-        self.optimizers[0].step()
+        self.optimizer.step()
 
         return loss_dict, preds
 
-    def _get_train_measures(self, data, loss_dict, cache) -> dict:
+    def _get_batch_logs(self, data, loss_dict, cache) -> dict:
         preds = cache
         _, targets = data
         measures = loss_dict
@@ -60,11 +60,11 @@ class StandardTrainer(BaseTrainer):
         inputs, targets = data
 
         if isinstance(inputs, dict):
-            preds = self.models[0](**inputs)
+            preds = self.model(**inputs)
         elif isinstance(inputs, (list, tuple)):
-            preds = self.models[0](*inputs)
+            preds = self.model(*inputs)
         else:
-            preds = self.models[0](inputs)
+            preds = self.model(inputs)
 
         return preds, targets
 
@@ -72,7 +72,7 @@ class StandardTrainer(BaseTrainer):
         preds, trues = eval_caches
 
         loss = self.loss(preds, trues)
-        loss_dict = get_dict(loss, prefix="Val_", name="Loss")
+        loss_dict = get_dict(loss, prefix="val_", name="loss")
 
         measures = loss_dict
         for m in self.metrics:

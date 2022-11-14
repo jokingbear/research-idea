@@ -22,11 +22,8 @@
   },
   "callbacks": [
     {
-      "name": "lr finder",
+      "name": "lr_finder",
       "epochs": 1
     }
-  ],
-  "trainer": {
-    "device": "cpu"
-  }
+  ]
 }

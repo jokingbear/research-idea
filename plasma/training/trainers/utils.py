@@ -31,7 +31,7 @@ def get_batch_tensors(batch_values, dtype, device):
 
 def get_dict(values, prefix=None, name=None):
     prefix = prefix or ""
-    name = name or "Loss"
+    name = name or "loss"
 
     if isinstance(values, dict):
         d = {prefix + k: float(values[k]) for k in values}

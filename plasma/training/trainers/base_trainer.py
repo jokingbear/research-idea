@@ -14,16 +14,15 @@ from ..callbacks.standard_callbacks import ProgressBar
 
 class BaseTrainer:
 
-    def __init__(self, models: List[nn.Module], optimizers, loss: nn.Module, metrics=None, 
-                dtype=torch.float, rank=0):
-        self.models = models
-        self.optimizers = optimizers
+    def __init__(self, model: nn.Module, optimizer, loss: nn.Module, metrics=None, dtype=torch.float, rank=0):
+        self.model = model
+        self.optimizer = optimizer
         self.loss = loss
         self.metrics = metrics or []
         self.training = True
         self.dtype = dtype
 
-        device = f'cuda:{rank}'
+        device = f'cuda:{rank}' if torch.cuda.device_count() > 0 else 'cpu'
         self.device = device
         self.rank = rank
 
@@ -65,26 +64,22 @@ class BaseTrainer:
             raise
 
     def _train_one_epoch(self, epoch, train_loader, callbacks):
-        running_metrics = np.zeros([])
+        logs = {}
 
         for i, data in enumerate(train_loader):
             data = self._extract_data(data)
             [c.on_training_batch_begin(epoch, i, data) for c in callbacks]
 
-            [m.train().zero_grad() for m in self.models]
+            self.model.train().zero_grad()
             loss_dict, caches = self._train_one_batch(data)
 
             with torch.no_grad():
-                measures = self._get_train_measures(data, loss_dict, caches)
-                measures = pd.Series(measures)
+                batch_logs = self._get_batch_logs(data, loss_dict, caches)
+                logs['batch_logs'] = batch_logs
 
-                running_metrics = running_metrics + measures
-                logs = measures
                 [c.on_training_batch_end(epoch, i, data, caches, logs) for c in callbacks]
 
-                logs = logs.copy()
-                logs.update(running_metrics / (i + 1))
-
+        del logs['batch_logs']
         return logs
 
     def _evaluate_one_epoch(self, test_loader, epoch=0, callbacks=()):
@@ -121,7 +116,7 @@ class BaseTrainer:
         pass
 
     @abstractmethod
-    def _get_train_measures(self, data, loss_dict, cache) -> dict:
+    def _get_batch_logs(self, data, loss_dict, cache) -> dict:
         pass
 
     @abstractmethod

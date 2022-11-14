@@ -3,6 +3,7 @@ import csv
 import io
 import os
 
+import pandas as pd
 import numpy as np
 import torch
 import torch.optim.lr_scheduler as schedulers
@@ -25,11 +26,11 @@ class ReduceLROnPlateau(Callback):
         self.scheduler = None
 
     def on_train_begin(self, **train_configs):
-        self.scheduler = schedulers.ReduceLROnPlateau(self.optimizers[0], mode=self.mode, factor=self.factor,
+        self.scheduler = schedulers.ReduceLROnPlateau(self.optimizers, mode=self.mode, factor=self.factor,
                                                       patience=self.patience - 1, verbose=bool(self.verbose))
 
-    def on_epoch_end(self, epoch, logs=None):
-        for i, param_group in enumerate(self.optimizers[0].param_groups):
+    def on_epoch_end(self, epoch, logs):
+        for i, param_group in enumerate(self.optimizer.param_groups):
             logs[f"group {i} lr"] = param_group["lr"]
 
         self.scheduler.step(logs[self.monitor])
@@ -51,7 +52,7 @@ class EarlyStopping(Callback):
         self.monitor_val = np.inf if mode == "min" else -np.inf
         self.patience_count = 0
 
-    def on_epoch_end(self, epoch, logs=None):
+    def on_epoch_end(self, epoch, logs):
         monitor_val = float(logs[self.monitor])
 
         is_max = self.monitor_val < monitor_val and self.mode == "max"
@@ -89,7 +90,7 @@ class ModelCheckpoint(Callback):
         self.verbose = verbose
         self.running_monitor_val = np.inf if mode == "min" else -np.inf
 
-    def on_epoch_end(self, epoch, logs=None):
+    def on_epoch_end(self, epoch, logs):
         monitor_val = logs[self.monitor]
 
         is_max = self.running_monitor_val < monitor_val and self.mode == "max"
@@ -105,13 +106,11 @@ class ModelCheckpoint(Callback):
             if not self.overwrite:
                 path = f"{path}_{epoch}"
 
-            for i, m in enumerate(self.models):
-                model_dict = m.state_dict()
-                torch.save(model_dict, f"{path}.model_{i}")
+            model_dict = self.model.state_dict()
+            torch.save(model_dict, f"{path}_model.pth")
 
-            for i, opt in enumerate(self.optimizers):
-                optim_dict = opt.state_dict()
-                torch.save(optim_dict, f"{path}.opt_{i}")
+            optim_dict = self.optimizer.state_dict()
+            torch.save(optim_dict, f"{path}_optim.pth")
 
             self.running_monitor_val = monitor_val
 
@@ -166,7 +165,7 @@ class CSVLogger(Callback):
                                     mode + self.file_flags,
                                     **self._open_args)
 
-    def on_epoch_end(self, epoch, logs=None):
+    def on_epoch_end(self, epoch, logs):
         if self.trainer.rank == 0:
             logs = logs or {}
 
@@ -199,7 +198,7 @@ class CSVLogger(Callback):
             self.writer.writerow(row_dict)
             self.csv_file.flush()
 
-    def on_train_end(self, logs=None):
+    def on_train_end(self, logs):
         if self.trainer.rank == 0:
             self.csv_file.close()
             self.writer = None
@@ -226,16 +225,16 @@ class Tensorboard(Callback):
 
     def on_train_begin(self, **train_configs):
         if self.inputs is not None:
-            self.train_writer.add_graph(self.models, self.inputs)
+            self.train_writer.add_graph(self.model, self.inputs)
 
-    def on_training_batch_end(self, epoch, step, data, caches, logs=None):
+    def on_training_batch_end(self, epoch, step, data, caches, logs):
         if self.current_step % self.steps == 0:
             for k in logs.keys():
                 self.train_writer.add_scalar(f"train/{k}", logs[k], self.current_step)
 
         self.current_step += 1
 
-    def on_epoch_end(self, epoch, logs=None):
+    def on_epoch_end(self, epoch, logs):
         for k in logs.keys():
             if "val" not in k:
                 self.train_writer.add_scalar(k, logs[k], epoch)
@@ -272,11 +271,12 @@ class ProgressBar(Callback):
             self.train_pbar = pbar
             self.running_metrics = np.zeros([])
     
-    def on_training_batch_end(self, epoch, step, data, caches, logs=None):
+    def on_training_batch_end(self, epoch, step, data, caches, logs):
         if self.trainer.rank == 0:
-            self.running_metrics = self.running_metrics + logs
+            self.running_metrics = self.running_metrics + pd.Series(logs['batch_logs'])
             self.train_pbar.set_postfix(self.running_metrics / (step + 1))
             self.train_pbar.update()
+            logs.update(self.running_metrics)
     
     def on_validation_batch_begin(self, epoch, step, data):
         if step == 0 and self.trainer.rank == 0:
@@ -285,7 +285,7 @@ class ProgressBar(Callback):
     def on_validation_batch_end(self, epoch, step, data, caches):
         self.valid_pbar.update()
     
-    def on_epoch_end(self, epoch, logs=None):
+    def on_epoch_end(self, epoch, logs):
         if self.valid_pbar is not None:
             self.valid_pbar.set_postfix(logs)
 
