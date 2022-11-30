@@ -6,7 +6,7 @@ import torch
 
 class ASAM(StandardTrainer):
 
-    def __init__(self, model, optimizer, loss, metrics=None, dtype='float', rank=0, rho=0.5, eta=0.01):
+    def __init__(self, model, optimizer, loss, metrics=None, dtype='float', rank=0, rho=0.5, eta=0):
         super().__init__(model, optimizer, loss, metrics, dtype, rank)
 
         self.rho = rho
