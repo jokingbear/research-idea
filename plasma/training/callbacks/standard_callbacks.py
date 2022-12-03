@@ -274,9 +274,10 @@ class ProgressBar(Callback):
     def on_training_batch_end(self, epoch, step, data, caches, logs):
         if self.trainer.rank == 0:
             self.running_metrics = self.running_metrics + pd.Series(logs['batch_logs'])
-            self.train_pbar.set_postfix(self.running_metrics / (step + 1))
+            running_metrics = self.running_metrics / (step + 1)
+            self.train_pbar.set_postfix(running_metrics)
             self.train_pbar.update()
-            logs.update(self.running_metrics)
+            logs.update(running_metrics)
     
     def on_validation_batch_begin(self, epoch, step, data):
         if step == 0 and self.trainer.rank == 0:
