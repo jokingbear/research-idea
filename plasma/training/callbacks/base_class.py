@@ -5,8 +5,8 @@ class Callback:
 
     def __init__(self):
         self.trainer = None
-        self.models = None
-        self.optimizers = None
+        self.model = None
+        self.optimizer = None
         self.training_config = None
 
     def on_train_begin(self, **train_configs):
@@ -18,13 +18,13 @@ class Callback:
     def on_epoch_begin(self, epoch):
         pass
 
-    def on_epoch_end(self, epoch, logs=None):
+    def on_epoch_end(self, epoch, logs):
         pass
 
     def on_training_batch_begin(self, epoch, step, data):
         pass
 
-    def on_training_batch_end(self, epoch, step, data, caches, logs=None):
+    def on_training_batch_end(self, epoch, step, data, caches, logs):
         pass
 
     def on_validation_batch_begin(self, epoch, step, data):
@@ -34,9 +34,11 @@ class Callback:
         pass
 
     def set_trainer(self, trainer):
-        self.models = [m.module if isinstance(m, (nn.DataParallel, nn.parallel.DistributedDataParallel)) 
-                       else m for m in trainer.models]
-        self.optimizers = trainer.optimizers
+        if isinstance(trainer.model, (nn.DataParallel, nn.parallel.DistributedDataParallel)):
+            self.model = trainer.model.module
+        else:
+            self.model = trainer.model
+        self.optimizer = trainer.optimizer
         self.trainer = trainer
 
     def extra_repr(self):

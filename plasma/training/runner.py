@@ -270,6 +270,8 @@ def create(config, save_config_path=None, ddp=False, backend='nccl', verbose=1,
         ddp: whether to use ddp or not
         backend: ddp backend
         verbose: print creation step
+        addr: address for process to communicate, default=localhost
+        port: communication port, default=25389
     """
     if not isinstance(config, dict):
         with open(config) as handle:
@@ -278,9 +280,9 @@ def create(config, save_config_path=None, ddp=False, backend='nccl', verbose=1,
     if ddp:
         devices = torch.cuda.device_count()
 
-        if devices < 2:
+        if devices < 2: 
             warn(f'found {devices} device, default to 1 process')
         else:
             return DDPRunner(config, backend, devices, addr, port)
-    else:
-        return ConfigRunner(config, save_config_path=save_config_path, verbose=verbose)
+
+    return ConfigRunner(config, save_config_path=save_config_path, verbose=verbose)

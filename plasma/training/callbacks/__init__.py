@@ -5,19 +5,13 @@ from .clr import SuperConvergence, LrFinder, WarmRestart
 
 
 __mapping__ = {
-    "csv logger": CSVLogger,
     "csv_logger": CSVLogger,
     "csv": CSVLogger,
     "tensorboard": Tensorboard,
-    "plateau": ReduceLROnPlateau,
-    "early stopping": EarlyStopping,
+    "reduce_on_plateau": ReduceLROnPlateau,
     "early_stopping": EarlyStopping,
     "checkpoint": ModelCheckpoint,
-    "super convergence": SuperConvergence,
     "super_convergence": SuperConvergence,
-    "lr finder": LrFinder,
     "lr_finder": LrFinder,
-    "warm": WarmRestart,
-    "warm restart": WarmRestart,
     "warm_restart": WarmRestart,
 }

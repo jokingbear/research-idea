@@ -35,21 +35,21 @@ class LrFinder(Callback):
         epochs = self.epochs
         iterations = len(train_configs["train_loader"])
 
-        for g in self.optimizers[0].param_groups:
+        for g in self.optimizer.param_groups:
             g["lr"] = self.min_lr
 
         self.gamma = (self.max_lr - self.min_lr) / (epochs * iterations)
 
-    def on_training_batch_end(self, epoch, step, data, caches, logs=None):
-        for i, g in enumerate(self.optimizers[0].param_groups):
+    def on_training_batch_end(self, epoch, step, data, caches, logs):
+        for i, g in enumerate(self.optimizer.param_groups):
             if i in self.history:
-                self.history[i].append((g["lr"], logs))
+                self.history[i].append((g["lr"], logs['batch_logs']))
             else:
                 self.history[i] = []
 
             g["lr"] = g["lr"] + self.gamma
 
-    def on_epoch_end(self, epoch, logs=None):
+    def on_epoch_end(self, epoch, logs):
         self.trainer.training = epoch < self.epochs
 
     def on_train_end(self):
@@ -108,7 +108,7 @@ class WarmRestart(Callback):
 
     def on_train_begin(self, **train_configs):
         self.run_epoch = train_configs["start_epoch"] - 1
-        self.scheduler = opts.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizers[0],
+        self.scheduler = opts.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizer,
                                                                        T_0=self.t0,
                                                                        T_mult=self.factor,
                                                                        eta_min=self.min_lr)
@@ -116,10 +116,10 @@ class WarmRestart(Callback):
         if not os.path.exists(self.dir) and self.snapshot:
             os.mkdir(self.dir)
 
-    def on_epoch_end(self, epoch, logs=None):
+    def on_epoch_end(self, epoch, logs):
         self.run_epoch += 1
 
-        for i, g in enumerate(self.optimizers[0].param_groups):
+        for i, g in enumerate(self.optimizer.param_groups):
             logs[f"lr {i}"] = g["lr"]
 
         self.scheduler.step()
@@ -131,8 +131,8 @@ class WarmRestart(Callback):
 
             print("starting cycle ", self.finished_cycles + 1) if self.finished_cycles != self.cycles else None
             if self.snapshot:
-                model_dict = self.models[0].state_dict()
-                optim_dict = self.optimizers[0].state_dict()
+                model_dict = self.model.state_dict()
+                optim_dict = self.optimizer.state_dict()
 
                 torch.save(model_dict, f"{self.dir}/snapshot_{self.model_name}_cycle_{self.finished_cycles}.model")
                 torch.save(optim_dict, f"{self.dir}/snapshot_{self.model_name}_cycle_{self.finished_cycles}.optim")
@@ -166,9 +166,9 @@ class SuperConvergence(Callback):
 
     def on_train_begin(self, **train_configs):
         n = len(train_configs["train_loader"])
-        max_lr = [g["lr"] for g in self.optimizers[0].param_groups]
+        max_lr = [g["lr"] for g in self.optimizer.param_groups]
 
-        self.scheduler = opts.lr_scheduler.OneCycleLR(self.optimizers[0], max_lr,
+        self.scheduler = opts.lr_scheduler.OneCycleLR(self.optimizer, max_lr,
                                                     epochs=self.epochs, steps_per_epoch=n,
                                                     div_factor=self.div_factor,
                                                     final_div_factor=self.final_div_factor)
@@ -176,15 +176,15 @@ class SuperConvergence(Callback):
         if self.trainer.rank == 0 and not os.path.exists(self.dir) and self.snapshot:
             os.makedirs(self.dir)
 
-    def on_training_batch_end(self, epoch, step, data, caches, logs=None):
+    def on_training_batch_end(self, epoch, step, data, caches, logs):
         self.scheduler.step()
 
-    def on_epoch_end(self, epoch, logs=None):
+    def on_epoch_end(self, epoch, logs):
         self.trainer.training = epoch < self.epochs
 
     def on_train_end(self):
         if self.trainer.rank == 0:
-            model_dict = self.models[0].state_dict()
+            model_dict = self.model.state_dict()
             torch.save(model_dict, f"{self.dir}/{self.name}.model")
 
     def extra_repr(self):
@@ -219,8 +219,8 @@ class Warmup(Callback):
             for g in self.optimizers[0].param_groups:
                 g["lr"] = self.lrs[self.step]
 
-    def on_training_batch_end(self, epoch, step, data, caches, logs=None):
+    def on_training_batch_end(self, epoch, step, data, caches, logs):
         self.step += 1
 
-    def on_epoch_end(self, epoch, logs=None):
+    def on_epoch_end(self, epoch, logs):
         self.trainer.training = self.step >= self.total_step
