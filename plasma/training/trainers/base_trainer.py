@@ -57,7 +57,7 @@ class BaseTrainer:
                 if not self.training:
                     break
 
-            [c.on_train_end() for c in callbacks]
+            [c.on_train_end(logs) for c in callbacks]
         except Exception as e:
             with open("trainer_error.txt", "w+") as handle:
                 handle.write(str(e))
