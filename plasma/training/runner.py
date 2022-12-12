@@ -104,8 +104,7 @@ class ConfigRunner:
     def _get_model(self, model_config):
         model_entries = get_entries(model_config["path"])
 
-        kwargs = self.get_kwargs(
-            model_config, ["path", "name", "parallel", "checkpoint", "gpu"])
+        kwargs = self.get_kwargs(model_config, ["path", "name", "parallel", "checkpoint", "gpu", 'batchnorm'])
         name = model_config["name"]
         model = model_entries.load(name, **kwargs)
 
@@ -115,6 +114,10 @@ class ConfigRunner:
 
         if self.ddp:
             model = model.to(self.rank)
+
+            if model_config.get('batchnorm', False):
+                model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
+
             model = nn.parallel.DistributedDataParallel(model, device_ids=[self.rank])
         elif model_config.get("parallel", False):
             model = nn.DataParallel(model).cuda(self.rank)
