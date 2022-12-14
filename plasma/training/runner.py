@@ -192,8 +192,7 @@ class ConfigRunner:
             trainer = trainer_maps[name](
                 self.model, self.optimizer, self.loss, metrics=self.metrics, **kwargs)
         else:
-            raise not NotImplementedError(
-                "only support standard trainer for empty trainer config")
+            raise NotImplementedError("only support standard trainer for empty trainer config")
 
         return trainer
 

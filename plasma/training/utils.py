@@ -1,5 +1,4 @@
 import multiprocessing as mp
-from multiprocessing.dummy import Pool
 import os
 
 import torch
