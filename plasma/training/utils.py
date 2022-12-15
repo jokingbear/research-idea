@@ -135,3 +135,30 @@ def torch_parallel_iterate(arr, iteration_func, loader_func=None, cleanup_func=N
                 results.apennd(result)
     
     return results
+
+
+def process_queue(process_func, nprocess=50, infinite_loop=True):
+    def run_process(i, queue: mp.Queue):
+        print(f'process {i} started')
+        condition = True
+
+        while condition:
+            item = queue.get()
+
+            if isinstance(item, tuple):
+                process_func(*item)
+            elif isinstance(item, dict):
+                process_func(**item)
+            else:
+                process_func(item)
+
+            condition &= infinite_loop
+
+        print(f'process {i} started')
+
+    q = mp.Queue()
+    processes = [mp.Process(target=run_process, args=(i, q)) for i in range(nprocess)]
+
+    [p.start() for p in processes]
+    
+    return q, processes
