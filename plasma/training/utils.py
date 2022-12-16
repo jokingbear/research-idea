@@ -132,7 +132,7 @@ def torch_parallel_iterate(arr, iteration_func, loader_func=None, cleanup_func=N
             if cleanup_func is not None:
                 cleanup_func(i, result)
             else:
-                results.apennd(result)
+                results.append(result)
     
     return results
 
