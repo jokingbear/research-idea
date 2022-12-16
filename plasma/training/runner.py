@@ -1,7 +1,5 @@
-from distutils.log import warn
 import json
 import os
-from cv2 import add
 
 import torch
 import torch.nn as nn
@@ -14,6 +12,8 @@ from .metrics import __mapping__ as metric_maps
 from .trainers import __mapping__ as trainer_maps
 from ..hub import get_entries
 from .optimizers import __mapping__ as optimizer_map
+
+from distutils.log import warn
 
 
 class ConfigRunner:

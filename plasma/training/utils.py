@@ -138,6 +138,13 @@ def torch_parallel_iterate(arr, iteration_func, loader_func=None, cleanup_func=N
 
 
 def process_queue(process_func, nprocess=50, infinite_loop=True):
+    """
+    create a queue with nprocess to resolve that queue
+    :param process_func: function to process queue item
+    :param nprocess: number of independent process
+    :param infinite_loop: number of worker to run
+    :return queue, n processes
+    """
     def run_process(i, queue: mp.Queue):
         print(f'process {i} started')
         condition = True
@@ -153,8 +160,6 @@ def process_queue(process_func, nprocess=50, infinite_loop=True):
                 process_func(item)
 
             condition &= infinite_loop
-
-        print(f'process {i} started')
 
     q = mp.Queue()
     processes = [mp.Process(target=run_process, args=(i, q)) for i in range(nprocess)]
