@@ -54,19 +54,18 @@ def parallel_iterate(arr, iter_func, workers=8, use_index=False, **kwargs):
         return results
 
 
-def get_loader(arr, mapper=None, imapper=None, batch_size=32, pin_memory=True, workers=None, **kwargs):
+def get_loader(arr, mapper, batch_size=32, pin_memory=True, workers=None, **kwargs):
     """
     get loader from array or dataframe
     :param arr: array to iter
     :param mapper: how to map array element, signature: elem -> obj
-    :param imapper: how to map array element, signature: (idx, elem) -> obj
     :param batch_size: the batch size of the loader
     :param pin_memory: whether the loader should pin memory for fast transfer
     :param workers: number of workers to run in parallel
     :return: pytorch loader
     """
     workers = workers or batch_size // 2
-    dataset = AdhocData(arr, mapper, imapper, kwargs)
+    dataset = AdhocData(arr, mapper, kwargs)
     loader = dataset.get_torch_loader(batch_size, workers, pin=pin_memory, drop_last=False, shuffle=False)
     return loader
 
