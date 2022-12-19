@@ -172,9 +172,10 @@ def process_queue(running_context, process_func, nprocess=50, infinite_loop=True
         n = q.qsize()
         with get_progress(total=n, desc='resolving queue') as pbar:
             while q.qsize() > 0:
-                pbar.set_postfix({'remaining': q.qsize()})
-                pbar.update(1)
-                continue
+                n_new = q.qsize()
+                diff = n - n_new
+                n = n_new
+                pbar.update(diff)
     except:
         raise
     finally:
