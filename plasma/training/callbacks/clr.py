@@ -52,7 +52,7 @@ class LrFinder(Callback):
     def on_epoch_end(self, epoch, logs):
         self.trainer.training = epoch < self.epochs
 
-    def on_train_end(self):
+    def on_train_end(self, logs):
         self.plot_data()
 
     def get_data(self, group=0, target="Loss"):
@@ -182,7 +182,7 @@ class SuperConvergence(Callback):
     def on_epoch_end(self, epoch, logs):
         self.trainer.training = epoch < self.epochs
 
-    def on_train_end(self):
+    def on_train_end(self, logs):
         if self.trainer.rank == 0:
             model_dict = self.model.state_dict()
             torch.save(model_dict, f"{self.dir}/{self.name}.model")

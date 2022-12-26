@@ -1,5 +1,5 @@
+import pandas as pd
 import multiprocessing as mp
-from multiprocessing.dummy import Pool
 import os
 
 import torch
@@ -49,25 +49,26 @@ def parallel_iterate(arr, iter_func, workers=8, use_index=False, **kwargs):
     with mp.Pool(workers) as p:
         if isinstance(arr, zip):
             jobs = [p.apply_async(iter_func, args=(i, *arg) if use_index else arg, kwds=kwargs) for i, arg in enumerate(arr)]
+        elif isinstance(arr, pd.DataFrame):
+            jobs = [p.apply_async(iter_func, args=(i, row) if use_index else (row,), kwds=kwargs) for i, row in arr.iterrows()]
         else:
             jobs = [p.apply_async(iter_func, args=(i, arg) if use_index else (arg,), kwds=kwargs) for i, arg in enumerate(arr)]
         results = [j.get() for j in get_progress(jobs)]
         return results
 
 
-def get_loader(arr, mapper=None, imapper=None, batch_size=32, pin_memory=True, workers=None, **kwargs):
+def get_loader(arr, mapper, batch_size=32, pin_memory=True, workers=None, **kwargs):
     """
     get loader from array or dataframe
     :param arr: array to iter
     :param mapper: how to map array element, signature: elem -> obj
-    :param imapper: how to map array element, signature: (idx, elem) -> obj
     :param batch_size: the batch size of the loader
     :param pin_memory: whether the loader should pin memory for fast transfer
     :param workers: number of workers to run in parallel
     :return: pytorch loader
     """
     workers = workers or batch_size // 2
-    dataset = AdhocData(arr, mapper, imapper, kwargs)
+    dataset = AdhocData(arr, mapper, kwargs)
     loader = dataset.get_torch_loader(batch_size, workers, pin=pin_memory, drop_last=False, shuffle=False)
     return loader
 
@@ -133,6 +134,52 @@ def torch_parallel_iterate(arr, iteration_func, loader_func=None, cleanup_func=N
             if cleanup_func is not None:
                 cleanup_func(i, result)
             else:
-                results.apennd(result)
+                results.append(result)
     
     return results
+
+
+def process_queue(running_context, process_func, nprocess=50, infinite_loop=True):
+    """
+    create a queue with nprocess to resolve that queue
+    :param running_context: running function, receive queue as input
+    :param process_func: function to process queue item
+    :param nprocess: number of independent process
+    :param infinite_loop: number of worker to run
+    :return queue, n processes
+    """
+    def run_process(i, queue: mp.Queue):
+        print(f'process {i} started')
+        condition = True
+
+        while condition:
+            item = queue.get()
+
+            if isinstance(item, tuple):
+                process_func(*item)
+            elif isinstance(item, dict):
+                process_func(**item)
+            else:
+                process_func(item)
+
+            condition &= infinite_loop
+
+    q = mp.Manager().Queue()
+    processes = [mp.Process(target=run_process, args=(i, q)) for i in range(nprocess)]
+
+    [p.start() for p in processes]
+
+    try:
+        running_context(q)
+
+        n = q.qsize()
+        with get_progress(total=n, desc='resolving queue') as pbar:
+            while q.qsize() > 0:
+                n_new = q.qsize()
+                diff = n - n_new
+                n = n_new
+                pbar.update(diff)
+    except:
+        raise
+    finally:
+        [p.terminate() for p in processes]

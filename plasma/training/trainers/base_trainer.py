@@ -85,7 +85,7 @@ class BaseTrainer:
     def _evaluate_one_epoch(self, test_loader, epoch=0, callbacks=()):
         eval_caches = []
 
-        with eval_modules(*self.models):
+        with eval_modules(self.model):
             for i, data in enumerate(test_loader):
                 data = self._extract_data(data)
                 [c.on_validation_batch_begin(epoch, i, data) for c in callbacks]
@@ -103,7 +103,7 @@ class BaseTrainer:
             elif isinstance(eval_caches[0], dict):
                 eval_caches = {k: torch.cat([c[k] for c in eval_caches], dim=0) for k in eval_caches[0]}
             else:
-                raise 'only support tensor, tuple, list and dict cache'
+                raise Exception('only support tensor, tuple, list and dict cache')
 
             logs = self._get_eval_logs(eval_caches)
             return logs

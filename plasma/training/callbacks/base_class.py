@@ -12,7 +12,7 @@ class Callback:
     def on_train_begin(self, **train_configs):
         pass
 
-    def on_train_end(self):
+    def on_train_end(self, logs):
         pass
 
     def on_epoch_begin(self, epoch):

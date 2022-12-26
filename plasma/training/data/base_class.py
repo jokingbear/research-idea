@@ -17,11 +17,11 @@ class StandardDataset(data.Dataset):
 
     @abstractmethod
     def get_len(self):
-        pass
+        return 0
 
     @abstractmethod
     def get_item(self, idx):
-        pass
+        return idx
 
     def get_torch_loader(self, batch_size=32, workers=20, sampler=None, pin=True, drop_last=True, shuffle=True, 
                          rank=None, num_replicas=None):
