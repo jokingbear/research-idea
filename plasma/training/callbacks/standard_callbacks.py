@@ -241,7 +241,7 @@ class Tensorboard(Callback):
             else:
                 self.valid_writer.add_scalar(k[4:], logs[k], epoch)
 
-    def on_train_end(self):
+    def on_train_end(self, logs):
         self.train_writer.close()
         self.valid_writer.close()
 
@@ -290,6 +290,6 @@ class ProgressBar(Callback):
         if self.valid_pbar is not None:
             self.valid_pbar.set_postfix(logs)
 
-    def on_train_end(self):
+    def on_train_end(self, logs):
         self.train_pbar = None
         self.valid_pbar = None
