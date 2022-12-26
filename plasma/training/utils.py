@@ -1,3 +1,4 @@
+import pandas as pd
 import multiprocessing as mp
 import os
 
@@ -48,6 +49,8 @@ def parallel_iterate(arr, iter_func, workers=8, use_index=False, **kwargs):
     with mp.Pool(workers) as p:
         if isinstance(arr, zip):
             jobs = [p.apply_async(iter_func, args=(i, *arg) if use_index else arg, kwds=kwargs) for i, arg in enumerate(arr)]
+        elif isinstance(arr, pd.DataFrame):
+            jobs = [p.apply_async(iter_func, args=(i, row) if use_index else (row,), kwds=kwargs) for i, row in arr.iterrows()]
         else:
             jobs = [p.apply_async(iter_func, args=(i, arg) if use_index else (arg,), kwds=kwargs) for i, arg in enumerate(arr)]
         results = [j.get() for j in get_progress(jobs)]
