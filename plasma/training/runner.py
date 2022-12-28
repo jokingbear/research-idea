@@ -270,7 +270,7 @@ class DDPRunner:
 
 
 def create(config, save_config_path=None, ddp=False, backend='nccl', verbose=1,
-            addr='localhost', port='25389'):
+            addr='localhost', port='25389', deepspeed=False):
     """
     create runner based on predefined configuration
     Args:
@@ -292,6 +292,6 @@ def create(config, save_config_path=None, ddp=False, backend='nccl', verbose=1,
         if devices < 2: 
             warn(f'found {devices} device, default to 1 process')
         else:
-            return DDPRunner(config, backend, devices, addr, port)
+            return DDPRunner(config, backend, devices, addr, port, deepspeed)
 
     return ConfigRunner(config, save_config_path=save_config_path, verbose=verbose)
