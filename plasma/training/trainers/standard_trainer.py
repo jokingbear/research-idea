@@ -5,31 +5,10 @@ from .utils import get_dict
 
 
 class StandardTrainer(BaseTrainer):
-
-    def __init__(self, model, optimizer, loss, metrics=None, dtype='float', rank=0):
-        """
-        :param model: torch module
-        :param optimizer: torch optimizer
-        :param loss: loss function with signature function(preds, trues)
-        :param metrics: list of metric functions with signature function(preds, trues)
-        :param x_device: device to put inputs
-        :param x_type: type to cast inputs
-        :param y_device: device to put labels
-        :param y_type: type to cast labels
-        """
-        super().__init__(model, optimizer, loss, metrics, dtype, rank)
-
-        self.training = True
-
+ 
     def _train_one_batch(self, data) -> Tuple[dict, object]:
         inputs, targets = data
-        if isinstance(inputs, dict):
-            preds = self.model(**inputs)
-        elif isinstance(inputs, (list, tuple)):
-            preds = self.model(*inputs)
-        else:
-            preds = self.model(inputs)
-
+        preds = self.forward_func(inputs)
         loss = self.loss(preds, targets)
 
         if isinstance(loss, dict):
@@ -43,8 +22,8 @@ class StandardTrainer(BaseTrainer):
 
         return loss_dict, preds
 
-    def _get_batch_logs(self, data, loss_dict, cache) -> dict:
-        preds = cache
+    def _get_batch_logs(self, data, loss_dict, pred_cache) -> dict:
+        preds = pred_cache
         _, targets = data
         measures = loss_dict
         for m in self.metrics:
@@ -56,14 +35,7 @@ class StandardTrainer(BaseTrainer):
 
     def _get_eval_cache(self, data):
         inputs, targets = data
-
-        if isinstance(inputs, dict):
-            preds = self.model(**inputs)
-        elif isinstance(inputs, (list, tuple)):
-            preds = self.model(*inputs)
-        else:
-            preds = self.model(inputs)
-
+        preds = self.forward_func(inputs)
         return preds, targets
 
     def _get_eval_logs(self, eval_caches):
@@ -75,7 +47,7 @@ class StandardTrainer(BaseTrainer):
         measures = loss_dict
         for m in self.metrics:
             m_value = m(preds, trues)
-            m_dict = get_dict(m_value, prefix="Val_", name=m._get_name())
+            m_dict = get_dict(m_value, prefix="val_", name=m._get_name())
             measures.update(m_dict)
 
         return measures
