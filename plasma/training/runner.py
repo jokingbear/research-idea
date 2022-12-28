@@ -6,6 +6,8 @@ import torch.nn as nn
 import torch.distributed as dist
 import torch.multiprocessing as mp
 
+import deepspeed as ds
+
 from .callbacks import __mapping__ as callback_map
 from .losses import __mapping__ as loss_maps
 from .metrics import __mapping__ as metric_maps
@@ -230,25 +232,30 @@ class ConfigRunner:
 
 class DDPRunner:
 
-    def __init__(self, config, backend, devices, addr='localhost', port='25389'):
+    def __init__(self, config, backend, devices, addr='localhost', port='25389', deepspeed=False):
         self.config = config
         self.backend = backend
         self.devices = devices
 
         self._default_addr = addr
         self._default_port = port
+        self.deepspeed = deepspeed
     
     def _setup(self, rank):
         os.environ['MASTER_ADDR'] = self._default_addr
         os.environ['MASTER_PORT'] = self._default_port
 
-        dist.init_process_group(self.backend, rank=rank, world_size=self.devices)
+        if self.deepspeed:
+            ds.init_distributed()
+        else:
+            dist.init_process_group(self.backend, rank=rank, world_size=self.devices)
         
     def _run(self, rank):
         self._setup(rank)
 
         runner = ConfigRunner(self.config, ddp=True, rank=rank, verbose=rank == 0)
         runner.run()
+
         dist.destroy_process_group()
 
     def run(self):
