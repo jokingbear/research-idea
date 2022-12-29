@@ -21,13 +21,16 @@ class ModelEngine(nn.Module):
 
 
 class DeepspeedTrainer(StandardTrainer):
-
-    def __init__(self, model, optimizer, loss, metrics=None, dtype='float', rank=0):
-        super().__init__(model, optimizer, loss, metrics, dtype, rank)
-
-        model_engine = ModelEngine(model, loss)
-        self.engine, _, _, _ = ds.initialize(model=model_engine, optimizer=optimizer)
     
+    def fit(self, train_loader, valid_loader=None, callbacks=None, start_epoch=1):
+        model_engine = ModelEngine(self.model, self.loss)
+        config = {
+            'train_batch_size': train_loader.batch_size,
+        }
+        self.engine, _, _, _ = ds.initialize(model=model_engine, optimizer=self.optimizer, config=config)
+
+        return super().fit(train_loader, valid_loader, callbacks, start_epoch)
+
     def _train_one_batch(self, data):
         inputs, targets = data
         preds, loss = self.engine(inputs, targets)

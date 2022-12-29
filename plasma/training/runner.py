@@ -246,7 +246,7 @@ class DDPRunner:
         os.environ['MASTER_PORT'] = self._default_port
 
         if self.deepspeed:
-            ds.init_distributed()
+            ds.init_distributed(self.backend, init_method=self._default_addr, distributed_port=int(self._default_port))
         else:
             dist.init_process_group(self.backend, rank=rank, world_size=self.devices)
         
