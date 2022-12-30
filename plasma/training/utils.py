@@ -6,6 +6,7 @@ import torch
 from tqdm import tqdm
 from tqdm.notebook import tqdm as tqdm_nb
 from .data.adhoc_data import AdhocData
+from ..functional import auto_func
 
 
 notebook = False
@@ -148,18 +149,16 @@ def process_queue(running_context, process_func, nprocess=50, infinite_loop=True
     :param infinite_loop: number of worker to run
     :param task_name: name for the running process
     """
+
+    auto_process_func = auto_func(process_func)
+
     def run_process(i, queue: mp.Queue):
         condition = True
 
         while condition:
             item = queue.get()
 
-            if isinstance(item, tuple):
-                process_func(*item)
-            elif isinstance(item, dict):
-                process_func(**item)
-            else:
-                process_func(item)
+            auto_process_func(item)
 
             condition &= infinite_loop
 
