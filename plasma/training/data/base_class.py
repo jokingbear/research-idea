@@ -6,9 +6,6 @@ from torch.utils.data import RandomSampler, SequentialSampler, DistributedSample
 
 class StandardDataset(data.Dataset):
 
-    def __init__(self):
-        super(StandardDataset, self).__init__()
-
     def __len__(self):
         return self.get_len()
 
