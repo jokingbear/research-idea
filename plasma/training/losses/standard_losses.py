@@ -101,7 +101,7 @@ class WBCE(nn.Module):
         return -ln.mean()
 
     def extra_repr(self):
-        return f"weights_shape={self.weights.shape}, smooth={self.smooth}, sym={self.sym}"
+        return f"weights_shape={self.weights.shape}, smooth={self.smooth}"
 
     @staticmethod
     def get_class_balance_weight(counts, anchor=0):
