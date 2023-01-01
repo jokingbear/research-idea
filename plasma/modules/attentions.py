@@ -78,7 +78,7 @@ class SAModule(nn.Module):
 
         # B x C x spatial
         feat_refine = torch.bmm(conv3_proj, attention.permute(0, 2, 1))
-        feat_refine = feat_refine.view(*feat_map.shape)
+        feat_refine = feat_refine.view(feat_map.shape)
 
         feat_map = self.gamma * feat_refine + feat_map
 
