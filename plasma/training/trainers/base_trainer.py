@@ -41,6 +41,8 @@ class BaseTrainer:
             "valid_loader": valid_loader,
             "start_epoch": start_epoch,
         }
+        
+        logs = {}
 
         [c.on_train_begin(**train_configs) for c in callbacks]
         try:
