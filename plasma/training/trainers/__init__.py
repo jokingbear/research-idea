@@ -4,5 +4,5 @@ from .deepspeed_trainer import DeepspeedTrainer
 
 __mapping__ = {
     "standard": Trainer,
-    'deepspeed': DeepspeedTrainer,
+    #'deepspeed': DeepspeedTrainer,
 }
