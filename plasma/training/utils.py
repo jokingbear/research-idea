@@ -133,13 +133,12 @@ def process_queue(running_context, process_func, nprocess=50, infinite_loop=True
             [p.join() for p in processes]
 
 
-def gpu_parallel(process_func, process_queue, *args,**kwargs):
+def gpu_parallel(process_func, *args,**kwargs):
     """
     Parallel processes on all gpus
 
     Args:
         process_func (function): function with the first argument is device id
-        process_queue (function): function that resolves the results on each gpu
     
     Return:
         list of result on each gpu
