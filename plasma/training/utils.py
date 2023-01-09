@@ -3,10 +3,13 @@ import multiprocessing as mp
 import os
 
 import torch
+import torch.multiprocessing as torch_mp
+
 from tqdm import tqdm
 from tqdm.notebook import tqdm as tqdm_nb
 from .data.adhoc_data import AdhocData
 from ..functional import auto_func
+from queue import Empty
 
 
 notebook = False
@@ -149,36 +152,68 @@ def process_queue(running_context, process_func, nprocess=50, infinite_loop=True
     :param infinite_loop: number of worker to run
     :param task_name: name for the running process
     """
-
-    auto_process_func = auto_func(process_func)
-
     def run_process(i, queue: mp.Queue):
         condition = True
 
         while condition:
-            item = queue.get()
+            try:
+                item = queue.get(timeout=5)
 
-            auto_process_func(item)
+                if isinstance(item, tuple):
+                    process_func(*item)
+                elif isinstance(item, dict):
+                    process_func(**item)
+                else:
+                    process_func(item)
 
-            condition &= infinite_loop
+                queue.task_done()
+                condition &= infinite_loop
+            except Empty:
+                return
 
     task_name = task_name or 'queue'
-    q = mp.Manager().Queue()
-    processes = [mp.Process(target=run_process, args=(i, q), name=f'{task_name}_{i}') for i in range(nprocess)]
 
-    [p.start() for p in processes]
+    with mp.Manager() as manager:
+        q = manager.Queue()
+        
+        processes = [mp.Process(target=run_process, args=(i, q), name=f'{task_name}_{i}') for i in range(nprocess)]
+        
+        [p.start() for p in processes]
+
+        try:
+            running_context(q)
+            q.join()
+        except Exception:
+            raise
+        finally:
+            [p.join() for p in processes]
+
+
+def gpu_parallel(process_func, process_queue, *args,**kwargs):
+    """
+    Parallel processes on all gpus
+
+    Args:
+        process_func (function): function with the first two arguments are device id
+        process_queue (function): function that resolves the results on each gpu
     
-    try:
-        running_context(q)
+    Return:
+        list of result on each gpu
+    """   
+    def proxy_func(device_id: int, queue: mp.Queue):
+        result = process_func(device_id)
 
-        n = q.qsize()
-        with get_progress(total=n, desc='resolving queue') as pbar:
-            while q.qsize() > 0:
-                n_new = q.qsize()
-                diff = n - n_new
-                n = n_new
-                pbar.update(diff)
-    except:
-        raise
-    finally:
-        [p.close() for p in processes]
+        if result is not None:
+            queue.put_nowait((device_id, result))
+
+    with torch_mp.Manager() as manager:
+        devices = torch.cuda.device_count()
+
+        q = manager.Queue()
+        processes = [torch_mp.Process(target=proxy_func, args=(d, q, *args), kwargs=kwargs) for d in range(devices)]
+
+        [p.start() for p in processes]
+        [p.join() for p in processes]
+
+        return list(q.queue)
+
