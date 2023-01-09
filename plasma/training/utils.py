@@ -87,62 +87,6 @@ def set_devices(*device_ids):
     os.environ['CUDA_VISIBLE_DEVICES'] = ','.join([str(d) for d in device_ids])
 
 
-def torch_parallel_iterate(arr, iteration_func, loader_func=None, cleanup_func=None, batch_size=32, workers=2, loader_kwargs={}, 
-                            dtype=torch.float16, **kwargs):
-    """
-    parallel iterate over arr using torch
-    :param arr: array to be iterate over
-    :param iteration_func: what to compute on gpu
-    :param loader_func: how to load the data, the default is identity
-    :param cleanup_func: how to clean up the data after each iteration
-    :batch_size: batch size to load on gpus
-    :workers: number of worker for torch loader
-    :loader_kwargs: additional param for torch loader
-    :dtype: cast type on gpu
-    :kwargs: additional arg for iteration_func
-    """
-
-    if loader_func is None:
-        loader_func = lambda x: x
-
-    loader = get_loader(arr, loader_func, batch_size=batch_size, workers=workers, **loader_kwargs)
-
-    class TempModule(torch.nn.Module):
-
-        def __init__(self):
-            super().__init__()
-
-            for k in kwargs:
-                value = kwargs[k]
-                
-                if issubclass(type(value), torch.nn.Module):
-                    setattr(self, k, value)
-                elif not isinstance(k, torch.Tensor):
-                    value = torch.tensor(value, dtype=dtype)
-                
-                self.register_parameter(k, torch.nn.Parameter(value, requires_grad=False))
-        
-        def forward(self, x):
-            return iteration_func(x, **{k: getattr(self, k) for k in kwargs})
-    
-    m = TempModule()
-    m = torch.nn.DataParallel(m)
-    m = m.cuda()
-    results = []
-
-    with torch.no_grad():
-        for i, d in get_progress(enumerate(loader), total=len(loader)):
-            d = d.type(dtype)
-            result = m(d.cuda())
-            
-            if cleanup_func is not None:
-                cleanup_func(i, result)
-            else:
-                results.append(result)
-    
-    return results
-
-
 def process_queue(running_context, process_func, nprocess=50, infinite_loop=True, task_name=None):
     """
     create a queue with nprocess to resolve that queue
@@ -194,7 +138,7 @@ def gpu_parallel(process_func, process_queue, *args,**kwargs):
     Parallel processes on all gpus
 
     Args:
-        process_func (function): function with the first two arguments are device id
+        process_func (function): function with the first argument is device id
         process_queue (function): function that resolves the results on each gpu
     
     Return:
@@ -215,5 +159,5 @@ def gpu_parallel(process_func, process_queue, *args,**kwargs):
         [p.start() for p in processes]
         [p.join() for p in processes]
 
-        return list(q.queue)
+        return list(iter(q.get, None))
 

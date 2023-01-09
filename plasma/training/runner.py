@@ -273,6 +273,7 @@ def create(config, save_config_path=None, ddp=False, backend='nccl', verbose=1,
             addr='localhost', port='25389'):
     """
     create runner based on predefined configuration
+
     Args:
         config: config dict or path to config dict
         save_config_path: where to save config after training
@@ -281,6 +282,9 @@ def create(config, save_config_path=None, ddp=False, backend='nccl', verbose=1,
         verbose: print creation step
         addr: address for process to communicate, default=localhost
         port: communication port, default=25389
+    
+    Returns:
+        runner
     """
     if not isinstance(config, dict):
         with open(config) as handle:
