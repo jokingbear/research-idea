@@ -3,9 +3,13 @@ import multiprocessing as mp
 import os
 
 import torch
+import torch.multiprocessing as torch_mp
+
 from tqdm import tqdm
 from tqdm.notebook import tqdm as tqdm_nb
 from .data.adhoc_data import AdhocData
+from ..functional import auto_func
+from queue import Empty
 
 
 notebook = False
@@ -83,103 +87,77 @@ def set_devices(*device_ids):
     os.environ['CUDA_VISIBLE_DEVICES'] = ','.join([str(d) for d in device_ids])
 
 
-def torch_parallel_iterate(arr, iteration_func, loader_func=None, cleanup_func=None, batch_size=32, workers=2, loader_kwargs={}, 
-                            dtype=torch.float16, **kwargs):
-    """
-    parallel iterate over arr using torch
-    :param arr: array to be iterate over
-    :param iteration_func: what to compute on gpu
-    :param loader_func: how to load the data, the default is identity
-    :param cleanup_func: how to clean up the data after each iteration
-    :batch_size: batch size to load on gpus
-    :workers: number of worker for torch loader
-    :loader_kwargs: additional param for torch loader
-    :dtype: cast type on gpu
-    :kwargs: additional arg for iteration_func
-    """
-
-    if loader_func is None:
-        loader_func = lambda x: x
-
-    loader = get_loader(arr, loader_func, batch_size=batch_size, workers=workers, **loader_kwargs)
-
-    class TempModule(torch.nn.Module):
-
-        def __init__(self):
-            super().__init__()
-
-            for k in kwargs:
-                value = kwargs[k]
-                
-                if issubclass(type(value), torch.nn.Module):
-                    setattr(self, k, value)
-                elif not isinstance(k, torch.Tensor):
-                    value = torch.tensor(value, dtype=dtype)
-                
-                self.register_parameter(k, torch.nn.Parameter(value, requires_grad=False))
-        
-        def forward(self, x):
-            return iteration_func(x, **{k: getattr(self, k) for k in kwargs})
-    
-    m = TempModule()
-    m = torch.nn.DataParallel(m)
-    m = m.cuda()
-    results = []
-
-    with torch.no_grad():
-        for i, d in get_progress(enumerate(loader), total=len(loader)):
-            d = d.type(dtype)
-            result = m(d.cuda())
-            
-            if cleanup_func is not None:
-                cleanup_func(i, result)
-            else:
-                results.append(result)
-    
-    return results
-
-
-def process_queue(running_context, process_func, nprocess=50, infinite_loop=True):
+def process_queue(running_context, process_func, nprocess=50, infinite_loop=True, task_name=None):
     """
     create a queue with nprocess to resolve that queue
     :param running_context: running function, receive queue as input
     :param process_func: function to process queue item
     :param nprocess: number of independent process
     :param infinite_loop: number of worker to run
-    :return queue, n processes
+    :param task_name: name for the running process
     """
     def run_process(i, queue: mp.Queue):
-        print(f'process {i} started')
         condition = True
 
         while condition:
-            item = queue.get()
+            try:
+                item = queue.get(timeout=5)
 
-            if isinstance(item, tuple):
-                process_func(*item)
-            elif isinstance(item, dict):
-                process_func(**item)
-            else:
-                process_func(item)
+                if isinstance(item, tuple):
+                    process_func(*item)
+                elif isinstance(item, dict):
+                    process_func(**item)
+                else:
+                    process_func(item)
 
-            condition &= infinite_loop
+                queue.task_done()
+                condition &= infinite_loop
+            except Empty:
+                return
 
-    q = mp.Manager().Queue()
-    processes = [mp.Process(target=run_process, args=(i, q)) for i in range(nprocess)]
+    task_name = task_name or 'queue'
 
-    [p.start() for p in processes]
+    with mp.Manager() as manager:
+        q = manager.Queue()
+        
+        processes = [mp.Process(target=run_process, args=(i, q), name=f'{task_name}_{i}') for i in range(nprocess)]
+        
+        [p.start() for p in processes]
 
-    try:
-        running_context(q)
+        try:
+            running_context(q)
+            q.join()
+        except Exception:
+            raise
+        finally:
+            [p.join() for p in processes]
 
-        n = q.qsize()
-        with get_progress(total=n, desc='resolving queue') as pbar:
-            while q.qsize() > 0:
-                n_new = q.qsize()
-                diff = n - n_new
-                n = n_new
-                pbar.update(diff)
-    except:
-        raise
-    finally:
-        [p.terminate() for p in processes]
+
+def gpu_parallel(process_func, process_queue, *args,**kwargs):
+    """
+    Parallel processes on all gpus
+
+    Args:
+        process_func (function): function with the first argument is device id
+        process_queue (function): function that resolves the results on each gpu
+    
+    Return:
+        list of result on each gpu
+    """   
+    def proxy_func(device_id: int, queue: mp.Queue):
+        result = process_func(device_id)
+
+        if result is not None:
+            queue.put_nowait((device_id, result))
+
+    with torch_mp.Manager() as manager:
+        devices = torch.cuda.device_count()
+
+        q = manager.Queue()
+        processes = [torch_mp.Process(target=proxy_func, args=(d, q, *args), kwargs=kwargs) for d in range(devices)]
+
+        [p.start() for p in processes]
+        [p.join() for p in processes]
+
+        return list(iter(q.get, None))
+

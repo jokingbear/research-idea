@@ -62,7 +62,7 @@ class FbetaLoss(nn.Module):
 
 class WBCE(nn.Module):
 
-    def __init__(self, weights_path=None, smooth=None, sym=False):
+    def __init__(self, weights_path=None, smooth=None):
         super().__init__()
 
         if weights_path is None:
@@ -81,7 +81,6 @@ class WBCE(nn.Module):
 
         self.weights = torch.tensor(weights, dtype=torch.float)
         self.smooth = smooth
-        self.sym = sym
 
     def forward(self, preds, trues):
         _assert_inputs(preds, trues)
@@ -94,23 +93,15 @@ class WBCE(nn.Module):
             sm = torch.ones_like(preds).uniform_(1 - self.smooth, 1)
             ln0 = weights[..., 0] * (1 - trues) * (sm * ln0 + (1 - sm) * ln1)
             ln1 = weights[..., 1] * trues * (sm * ln1 + (1 - sm) * ln0)
-
-            if self.sym:
-                ln0 = ln0 + weights[..., 0] * (1 - trues) * ((1 - preds) * sm.log() + preds * (1 - sm).log())
-                ln1 = ln1 + weights[..., 1] * trues * (preds * sm.log() + (1 - preds) * (1 - sm).log())
         else:
             ln0 = weights[..., 0] * (1 - trues) * ln0
             ln1 = weights[..., 1] * trues * ln1
-
-            if self.sym:
-                ln0 = ln0 + weights[..., 0] * (1 - trues) * preds * (-12)
-                ln1 = ln1 + weights[..., 1] * trues * (1 - preds) * (-12)
 
         ln = ln0 + ln1
         return -ln.mean()
 
     def extra_repr(self):
-        return f"weights_shape={self.weights.shape}, smooth={self.smooth}, sym={self.sym}"
+        return f"weights_shape={self.weights.shape}, smooth={self.smooth}"
 
     @staticmethod
     def get_class_balance_weight(counts, anchor=0):
@@ -127,37 +118,6 @@ class WBCE(nn.Module):
         normalized_weights = weights / weights.values[:, anchor, np.newaxis]
 
         return normalized_weights
-
-
-class CombineLoss(nn.Module):
-
-    def __init__(self, *losses, weights=None):
-        super().__init__()
-
-        self.losses = nn.ModuleList(losses)
-        self.weights = weights or [1] * len(losses)
-
-    def forward(self, preds, trues):
-        loss = 0
-        d = {}
-
-        for ls, w in zip(self.losses, self.weights):
-            ind_loss = ls(preds, trues)
-
-            if isinstance(ind_loss, dict):
-                for k in ind_loss:
-                    if k != "Loss":
-                        d[k] = ind_loss[k]
-                    else:
-                        loss = loss + w * ind_loss["Loss"]
-            else:
-                loss = loss + w * ind_loss
-
-        d["Loss"] = loss
-        return d
-
-    def extra_repr(self):
-        return f"weights={self.weights}"
 
 
 class CrossEntropy(nn.Module):

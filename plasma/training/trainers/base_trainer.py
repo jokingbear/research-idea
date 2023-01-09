@@ -10,11 +10,12 @@ import torch.nn as nn
 from ..utils import eval_modules
 from .utils import get_batch_tensors
 from ..callbacks.standard_callbacks import ProgressBar
+from ...functional import auto_func
 
 
 class BaseTrainer:
 
-    def __init__(self, model: nn.Module, optimizer, loss: nn.Module, metrics=None, dtype=torch.float, rank=0):
+    def __init__(self, model: nn.Module, optimizer, loss: nn.Module, metrics=None, dtype='float', rank=0):
         self.model = model
         self.optimizer = optimizer
         self.loss = loss
@@ -25,6 +26,8 @@ class BaseTrainer:
         device = f'cuda:{rank}' if torch.cuda.device_count() > 0 else 'cpu'
         self.device = device
         self.rank = rank
+        self.forward_func = auto_func(self.model)
+        self.training = True
 
     def fit(self, train_loader, valid_loader=None, callbacks=None, start_epoch=1):
         assert start_epoch > 0, "start epoch must be positive"
@@ -38,6 +41,8 @@ class BaseTrainer:
             "valid_loader": valid_loader,
             "start_epoch": start_epoch,
         }
+        
+        logs = {}
 
         [c.on_train_begin(**train_configs) for c in callbacks]
         try:
@@ -116,7 +121,7 @@ class BaseTrainer:
         pass
 
     @abstractmethod
-    def _get_batch_logs(self, data, loss_dict, cache) -> dict:
+    def _get_batch_logs(self, data, loss_dict, pred_cache) -> dict:
         pass
 
     @abstractmethod

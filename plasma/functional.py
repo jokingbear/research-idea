@@ -11,17 +11,31 @@ def run_pipe(funcs, log_fn=None, verbose=True):
     elif not isinstance(funcs, dict):
         raise NotImplemented(f'not support funcs of type {type(funcs)}')
     
+    funcs = {k: auto_func(funcs[k]) for k in funcs}
+
     result = None
     for k in funcs:
         if verbose:
             print('running', k)
 
-        if result is not None:
-            result = funcs[k](result)
-        else:
-            result = funcs[k]()
+        result = funcs[k](result)
 
         if log_fn is not None:
             log_fn(k, result)
 
     return result
+
+
+def auto_func(func):
+
+    def auto_input(inputs):
+        if isinstance(inputs, tuple):
+            return func(*inputs)
+        elif isinstance(inputs, dict):
+            return func(**inputs)
+        elif inputs is None:
+            return func()
+        else:
+            return func(inputs)
+    
+    return auto_input

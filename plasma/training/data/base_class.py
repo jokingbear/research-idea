@@ -6,9 +6,6 @@ from torch.utils.data import RandomSampler, SequentialSampler, DistributedSample
 
 class StandardDataset(data.Dataset):
 
-    def __init__(self):
-        super(StandardDataset, self).__init__()
-
     def __len__(self):
         return self.get_len()
 
@@ -30,6 +27,7 @@ class StandardDataset(data.Dataset):
         else:
             assert num_replicas is not None, 'num replicas can be None when use rank'
             sampler = DistributedSampler(self, rank=rank, num_replicas=num_replicas, shuffle=shuffle)
+            batch_size = batch_size // num_replicas
 
         return data.DataLoader(self, batch_size, sampler=sampler, num_workers=workers,
                                pin_memory=pin, drop_last=drop_last)

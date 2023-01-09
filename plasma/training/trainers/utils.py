@@ -26,7 +26,7 @@ def get_batch_tensors(batch_values, dtype, device):
     elif isinstance(batch_values, dict):
         return {k: to_device(batch_values[k], dtype, device) for k in batch_values}
 
-    raise 'only support type tuple, list and dict'
+    raise NotImplementedError('only support type tuple, list and dict')
 
 
 def get_dict(values, prefix=None, name=None):
