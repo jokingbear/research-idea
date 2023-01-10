@@ -96,37 +96,37 @@ def process_queue(running_context, process_func, nprocess=50, infinite_loop=True
     :param infinite_loop: number of worker to run
     :param task_name: name for the running process
     """
-    def run_process(i, queue: mp.Queue):
+
+    process_func = auto_func(process_func)
+    def run_process(i, queue: mp.Queue, is_dones):
         condition = True
 
         while condition:
             try:
-                item = queue.get(timeout=5)
+                item = queue.get()
 
-                if isinstance(item, tuple):
-                    process_func(*item)
-                elif isinstance(item, dict):
-                    process_func(**item)
-                else:
-                    process_func(item)
+                process_func(item)
 
                 queue.task_done()
-                condition &= infinite_loop
+                condition &= infinite_loop & ~is_dones[i]
             except Empty:
                 return
-
-    task_name = task_name or 'queue'
 
     with mp.Manager() as manager:
         q = manager.Queue()
         
-        processes = [mp.Process(target=run_process, args=(i, q), name=f'{task_name}_{i}') for i in range(nprocess)]
+        is_dones = [False for i in range(nprocess)]
+        is_dones = manager.list(is_dones)
+        processes = [mp.Process(target=run_process, args=(i, q, is_dones)) for i in range(nprocess)]
         
         [p.start() for p in processes]
 
         try:
             running_context(q)
             q.join()
+            
+            for i in range(nprocess):
+                is_dones[i] = True
         except Exception:
             raise
         finally:
@@ -159,4 +159,3 @@ def gpu_parallel(process_func, *args,**kwargs):
         [p.join() for p in processes]
 
         return list(iter(q.get, None))
-
