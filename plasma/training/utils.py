@@ -87,14 +87,13 @@ def set_devices(*device_ids):
     os.environ['CUDA_VISIBLE_DEVICES'] = ','.join([str(d) for d in device_ids])
 
 
-def process_queue(running_context, process_func, nprocess=50, infinite_loop=True, task_name=None):
+def process_queue(running_context, process_func, nprocess=50, infinite_loop=True):
     """
     create a queue with nprocess to resolve that queue
     :param running_context: running function, receive queue as input
     :param process_func: function to process queue item
     :param nprocess: number of independent process
     :param infinite_loop: number of worker to run
-    :param task_name: name for the running process
     """
 
     process_func = auto_func(process_func)
