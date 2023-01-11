@@ -87,14 +87,17 @@ def set_devices(*device_ids):
     os.environ['CUDA_VISIBLE_DEVICES'] = ','.join([str(d) for d in device_ids])
 
 
-def process_queue(running_context, process_func, nprocess=50, infinite_loop=True):
+def process_queue(running_context, process_func, nprocess=50, infinite_loop=True, timeout=60):
     """
-    create a queue with nprocess to resolve that queue
-    :param running_context: running function, receive queue as input
-    :param process_func: function to process queue item
-    :param nprocess: number of independent process
-    :param infinite_loop: number of worker to run
-    """
+    create a queue and process item asynchronously
+
+    Args:
+        running_context (function (queue)): a function that put item inside a queue
+        process_func (function (queue_item)): function to precess queue. This function will be run asynchronously on nprocess
+        nprocess (int, optional): number of parallel processes. Defaults to 50.
+        infinite_loop (bool, optional): whether to run process_func in infinite loop. Defaults to True.
+        timeout (int, optional): a period (second) a process should wait for a queue. Defaults to 60s.
+    """    
 
     process_func = auto_func(process_func)
     def run_process(i, queue: mp.Queue, is_dones):
@@ -102,7 +105,7 @@ def process_queue(running_context, process_func, nprocess=50, infinite_loop=True
 
         while condition:
             try:
-                item = queue.get()
+                item = queue.get(timeout=timeout)
 
                 process_func(item)
 
@@ -114,7 +117,7 @@ def process_queue(running_context, process_func, nprocess=50, infinite_loop=True
     with mp.Manager() as manager:
         q = manager.Queue()
         
-        is_dones = [False for i in range(nprocess)]
+        is_dones = [False for _ in range(nprocess)]
         is_dones = manager.list(is_dones)
         processes = [mp.Process(target=run_process, args=(i, q, is_dones)) for i in range(nprocess)]
         
