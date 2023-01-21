@@ -41,26 +41,6 @@ def eval_modules(*modules):
     return torch.no_grad()
 
 
-def parallel_iterate(arr, iter_func, workers=8, use_index=False, **kwargs):
-    """
-    parallel iterate array
-    :param arr: array to be iterated
-    :param iter_func: function to be called for each data, signature (idx, arg) or arg
-    :param workers: number of worker to run
-    :param use_index: whether to add index to each call of iter func
-    :return list of result if not all is None
-    """
-    with mp.Pool(workers) as p:
-        if isinstance(arr, zip):
-            jobs = [p.apply_async(iter_func, args=(i, *arg) if use_index else arg, kwds=kwargs) for i, arg in enumerate(arr)]
-        elif isinstance(arr, pd.DataFrame):
-            jobs = [p.apply_async(iter_func, args=(i, row) if use_index else (row,), kwds=kwargs) for i, row in arr.iterrows()]
-        else:
-            jobs = [p.apply_async(iter_func, args=(i, arg) if use_index else (arg,), kwds=kwargs) for i, arg in enumerate(arr)]
-        results = [j.get() for j in get_progress(jobs)]
-        return results
-
-
 def get_loader(arr, mapper, batch_size=32, pin_memory=True, workers=None, **kwargs):
     """
     get loader from array or dataframe
@@ -85,79 +65,3 @@ def set_devices(*device_ids):
     assert len(device_ids) > 0, "there must be at least 1 id"
 
     os.environ['CUDA_VISIBLE_DEVICES'] = ','.join([str(d) for d in device_ids])
-
-
-def process_queue(running_context, process_func, nprocess=50, infinite_loop=True, timeout=60):
-    """
-    create a queue and process item asynchronously
-
-    Args:
-        running_context (function (queue)): a function that put item inside a queue
-        process_func (function (queue_item)): function to precess queue. This function will be run asynchronously on nprocess
-        nprocess (int, optional): number of parallel processes. Defaults to 50.
-        infinite_loop (bool, optional): whether to run process_func in infinite loop. Defaults to True.
-        timeout (int, optional): a period (second) a process should wait for a queue. Defaults to 60s.
-    """    
-
-    process_func = auto_func(process_func)
-    def run_process(i, queue: mp.Queue, is_dones):
-        condition = True
-
-        while condition:
-            try:
-                item = queue.get(timeout=timeout)
-
-                process_func(item)
-
-                queue.task_done()
-                condition &= infinite_loop & ~is_dones[i]
-            except Empty:
-                return
-
-    with mp.Manager() as manager:
-        q = manager.Queue()
-        
-        is_dones = [False for _ in range(nprocess)]
-        is_dones = manager.list(is_dones)
-        processes = [mp.Process(target=run_process, args=(i, q, is_dones)) for i in range(nprocess)]
-        
-        [p.start() for p in processes]
-
-        try:
-            running_context(q)
-            q.join()
-            
-            for i in range(nprocess):
-                is_dones[i] = True
-        except Exception:
-            raise
-        finally:
-            [p.join() for p in processes]
-
-
-def gpu_parallel(process_func, *args,**kwargs):
-    """
-    Parallel processes on all gpus
-
-    Args:
-        process_func (function): function with the first argument is device id
-    
-    Return:
-        list of result on each gpu
-    """   
-    def proxy_func(device_id: int, queue: mp.Queue):
-        result = process_func(device_id)
-
-        if result is not None:
-            queue.put_nowait((device_id, result))
-
-    with torch_mp.Manager() as manager:
-        devices = torch.cuda.device_count()
-
-        q = manager.Queue()
-        processes = [torch_mp.Process(target=proxy_func, args=(d, q, *args), kwargs=kwargs) for d in range(devices)]
-
-        [p.start() for p in processes]
-        [p.join() for p in processes]
-
-        return list(iter(q.get, None))
