@@ -1,10 +1,20 @@
 def run_pipe(funcs, log_fn=None, verbose=True):
     """
-    run a list or dict of function sequentially, outputs of the previous function are inputed to the next function
-    :param funcs: list or dict of functions to run
-    :param log_fn: log the output of each function, signature (name, output)
-    :param verbose: whether to print running process
-    """
+    Run a list or dict of function sequentially, outputs of the previous function are 
+    inputed to the next function
+
+    Args:
+        funcs (list or dict): list or dict of functions to run sequentially
+        log_fn (function, optional): logging function to be run after each step. Signature (step name, step results) -> (). 
+        Defaults to None.
+        verbose (bool, optional): whether to print out which step is being run. Defaults to True.
+
+    Raises:
+        NotImplemented: raise when funcs is not the type of list, tuple or dict
+
+    Returns:
+        Any: result of the final step
+    """    
 
     if isinstance(funcs, (list, tuple)):
         funcs = {i: f for i, f in enumerate(funcs)}
