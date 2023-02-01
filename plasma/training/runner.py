@@ -16,15 +16,17 @@ from ..hub import get_entries
 from .optimizers import __mapping__ as optimizer_map
 
 from distutils.log import warn
+from ..functional import run_pipe
 
 
 class ConfigRunner:
 
-    def __init__(self, config, save_config_path=None, rank=0, ddp=False, verbose=1):
+    def __init__(self, config, save_config_path=None, rank=0, ddp=False, verbose=True):
         self.config = config
         self.save_config_path = save_config_path
         self.rank = rank
         self.ddp = ddp
+        self.verbose = verbose & rank == 0
 
         repo_config = config["repo"]
         model_config = config["model"]
@@ -43,41 +45,18 @@ class ConfigRunner:
             model_config['rank'] = rank
 
             trainer_config['rank'] = rank
+        
+        run_pipe({
+            'load_repo': (self._set_repo, repo_config),
+            'load_model': (self._set_model, model_config),
+            'load_loss': (self._set_loss, loss_config),
+            'load_metrics': (self._set_metrics, metrics_configs),
+            'load_optimizer': (self._set_optimizer, opt_config),
+            'load_trainer': (self._set_trainer, trainer_config),
+            'load_callbacks': (self._set_callbacks, callbacks_configs),
+        })  
 
-        print("creating train, valid loader") if verbose else None
-        self.train, self.valid = self._get_repo(repo_config)
-        if verbose:
-            print("train: ", len(self.train))
-            print("valid: ", len(self.valid)) if self.valid is not None else None
-
-        print("creating model") if verbose else None
-        self.model = self._get_model(model_config)
-        if verbose:
-            print("printing model to model.txt")
-
-            with open("model.txt", "w") as handle:
-                handle.write(str(self.model))
-
-            num = sum(p.numel()
-                      for p in self.model.parameters() if p.requires_grad)
-            print('parameters:', num)
-
-        self.loss = self._get_loss(loss_config)
-        print("loss: ", self.loss) if verbose else None
-
-        self.metrics = self._get_metrics(metrics_configs)
-        print("metrics: ", self.metrics) if verbose else None
-
-        self.optimizer = self._get_optimizer(opt_config)
-        print("optimizer: ", self.optimizer) if verbose else None
-
-        self.trainer = self._get_trainer(trainer_config)
-        print("trainer ", self.trainer) if verbose else None
-
-        self.callbacks = self._get_callbacks(callbacks_configs)
-        print("callbacks: ", self.callbacks) if verbose else None
-
-    def _get_repo(self, repo_config):
+    def _set_repo(self, **repo_config):
         repo_entries = get_entries(repo_config["path"])
 
         entries = repo_entries.list()
@@ -96,14 +75,16 @@ class ConfigRunner:
         loaders = repo_entries.load(method, **kwargs)
 
         if isinstance(loaders, (tuple, list)):
-            train, valid = loaders
+            self.train, self.valid = loaders
         else:
-            train = loaders
-            valid = None
+            self.train = loaders
+            self.valid = None
+        
+        if self.verbose:
+            print("train iterations: ", len(self.train))
+            print("valid: ", len(self.valid)) if self.valid is not None else None
 
-        return train, valid
-
-    def _get_model(self, model_config):
+    def _set_model(self, **model_config):
         model_entries = get_entries(model_config["path"])
 
         kwargs = self.get_kwargs(model_config, ["path", "name", "parallel", "checkpoint", "gpu", 'batchnorm'])
@@ -126,9 +107,17 @@ class ConfigRunner:
         elif model_config.get("gpu", False):
             model = model.cuda(self.rank)
 
-        return model
+        self.model = model
 
-    def _get_loss(self, loss_config):
+        if self.verbose:
+            num = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
+            print('model parameters:', num)
+
+            print("printing model to model.txt")
+            with open("model.txt", "w") as handle:
+                handle.write(str(self.model))
+
+    def _set_loss(self, **loss_config):
         name = loss_config["name"].lower()
         kwargs = self.get_kwargs(loss_config, ["name", "path"])
 
@@ -140,31 +129,31 @@ class ConfigRunner:
         else:
             raise NotImplementedError(
                 f"currently only support {loss_maps.keys()}")
+        
+        self.loss = loss
+        print("loss: ", self.loss) if self.verbose else None
 
-        return loss
+    def _set_metrics(self, *metrics_configs):
+        metrics = []
 
-    def _get_metrics(self, metrics_configs):
-        if isinstance(metrics_configs, list):
-            metrics = []
+        for m_cfg in metrics_configs:
+            name = m_cfg["name"].lower()
+            kwargs = self.get_kwargs(m_cfg)
 
-            for m_cfg in metrics_configs:
-                name = m_cfg["name"].lower()
-                kwargs = self.get_kwargs(m_cfg)
+            if name in metric_maps:
+                metric = metric_maps[name](**kwargs)
+            else:
+                entries = get_entries(m_cfg["path"])
 
-                if name in metric_maps:
-                    metrics.append(metric_maps[name](**kwargs))
-        else:
-            entries = get_entries(metrics_configs["path"])
+                kwargs = self.get_kwargs(m_cfg, excludes=["name", "path"])
+                metric = entries.load(name, **kwargs)
+            
+            metrics.append(metric)
 
-            name = metrics_configs["name"]
-            kwargs = self.get_kwargs(
-                metrics_configs, excludes=["name", "path"])
+        self.metrics = metrics
+        print("metrics: ", self.metrics) if self.verbose else None
 
-            metrics = entries.load(name, **kwargs)
-
-        return metrics
-
-    def _get_optimizer(self, opt_config):
+    def _set_optimizer(self, **opt_config):
         name = opt_config["name"].lower()
         kwargs = self.get_kwargs(opt_config, excludes=['name', 'checkpoint'])
 
@@ -179,9 +168,11 @@ class ConfigRunner:
 
         opt = opt([p for p in self.model.parameters()
                   if p.requires_grad], **kwargs)
-        return opt
+        
+        self.optimizer = opt
+        print("optimizer: ", self.optimizer) if self.verbose else None
 
-    def _get_trainer(self, trainer_config):
+    def _set_trainer(self, **trainer_config):
         path = trainer_config.get("path", None)
         name = trainer_config.get("name", "standard").lower()
         kwargs = self.get_kwargs(trainer_config, excludes=["name", "path"])
@@ -196,10 +187,10 @@ class ConfigRunner:
         else:
             raise NotImplementedError("only support standard trainer for empty trainer config")
 
-        return trainer
+        self.trainer = trainer
+        print("trainer ", self.trainer) if self.verbose else None
 
-    def _get_callbacks(self, callbacks_configs):
-        callbacks_configs = [] + callbacks_configs
+    def _set_callbacks(self, *callbacks_configs):
         cbs = []
 
         for cb_config in callbacks_configs:
@@ -210,7 +201,8 @@ class ConfigRunner:
             if name in callback_map:
                 cbs.append(callback_map[name](**kwargs))
 
-        return cbs
+        self.callbacks = cbs
+        print("callbacks: ", self.callbacks) if self.verbose else None
 
     def run(self):
         """
