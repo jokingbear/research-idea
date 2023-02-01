@@ -30,7 +30,7 @@ def parallel_iterate(arr, iter_func, workers=8, use_index=False, **kwargs):
         return results
 
 
-def process_queue(running_context, process_func, nprocess=50, infinite_loop=True, timeout=60):
+def process_queue(running_context, process_func, nprocess=50, infinite_loop=True, timeout=20):
     """
     Create a queue and process item asynchronously
 
@@ -40,7 +40,7 @@ def process_queue(running_context, process_func, nprocess=50, infinite_loop=True
         This function will be run asynchronously on nprocess.
         nprocess (int, optional): number of parallel processes. Defaults to 50.
         infinite_loop (bool, optional): whether to run process_func in infinite loop. Defaults to True.
-        timeout (int, optional): a period (second) a process should wait for a queue. Defaults to 60s.
+        timeout (int, optional): a period (second) a process should wait for a queue. Defaults to 20s.
     """    
 
     process_func = auto_func(process_func)
@@ -72,4 +72,3 @@ def process_queue(running_context, process_func, nprocess=50, infinite_loop=True
             raise
         finally:
             [p.join() for p in processes]
-
