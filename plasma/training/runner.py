@@ -261,7 +261,7 @@ class DDPRunner:
             self._default_port = port
 
 
-def create(config, save_config_path=None, ddp=False, backend='nccl', verbose=1,
+def create(config, save_config_path=None, ddp=False, backend='nccl', verbose=True,
             addr='localhost', port='25389'):
     """
     create runner based on predefined configuration
