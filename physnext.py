@@ -1,44 +1,47 @@
+import numpy as np
+
 import torch.nn as nn
 import torchvision.models as models
 
 from torchvision.models.feature_extraction import create_feature_extractor
-from plasma.training import utils
 from plasma.modules import ImagenetNorm, GlobalAverage
 
 
 class PhysNext(nn.Module):
 
-    def __init__(self, n_class=1) -> None:
+    def __init__(self, motion_rep_mean, motion_rep_std, n_class=1) -> None:
         super().__init__()
 
-        self.motion_rep = MotionRepresentation()
+        self.motion_rep = MotionRepresentation(motion_rep_mean, motion_rep_std)
         self.appearance_encoder = AppearanceEncoder()
         self.motion_encoder = MotionEncoder()
-        self.head = nn.Linear(1, n_class)
+        self.head = nn.Linear(self.motion_encoder.nfeatures, n_class)
     
     def forward(self, X):
+        attention_masks = self.appearance_encoder(X[:, 1:])
         D = self.motion_rep(X)
-        attention_masks = self.appearance_encoder(X[1:])
-
         features = self.motion_encoder(D, attention_masks)
+        features = features.mean(dim=1)
 
         return self.head(features)
 
 
 class MotionRepresentation(nn.Module):
 
-    def forward(self, X):
-        # B L C HW
+    def __init__(self, mean, std) -> None:
+        super().__init__()
 
-        delta = X[1:] - X[:-1]
-        combine = X[1:] + X[:-1]
+        self.mean = nn.Parameter(mean, requires_grad=False)
+        self.std = nn.Parameter(std, requires_grad=False)
+
+    def forward(self, X):
+        #X: B T C HW
+
+        delta = X[:, 1:] - X[:, :-1]
+        combine = X[:, 1:] + X[:, :-1]
 
         D = delta / combine
-
-        mean_D = D.mean(dim=[1, -1, -2], keepdim=True)
-        std_D = D.std(dim=[1, -1, -2], keepdim=True)
-        
-        D = (D - mean_D) / std_D
+        D = (D - self.mean[np.newaxis, :, np.newaxis, np.newaxis]) / self.std[np.newaxis, :, np.newaxis, np.newaxis]
         return D
 
 
@@ -54,8 +57,8 @@ class AppearanceEncoder(nn.Module):
         self.extractor = create_feature_extractor(backbone, feature_maps)
 
         self.att_projs = nn.ModuleList([
-            nn.Sequential(nn.Conv2d(1, 1, kernel_size=1), nn.Sigmoid()),
-            nn.Sequential(nn.Conv2d(1, 1, kernel_size=1), nn.Sigmoid()),
+            nn.Sequential(nn.Conv2d( 96, 1, kernel_size=1), nn.Sigmoid()),
+            nn.Sequential(nn.Conv2d(192, 1, kernel_size=1), nn.Sigmoid()),
         ])
     
     def forward(self, X):
@@ -65,11 +68,11 @@ class AppearanceEncoder(nn.Module):
         flattened_X = self.normalize(flattened_X)
 
         feature_maps = self.extractor(flattened_X)
-        attention_maps = [self.calculate_attention_mask(m, p) for m, p in zip(feature_maps, self.att_projs)]
+        attention_maps = [self.get_attention_mask(feature_maps[m], p) for m, p in zip(feature_maps, self.att_projs)]
 
         return attention_maps
 
-    def calculate_attention_mask(self, feature_map, projection):
+    def get_attention_mask(self, feature_map, projection):
         mask = projection(feature_map)
         mean = mask.mean(dim=[-1, -2], keepdim=True)
 
@@ -85,7 +88,8 @@ class MotionEncoder(nn.Module):
 
         self.first_block = features[:2]
         self.second_block = features[2:4]
-        self.third_block = nn.Sequential(features[4:6], GlobalAverage(), nn.LayerNorm(1))
+        self.third_block = nn.Sequential(features[4:6], GlobalAverage(), nn.LayerNorm(384))
+        self.nfeatures = 384
 
     def forward(self, D, masks):
         #D: B T C HW
@@ -99,4 +103,5 @@ class MotionEncoder(nn.Module):
         second_block = self.second_block(first_block)
         second_block = second_block * masks[1]
 
+        # B T C
         return self.third_block(second_block).unflatten(dim=0, sizes=[B, T])
