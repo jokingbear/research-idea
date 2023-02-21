@@ -9,10 +9,10 @@ from plasma.modules import ImagenetNorm, GlobalAverage
 
 class PhysNext(nn.Module):
 
-    def __init__(self, motion_rep_mean, motion_rep_std, n_class=1) -> None:
+    def __init__(self, n_class=1) -> None:
         super().__init__()
 
-        self.motion_rep = MotionRepresentation(motion_rep_mean, motion_rep_std)
+        self.motion_rep = MotionRepresentation()
         self.appearance_encoder = AppearanceEncoder()
         self.motion_encoder = MotionEncoder()
         self.head = nn.Linear(self.motion_encoder.nfeatures, n_class)
@@ -28,12 +28,6 @@ class PhysNext(nn.Module):
 
 class MotionRepresentation(nn.Module):
 
-    def __init__(self, mean, std) -> None:
-        super().__init__()
-
-        self.mean = nn.Parameter(mean, requires_grad=False)
-        self.std = nn.Parameter(std, requires_grad=False)
-
     def forward(self, X):
         #X: B T C HW
 
@@ -41,7 +35,9 @@ class MotionRepresentation(nn.Module):
         combine = X[:, 1:] + X[:, :-1]
 
         D = delta / combine
-        D = (D - self.mean[np.newaxis, :, np.newaxis, np.newaxis]) / self.std[np.newaxis, :, np.newaxis, np.newaxis]
+
+        std, mean = D.std_mean(dim=[1, -1, -2], keepdim=True)   
+        D = (D - mean) / std
         return D
 
 
