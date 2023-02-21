@@ -1,5 +1,6 @@
 import numpy as np
 
+import torch
 import torch.nn as nn
 import torchvision.models as models
 
@@ -29,16 +30,9 @@ class PhysNext(nn.Module):
 class MotionRepresentation(nn.Module):
 
     def forward(self, X):
-        #X: B T C HW
 
         delta = X[:, 1:] - X[:, :-1]
-        combine = X[:, 1:] + X[:, :-1]
-
-        D = delta / combine
-
-        std, mean = D.std_mean(dim=[1, -1, -2], keepdim=True)   
-        D = (D - mean) / std
-        return D
+        return delta
 
 
 class AppearanceEncoder(nn.Module):
@@ -82,6 +76,7 @@ class MotionEncoder(nn.Module):
 
         features = models.convnext_tiny(weights='IMAGENET1K_V1').features
 
+        self.normalize = ImagenetNorm()
         self.first_block = features[:2]
         self.second_block = features[2:4]
         self.third_block = nn.Sequential(features[4:6], GlobalAverage(), nn.LayerNorm(384))
@@ -93,6 +88,7 @@ class MotionEncoder(nn.Module):
 
         # BT C HW
         flattened_D = D.flatten(end_dim=1)
+        flattened_D = self.normalize(flattened_D)
         first_block = self.first_block(flattened_D)
         first_block = first_block * masks[0]
 
