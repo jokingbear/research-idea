@@ -1,5 +1,5 @@
 from torch.nn import BCELoss, MSELoss, L1Loss
-from .standard_losses import CrossEntropy, FbetaLoss, FocalLoss, WBCE
+from .standard_losses import CrossEntropy, FbetaLoss, FocalLoss, WBCE, MSE
 
 __mapping__ = {
     "wbce": WBCE,
@@ -10,4 +10,5 @@ __mapping__ = {
     "mse": MSELoss,
     "l2": MSELoss,
     "l1": L1Loss,
+    'mse': MSE,
 }
