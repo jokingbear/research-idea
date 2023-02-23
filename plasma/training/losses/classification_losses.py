@@ -165,14 +165,3 @@ class CrossEntropy(nn.Module):
     
     def extra_repr(self) -> str:
         return f'binary={self.binary}, logit={self.logit}, smooth={self.smooth}, eps={self.eps}'
-
-
-class MSE(nn.Module):
-
-    def forward(self, preds, targets):
-        if len(targets.shape) == 1:
-            targets = targets[:, np.newaxis]
-        
-        _assert_inputs(preds, targets)
-
-        return (preds - targets).pow(2).mean()
