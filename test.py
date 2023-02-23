@@ -1,10 +1,15 @@
 import torch
+import torch.nn as nn
+import torchvision.models as models
 
-from physnext import PhysNext
+import numpy as np
 
+from physnext_2 import PhysNext
 
-a = torch.rand(2, 60, 3, 128, 128)
-b = PhysNext(0, 1)
+a = PhysNext(3, 30)
+
+b = torch.rand(1, 90, 3, 96, 96)
 
 with torch.no_grad():
-    c = b(a)
+    c = a(b)
+
