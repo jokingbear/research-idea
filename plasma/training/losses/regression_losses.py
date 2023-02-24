@@ -29,7 +29,7 @@ class PearsonLoss(nn.Module):
         loss = 0
         for i in range(nclass):
             data = torch.stack([preds[:, i], targets[:, i]], dim=0)
-            corr = torch.cov(data)[0, 1]
-            loss += 1 - corr
+            corr = torch.corrcoef(data)#[0, 1]
+            loss += 1 - corr[0, 1]
         
         return loss
