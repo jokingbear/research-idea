@@ -17,7 +17,7 @@ class TimeDiffNormalization(nn.Module):
 
         # BT C HW
         results = D / C
-        std, mean = torch.std_mean(results, dim=1, keepdim=True)
+        std, mean = torch.std_mean(results, dim=[1, -1, -2], keepdim=True)
         results = (results - mean) / std
         results = results.flatten(end_dim=1)
         return results
@@ -118,13 +118,11 @@ class MotionNext(nn.Sequential):
         diffX = self.diff(X)
 
         results = diffX
-        print(results.shape)
         for att_map, feature_block in zip(attention_maps, self.features):
             results = feature_block(results)
             results = results.view(B, T - 1, *results.shape[1:])
             results = results * att_map[:, np.newaxis]
             results = results.flatten(end_dim=1)
-            print(results.shape)
         
         results = self.head(results)
         results = results.unflatten(dim=0, sizes=[B, T - 1])
