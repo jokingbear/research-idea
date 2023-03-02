@@ -78,7 +78,7 @@ class AppearanceNext(nn.Module):
 
         self.imagenet = ImagenetNorm()
         self.extractor = create_feature_extractor(backbone, return_nodes=['1', '3', '5', '7'])
-        self.attentions = [SelfAttention(in_channel) for in_channel in [96, 192, 384, 768]]
+        self.attentions = nn.ModuleList([SelfAttention(in_channel) for in_channel in [96, 192, 384, 768]])
 
     def forward(self, X):
         # X: B T C HW -> B C HW
@@ -90,7 +90,6 @@ class AppearanceNext(nn.Module):
         results = []
         for att, k in zip(self.attentions, feature_maps):
             att_map = att(feature_maps[k])
-            print(att_map.shape)
             results.append(att_map)
         
         return results
