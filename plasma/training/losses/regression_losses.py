@@ -17,6 +17,17 @@ class MSE(nn.Module):
         return (preds - targets).pow(2).mean()
 
 
+class MAE(nn.Module):
+
+    def forward(self, preds, targets):
+        if len(targets.shape) == 1:
+            targets = targets[:, np.newaxis]
+        
+        _assert_inputs(preds, targets)
+
+        return abs(preds - targets).mean()
+
+
 class PearsonLoss(nn.Module):
 
     def forward(self, preds, targets):
