@@ -83,6 +83,8 @@ class AppearanceNext(nn.Module):
     def forward(self, X):
         # X: B T C HW -> B C HW
         X = X.mean(dim=1)
+        
+        #print(X.max(), X.min())
         X = self.imagenet(X)
 
         feature_maps = self.extractor(X)
@@ -119,7 +121,7 @@ class MotionNext(nn.Sequential):
         results = diffX
         for att_map, feature_block in zip(attention_maps, self.features):
             results = feature_block(results)
-            results = results.view(B, T - 1, *results.shape[1:])
+            results = results.unflatten(0, [B, T - 1])
             results = results * att_map[:, np.newaxis]
             results = results.flatten(end_dim=1)
         
@@ -155,13 +157,18 @@ class MotionNext(nn.Sequential):
 
 class PhysNext(nn.Module):
 
-    def __init__(self, duration, fps, nclass=1):
+    def __init__(self, duration, fps, nclass=1, cam=False):
         super().__init__()
 
         self.appearance = AppearanceNext()
         self.motion = MotionNext(duration, fps, nclass)
+        self.cam = cam
     
     def forward(self, X):
         attention_maps = self.appearance(X)
         
-        return self.motion(X, attention_maps)
+        results = self.motion(X, attention_maps)
+        if self.cam:
+            return results, attention_maps
+        
+        return results
