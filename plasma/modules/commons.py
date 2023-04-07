@@ -88,16 +88,15 @@ class Normalization(nn.Module):
         return f"mean={self.mean}, std={self.std}"
 
 
-class ClipHU(nn.Module):
+class Permute(nn.Module):
 
-    def __init__(self, clip_min, clip_max):
+    def __init__(self, *permutation):
         super().__init__()
 
-        self.clip_max = clip_max
-        self.clip_min = clip_min
+        self.permutation = permutation
+    
+    def forward(self, inputs):
+        return inputs.permuate(self.permutation)
 
-    def forward(self, vol: torch.Tensor):
-        return vol.clamp(self.clip_min, self.clip_max)
-
-    def extra_repr(self):
-        return f'clip_min={self.clip_min}, clip_max={self.clip_max}'
+    def extra_repr(self) -> str:
+        return f'permuration={self.permutation}'
