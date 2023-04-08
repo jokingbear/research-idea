@@ -96,7 +96,7 @@ class Permute(nn.Module):
         self.permutation = permutation
     
     def forward(self, inputs):
-        return inputs.permuate(self.permutation)
+        return inputs.permute(self.permutation)
 
     def extra_repr(self) -> str:
         return f'permuration={self.permutation}'
