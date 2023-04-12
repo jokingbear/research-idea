@@ -26,7 +26,7 @@ class ReduceLROnPlateau(Callback):
         self.scheduler = None
 
     def on_train_begin(self, **train_configs):
-        self.scheduler = schedulers.ReduceLROnPlateau(self.optimizers, mode=self.mode, factor=self.factor,
+        self.scheduler = schedulers.ReduceLROnPlateau(self.optimizer, mode=self.mode, factor=self.factor,
                                                       patience=self.patience - 1, verbose=bool(self.verbose))
 
     def on_epoch_end(self, epoch, logs):
