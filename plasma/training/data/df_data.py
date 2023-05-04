@@ -1,9 +1,9 @@
 import pandas as pd
 
-from .base_class import StandardDataset
+from .base_class import BaseDataset
 
 
-class PandasDataset(StandardDataset):
+class PandasDataset(BaseDataset):
 
     def __init__(self, df: pd.DataFrame, mapper, **kwargs):
         """

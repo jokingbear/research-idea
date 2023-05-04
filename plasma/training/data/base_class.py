@@ -4,7 +4,7 @@ from torch.utils import data
 from torch.utils.data import RandomSampler, SequentialSampler, DistributedSampler
 
 
-class StandardDataset(data.Dataset):
+class BaseDataset(data.Dataset):
 
     def __len__(self):
         return self.get_len()

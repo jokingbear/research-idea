@@ -1,7 +1,7 @@
-from .base_class import StandardDataset
+from .base_class import BaseDataset
 
 
-class AdhocData(StandardDataset):
+class AdhocData(BaseDataset):
 
     def __init__(self, arr, mapping, kwargs=None):
         super().__init__()

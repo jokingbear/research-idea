@@ -1,3 +1,2 @@
-from .base_class import StandardDataset
+from .base_class import BaseDataset
 from .df_data import PandasDataset
-from ..data import augmentation2d
