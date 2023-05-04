@@ -67,7 +67,7 @@ def standardize_func_inputs(func_inputs):
         elif len(func_inputs) == 2:
             func, tmp = func_inputs
 
-            if isinstance(args, dict):
+            if isinstance(tmp, dict):
                 kwargs = tmp
             else:
                 args = tmp

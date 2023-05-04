@@ -1,9 +1,14 @@
-import time
+import torch
+import torch.nn as nn
+import torchvision.models as models
 
-def check(d):
-    print('start process')
-    while True:
-        time.sleep(1)
-        if d[0]:
-            print('haha')
-            return
+import numpy as np
+
+from physnext_3 import PhysNext
+
+a = PhysNext(5, 30)
+
+b = torch.rand(2, 150, 3, 96, 96)
+
+with torch.no_grad():
+    c = a(b)

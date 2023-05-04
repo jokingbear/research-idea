@@ -44,7 +44,10 @@ def process_queue(running_context, process_func, nprocess=50, infinite_loop=True
     """    
 
     process_func = auto_func(process_func)
-    def run_process(i, queue: mp.Queue):
+
+    timeout = timeout or 20
+
+    def run_process(queue: mp.Queue):
         condition = True
 
         while condition:
@@ -61,7 +64,7 @@ def process_queue(running_context, process_func, nprocess=50, infinite_loop=True
     with mp.Manager() as manager:
         q = manager.Queue()
 
-        processes = [mp.Process(target=run_process, args=(i, q)) for i in range(nprocess)]
+        processes = [mp.Process(target=run_process, args=(q,)) for _ in range(nprocess)]
         
         [p.start() for p in processes]
 

@@ -22,7 +22,7 @@ class GlobalAverage(nn.Module):
 
 class Reshape(nn.Module):
 
-    def __init__(self, *shape):
+    def __init__(self, *shape, include_batch_dim=0):
         """
         final tensor forward result (B, *shape)
         :param shape: shape to resize to except batch dimension
@@ -30,12 +30,14 @@ class Reshape(nn.Module):
         super().__init__()
 
         self.shape = shape
+        self.include_batch_dim = include_batch_dim
 
     def forward(self, x):
-        return x.reshape([x.shape[0], *self.shape])
+        shapes = self.shape if self.include_batch_dim else [x.shape[0], *self.shape]
+        return x.reshape(shapes)
 
     def extra_repr(self):
-        return f"shape={self.shape}"
+        return f"shape={self.shape}, include_batch_dim={self.include_batch_dim}"
 
 
 class ImagenetNorm(nn.Module):
@@ -86,16 +88,15 @@ class Normalization(nn.Module):
         return f"mean={self.mean}, std={self.std}"
 
 
-class ClipHU(nn.Module):
+class Permute(nn.Module):
 
-    def __init__(self, clip_min, clip_max):
+    def __init__(self, *permutation):
         super().__init__()
 
-        self.clip_max = clip_max
-        self.clip_min = clip_min
+        self.permutation = permutation
+    
+    def forward(self, inputs):
+        return inputs.permute(self.permutation)
 
-    def forward(self, vol: torch.Tensor):
-        return vol.clamp(self.clip_min, self.clip_max)
-
-    def extra_repr(self):
-        return f'clip_min={self.clip_min}, clip_max={self.clip_max}'
+    def extra_repr(self) -> str:
+        return f'permuration={self.permutation}'

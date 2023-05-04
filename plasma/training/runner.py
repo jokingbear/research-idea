@@ -118,7 +118,7 @@ class ConfigRunner:
                 handle.write(str(self.model))
 
     def _set_loss(self, **loss_config):
-        name = loss_config["name"].lower()
+        name = loss_config["name"]#.lower()
         kwargs = self.get_kwargs(loss_config, ["name", "path"])
 
         if "path" in loss_config:
