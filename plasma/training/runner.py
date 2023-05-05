@@ -6,8 +6,6 @@ import torch.nn as nn
 import torch.distributed as dist
 import torch.multiprocessing as mp
 
-import deepspeed as ds
-
 from .callbacks import __mapping__ as callback_map
 from .losses import __mapping__ as loss_maps
 from .metrics import __mapping__ as metric_maps
@@ -28,6 +26,8 @@ class ConfigRunner:
         self.ddp = ddp
         self.verbose = verbose & rank == 0
 
+        _format_print_dict(config)
+
         repo_config = config["repo"]
         model_config = config["model"]
         loss_config = config["loss"]
@@ -45,7 +45,7 @@ class ConfigRunner:
             model_config['rank'] = rank
 
             trainer_config['rank'] = rank
-        
+
         run_pipe({
             'load_repo': (self._set_repo, repo_config),
             'load_model': (self._set_model, model_config),
@@ -118,7 +118,7 @@ class ConfigRunner:
                 handle.write(str(self.model))
 
     def _set_loss(self, **loss_config):
-        name = loss_config["name"]#.lower()
+        name = loss_config["name"]
         kwargs = self.get_kwargs(loss_config, ["name", "path"])
 
         if "path" in loss_config:
@@ -237,11 +237,8 @@ class DDPRunner:
         os.environ['MASTER_ADDR'] = self._default_addr
         os.environ['MASTER_PORT'] = self._default_port
 
-        if self.deepspeed:
-            ds.init_distributed(self.backend, init_method=self._default_addr, distributed_port=int(self._default_port))
-        else:
-            dist.init_process_group(self.backend, rank=rank, world_size=self.devices)
-        
+        dist.init_process_group(self.backend, rank=rank, world_size=self.devices)
+
     def _run(self, rank):
         self._setup(rank)
 
@@ -261,8 +258,7 @@ class DDPRunner:
             self._default_port = port
 
 
-def create(config, save_config_path=None, ddp=False, backend='nccl', verbose=True,
-            addr='localhost', port='25389'):
+def create(config, save_config_path=None, ddp=False, backend='nccl', verbose=True, addr='localhost', port='25389'):
     """
     create runner based on predefined configuration
 
@@ -291,3 +287,17 @@ def create(config, save_config_path=None, ddp=False, backend='nccl', verbose=Tru
             return DDPRunner(config, backend, devices, addr, port)
 
     return ConfigRunner(config, save_config_path=save_config_path, verbose=verbose)
+
+
+def _format_print_dict(dic, tab=''):
+    for key in dic:
+        val = dic[key]
+
+        if isinstance(val, dict):
+            print(f'{tab}{key}:')
+            _format_print_dict(val, tab + '\t')
+        elif isinstance(val, list):
+            print(f'{tab}{key}:')
+            pass
+        else:
+            print(f'{tab}{key}: {val}')
