@@ -19,7 +19,7 @@ def butter_bandpass(sig, lowcut, highcut, fs, order=2):
     return y
 
 
-def hr_fft(sig, fs, lowcut=0.6, highcut=4, harmonics_removal=False):
+def hr_fft(sig, fs, lowcut=0.6, highcut=4, harmonics_removal=False, return_psd=False):
     # get heart rate by FFT
     # return both heart rate and PSD
 
@@ -52,6 +52,9 @@ def hr_fft(sig, fs, lowcut=0.6, highcut=4, harmonics_removal=False):
             hr = hr1
     else:
         hr = hr1
+
+    if not return_psd:
+        return hr
 
     x_hr = np.arange(len(sig)) / len(sig) * fs * 60
     return hr, sig_f_original, x_hr
