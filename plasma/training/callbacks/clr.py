@@ -111,7 +111,7 @@ class WarmRestart(Callback):
         self.scheduler = opts.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizer,
                                                                        T_0=self.t0,
                                                                        T_mult=self.factor,
-                                                                       eta_min=self.min_lr)
+                                                                       eta_min=self.min_lr, verbose=True)
 
         if not os.path.exists(self.dir) and self.snapshot:
             os.mkdir(self.dir)
@@ -171,7 +171,7 @@ class SuperConvergence(Callback):
         self.scheduler = opts.lr_scheduler.OneCycleLR(self.optimizer, max_lr,
                                                     epochs=self.epochs, steps_per_epoch=n,
                                                     div_factor=self.div_factor,
-                                                    final_div_factor=self.final_div_factor)
+                                                    final_div_factor=self.final_div_factor, verbose=True)
 
         if self.trainer.rank == 0 and not os.path.exists(self.dir) and self.snapshot:
             os.makedirs(self.dir)
