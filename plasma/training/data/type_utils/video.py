@@ -34,10 +34,14 @@ class Video:
         return self
 
     def iter_frames(self):
+        start = int(self.vid.get(cv2.CAP_PROP_POS_FRAMES))
         for frame_idx in range(self.nframes):
             success, image = self.vid.read()
 
             if not success:
+                self.vid.set(cv2.CAP_PROP_POS_FRAMES, start)
                 break
 
             yield cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+        self.vid.set(cv2.CAP_PROP_POS_FRAMES, start)
