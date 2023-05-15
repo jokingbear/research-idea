@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torch.nn as nn
 
@@ -100,3 +101,65 @@ class Permute(nn.Module):
 
     def extra_repr(self) -> str:
         return f'permuration={self.permutation}'
+
+
+class LayerNorm(nn.Module):
+
+    def __init__(self, channels, dim=-1, eps=1e-5):
+        super().__init__()
+
+        self.dim = dim
+        self.eps = eps
+        self.weight = nn.Parameter(torch.ones(channels, dtype=torch.float), requires_grad=True)
+        self.bias = nn.Parameter(torch.zeros(channels, dtype=torch.float), requires_grad=True)
+
+    def forward(self, x):
+        ndim = len(x.shape)
+
+        if self.dim < 0:
+            dim = ndim + self.dim
+        else:
+            dim = self.dim
+
+        weight = self.weight
+        bias = self.bias
+        for i in range(ndim):
+            if i < dim:
+                weight = weight[np.newaxis]
+                bias = bias[np.newaxis]
+            elif i > dim:
+                weight = weight[..., np.newaxis]
+                bias = bias[..., np.newaxis]
+
+        std, mean = torch.std_mean(x, dim=self.dim, keepdim=True)
+        return weight * (x - mean) / (std + self.eps) + bias
+
+    def extra_repr(self) -> str:
+        return f'channels={self.weight.shape[0]}, dim={self.dim}, eps={self.eps}'
+
+
+class AdaptivePooling3D(nn.Module):
+
+    def __init__(self, final_shape):
+        super().__init__()
+
+        self.final_shape = final_shape
+
+    def forward(self, x):
+        s1, s2, s3 = self.final_shape
+
+        B, C, S1, S2, S3 = x.shape
+
+        s1 = s1 or S1
+        s2 = s2 or S2
+        s3 = s3 or S3
+
+        k1 = S1 // s1
+        k2 = S2 // s2
+        k3 = S3 // s3
+
+        results = x.reshape(B, C, s1, k1, s2, k2, s3, k3)
+        return results.mean(dim=[-1, -3, -5])
+
+    def extra_repr(self) -> str:
+        return f'final_shape={self.final_shape}'
