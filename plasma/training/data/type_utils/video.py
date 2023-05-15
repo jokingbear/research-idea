@@ -5,12 +5,9 @@ import numpy as np
 class Video:
     def __init__(self, video_path):
         self.vid = cv2.VideoCapture(video_path)
-
-    @property
-    def nframes(self):
         start_frame = int(self.vid.get(cv2.CAP_PROP_POS_FRAMES))
         total_frame = int(self.vid.get(cv2.CAP_PROP_FRAME_COUNT))
-        return total_frame - start_frame
+        self.nframes = total_frame - start_frame
 
     @property
     def fps(self):
@@ -30,6 +27,9 @@ class Video:
         assert 0 <= start_t < end_t < self.duration, "recheck `start_t` and `end_t`"
 
         start_frame = np.round(start_t * self.fps).astype(int)
+        end_frame = np.round(end_t * self.fps).astype(int)
+
+        self.nframes = end_frame - start_frame
         self.vid.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
         return self
 
