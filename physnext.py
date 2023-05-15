@@ -1,99 +1,115 @@
 import numpy as np
-
 import torch
 import torch.nn as nn
-import torchvision.models as models
+import torchvision.ops as vision_ops
 
-from torchvision.models.feature_extraction import create_feature_extractor
-from plasma.modules import ImagenetNorm, GlobalAverage
+import plasma.modules as modules
 
 
-class PhysNext(nn.Module):
+class CNBlock(nn.Module):
 
-    def __init__(self, n_class=1) -> None:
+    def __init__(self, channels, p, layer_scale=1e-6):
         super().__init__()
 
-        self.motion_rep = MotionRepresentation()
-        self.appearance_encoder = AppearanceEncoder()
-        self.motion_encoder = MotionEncoder()
-        self.head = nn.Linear(self.motion_encoder.nfeatures, n_class)
-    
-    def forward(self, X):
-        attention_masks = self.appearance_encoder(X[:, 1:])
-        D = self.motion_rep(X)
-        features = self.motion_encoder(D, attention_masks)
-        features = features.mean(dim=1)
+        self.layer_scale = nn.Parameter(torch.ones(channels, 1, 1, 1) * layer_scale)
 
-        return self.head(features)
-
-
-class MotionRepresentation(nn.Module):
-
-    def forward(self, X):
-
-        delta = X[:, 1:] - X[:, :-1]
-        return delta
-
-
-class AppearanceEncoder(nn.Module):
-
-    def __init__(self) -> None:
-        super().__init__()
-
-        backbone = models.convnext_tiny(weights='IMAGENET1K_V1')
-        feature_maps = ['features.1', 'features.3']
-
-        self.normalize = ImagenetNorm()
-        self.extractor = create_feature_extractor(backbone, feature_maps)
-
-        self.att_projs = nn.ModuleList([
-            nn.Sequential(nn.Conv2d( 96, 1, kernel_size=1), nn.Sigmoid()),
-            nn.Sequential(nn.Conv2d(192, 1, kernel_size=1), nn.Sigmoid()),
+        self.block = nn.Sequential(*[
+            nn.Conv3d(channels, channels, kernel_size=3, padding=1, groups=channels),
+            modules.LayerNorm(channels, dim=1),
+            nn.Conv3d(channels, channels * 2, kernel_size=1),
+            modules.LayerNorm(channels * 2, dim=1),
+            nn.GELU(),
+            nn.Conv3d(channels * 2, channels, kernel_size=1),
         ])
-    
-    def forward(self, X):
-        # X: B T C HW
-        # flattened_X: BT C HW
-        flattened_X = X.flatten(end_dim=1)
-        flattened_X = self.normalize(flattened_X)
 
-        feature_maps = self.extractor(flattened_X)
-        attention_maps = [self.get_attention_mask(feature_maps[m], p) for m, p in zip(feature_maps, self.att_projs)]
+        self.stochastic_depth = vision_ops.StochasticDepth(p, mode='row')
 
-        return attention_maps
-
-    def get_attention_mask(self, feature_map, projection):
-        mask = projection(feature_map)
-        mean = mask.mean(dim=[-1, -2], keepdim=True)
-
-        return mask / mean
+    def forward(self, inputs):
+        residuals = self.layer_scale * self.block(inputs)
+        residuals = self.stochastic_depth(residuals)
+        results = inputs + residuals
+        return results
 
 
-class MotionEncoder(nn.Module):
+class ImagenetNorm(nn.Module):
 
-    def __init__(self) -> None:
+    def __init__(self):
         super().__init__()
 
-        features = models.convnext_tiny(weights='IMAGENET1K_V1').features
+        mean = torch.tensor([0.485, 0.456, 0.406], dtype=torch.float)
+        std = torch.tensor([0.229, 0.224, 0.225], dtype=torch.float)
 
-        self.normalize = ImagenetNorm()
-        self.first_block = features[:2]
-        self.second_block = features[2:4]
-        self.third_block = nn.Sequential(features[4:6], GlobalAverage(), nn.LayerNorm(384))
-        self.nfeatures = 384
+        mean = mean[:, np.newaxis, np.newaxis, np.newaxis]
+        std = std[:, np.newaxis, np.newaxis, np.newaxis]
 
-    def forward(self, D, masks):
-        #D: B T C HW
-        B, T = D.shape[:2]
+        self.mean = nn.Parameter(mean, requires_grad=False)
+        self.std = nn.Parameter(std, requires_grad=False)
 
-        # BT C HW
-        flattened_D = D.flatten(end_dim=1)
-        flattened_D = self.normalize(flattened_D)
-        first_block = self.first_block(flattened_D)
-        first_block = first_block * masks[0]
+    def forward(self, inputs):
+        inputs = inputs  / 255
 
-        second_block = self.second_block(first_block)
-        second_block = second_block * masks[1]
+        return (inputs - self.mean) / self.std
 
-        # B T C
-        return self.third_block(second_block).unflatten(dim=0, sizes=[B, T])
+
+class PhysNext(nn.Sequential):
+
+    def __init__(self, t, fps, s=2,start_channel=32, p=0.1):
+        super().__init__()
+
+        self.normalization = ImagenetNorm()
+
+        self.stem = nn.Sequential(*[
+            nn.Conv3d(3, start_channel, kernel_size=(1, 3, 3), stride=(1, 2, 2), padding=(0, 1, 1)),
+            modules.LayerNorm(start_channel, dim=1),
+            CNBlock(start_channel, 0 / 7 * p),
+            CNBlock(start_channel, 1 / 7 * p),
+        ])  # T x H / 2 x W / 2
+
+        self.encoder1 = nn.Sequential(*[
+            modules.LayerNorm(start_channel, dim=1),
+            nn.Conv3d(start_channel, start_channel * 2, kernel_size=2, stride=2),
+            CNBlock(start_channel * 2, 2 / 7 * p),
+            CNBlock(start_channel * 2, 3 / 7 * p),
+        ])  # T / 2 x H / 4 x W / 4
+
+        self.encoder2 = nn.Sequential(*[
+            modules.LayerNorm(start_channel * 2, dim=1),
+            nn.Conv3d(start_channel * 2, start_channel * 2, kernel_size=2, stride=2),
+            CNBlock(start_channel * 2, 4 / 7 * p),
+            CNBlock(start_channel * 2, 5 / 7 * p),
+        ])  # T / 4 x H / 8 x W / 8
+
+        self.decoder1 = nn.Sequential(*[
+            modules.LayerNorm(start_channel * 2, dim=1),
+            nn.Upsample(scale_factor=(2, 1, 1)),
+            nn.Conv3d(start_channel * 2, start_channel * 2, kernel_size=(3, 1, 1), padding=(1, 0, 0)),
+            CNBlock(start_channel * 2, 6 / 7 * p),
+        ])  # T / 2 x H / 8 x W / 8
+
+        nframe_original = int(t * fps)
+        nframe_modified = nframe_original // 4 * 4
+        pad = nframe_original - nframe_modified
+
+        self.decoder2 = nn.Sequential(*[
+            modules.LayerNorm(start_channel * 2, dim=1),
+            nn.Upsample(scale_factor=(2, 1, 1)),
+            nn.ReplicationPad3d((0, pad, 0, 0, 0, 0)),
+            nn.Conv3d(start_channel * 2, start_channel, kernel_size=(3, 1, 1), padding=(2, 0, 0)),
+            CNBlock(start_channel, 7 / 7 * p),
+        ])  # T x H / 8 x W / 8
+
+        self.end = nn.Sequential(*[
+            modules.LayerNorm(start_channel, dim=1),
+            modules.AdaptivePooling3D((None, s, s)),
+            nn.Conv3d(start_channel, 1, kernel_size=1),
+        ])
+
+    def forward(self, inputs):
+        st_block = super().forward(inputs) # B x C x T x S x S
+        st_block = st_block.flatten(start_dim=3)  # B x C x T x SS
+        avg_block = st_block.mean(dim=-1, keepdim=True)  # B x C x T x 1
+
+        if not self.training:
+            return avg_block[..., 0]
+
+        return torch.cat([st_block, avg_block], dim=-1)[:, 0]  # B x T x SS+1
