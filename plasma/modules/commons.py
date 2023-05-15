@@ -121,15 +121,8 @@ class LayerNorm(nn.Module):
         else:
             dim = self.dim
 
-        weight = self.weight
-        bias = self.bias
-        for i in range(ndim):
-            if i < dim:
-                weight = weight[np.newaxis]
-                bias = bias[np.newaxis]
-            elif i > dim:
-                weight = weight[..., np.newaxis]
-                bias = bias[..., np.newaxis]
+        weight = self.weight.view(*[1] * dim, -1, *[1] * (ndim - dim - 1))
+        bias = self.bias.view(*[1] * dim, -1, *[1] * (ndim - dim - 1))
 
         std, mean = torch.std_mean(x, dim=self.dim, keepdim=True)
         return weight * (x - mean) / (std + self.eps) + bias

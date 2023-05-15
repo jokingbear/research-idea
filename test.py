@@ -7,9 +7,9 @@ import time
 
 from physnext_2 import PhysNext
 
-a = PhysNext(27, 30)
+a = PhysNext(27, 30, in_channels=24)
 
-b = torch.rand(1, 810, 3, 96, 96)
+b = torch.rand(1, 3, 810, 96, 96)
 
 with torch.no_grad():
     start = time.time()

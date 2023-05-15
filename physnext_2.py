@@ -1,127 +1,115 @@
 import numpy as np
-
 import torch
 import torch.nn as nn
-import torchvision.models as models
+import torchvision.ops as vision_ops
 
-from plasma.modules import GlobalAverage
+import plasma.modules as modules
 
 
-class TimeDiffNormalization(nn.Module):
+class CNBlock(nn.Module):
 
-    def __init__(self, layer_norm=True, resolution=None):
+    def __init__(self, channels, p, layer_scale=1e-6):
         super().__init__()
 
-        if layer_norm:
-            if resolution is None:
-                self.norm = models.convnext.LayerNorm2d(3)
-            else:
-                self.norm = nn.LayerNorm([3, *resolution])
-        else:
-            self.norm = nn.BatchNorm2d(3)
-    
-    def forward(self, X):
-        # X: B T C H W
-        D = torch.diff(X, dim=1)
+        self.layer_scale = nn.Parameter(torch.ones(channels, 1, 1, 1) * layer_scale)
 
-        # BT C HW
-        D = D.flatten(end_dim=1)
-        D = self.norm(D)
-        return D
-
-
-class TemporalShift(nn.Module):
-
-    def __init__(self, nframe, fold_div=3):
-        super().__init__()
-
-        self.nframe = nframe
-        self.fold_div = fold_div
-
-    def forward(self, X):
-        # X: BT C HW -> B T C HW
-        X = X.view(-1, self.nframe, *X.shape[1:])
-
-        C = X.shape[2]
-
-        size = C // self.fold_div
-
-        results = torch.zeros_like(X)
-
-        results[:, :-1, :size] = X[:, 1:, :size]
-        results[:, 1:, size:2 * size] = X[:, :-1, size: 2 * size]
-        results[:, :, 2 * size:] = X[:, :, 2 * size:]
-
-        results = results.flatten(end_dim=1)
-        return results
-    
-    def extra_repr(self) -> str:
-        return f'nframe={self.nframe}, fold_div={self.fold_div}'
-
-
-class SelfAttention(nn.Module):
-
-    def __init__(self, in_channels):
-        super().__init__()
-
-        self.mask = nn.Sequential(*[
-            nn.Conv2d(in_channels, 1, kernel_size=1),
-            nn.Sigmoid(),
+        self.block = nn.Sequential(*[
+            nn.Conv3d(channels, channels, kernel_size=3, padding=1, groups=channels),
+            modules.LayerNorm(channels, dim=1),
+            nn.Conv3d(channels, channels * 2, kernel_size=1),
+            modules.LayerNorm(channels * 2, dim=1),
+            nn.GELU(),
+            nn.Conv3d(channels * 2, channels, kernel_size=1),
         ])
 
-    def forward(self, X):
-        mask = self.mask(X)
-        mean_mask = mask.mean(dim=[-1, -2], keepdim=True)
-        
-        return mask / mean_mask * X
+        self.stochastic_depth = vision_ops.StochasticDepth(p, mode='row')
+
+    def forward(self, inputs):
+        residuals = self.layer_scale * self.block(inputs)
+        residuals = self.stochastic_depth(residuals)
+        results = inputs + residuals
+        return results
+
+
+class ImagenetNorm(nn.Module):
+
+    def __init__(self):
+        super().__init__()
+
+        mean = torch.tensor([0.485, 0.456, 0.406], dtype=torch.float)
+        std = torch.tensor([0.229, 0.224, 0.225], dtype=torch.float)
+
+        mean = mean[:, np.newaxis, np.newaxis, np.newaxis]
+        std = std[:, np.newaxis, np.newaxis, np.newaxis]
+
+        self.mean = nn.Parameter(mean, requires_grad=False)
+        self.std = nn.Parameter(std, requires_grad=False)
+
+    def forward(self, inputs):
+        inputs = inputs  / 255
+
+        return (inputs - self.mean) / self.std
 
 
 class PhysNext(nn.Sequential):
 
-    def __init__(self, duration, fps, nclass=1):
+    def __init__(self, t, fps, s=2, in_channels=32, p=0.1):
         super().__init__()
 
-        nframe = np.ceil(duration * fps)
-        nframe = int(nframe)
+        self.normalization = ImagenetNorm()
 
-        self.diff = TimeDiffNormalization()
-        self.features, nfeatures = self.process_backbone(nframe - 1)
-        
-        self.head = nn.Sequential(*[
-            GlobalAverage(dims=[1, -1]),
-            nn.Linear(nfeatures, nclass),
+        self.stem = nn.Sequential(*[
+            nn.Conv3d(3, in_channels, kernel_size=(1, 3, 3), stride=(1, 2, 2), padding=(0, 1, 1)),
+            modules.LayerNorm(in_channels, dim=1),
+            CNBlock(in_channels, 0 / 7 * p),
+            CNBlock(in_channels, 1 / 7 * p),
+            modules.LayerNorm(in_channels, dim=1),
+        ])  # T x H / 2 x W / 2
+
+        self.encoder1 = nn.Sequential(*[
+            nn.Conv3d(in_channels, in_channels * 2, kernel_size=2, stride=2),
+            CNBlock(in_channels * 2, 2 / 7 * p),
+            CNBlock(in_channels * 2, 3 / 7 * p),
+            modules.LayerNorm(in_channels * 2, dim=1),
+        ])  # T / 2 x H / 4 x W / 4
+
+        self.encoder2 = nn.Sequential(*[
+            nn.Conv3d(in_channels * 2, in_channels * 2, kernel_size=2, stride=2),
+            CNBlock(in_channels * 2, 4 / 7 * p),
+            CNBlock(in_channels * 2, 5 / 7 * p),
+            modules.LayerNorm(in_channels * 2, dim=1),
+        ])  # T / 4 x H / 8 x W / 8
+
+        self.decoder1 = nn.Sequential(*[
+            nn.Upsample(scale_factor=(2, 1, 1)),
+            nn.Conv3d(in_channels * 2, in_channels * 2, kernel_size=(3, 1, 1), padding=(1, 0, 0)),
+            CNBlock(in_channels * 2, 6 / 7 * p),
+            modules.LayerNorm(in_channels * 2, dim=1),
+        ])  # T / 2 x H / 8 x W / 8
+
+        nframe_original = int(t * fps)
+        nframe_modified = nframe_original // 4 * 4
+        pad = nframe_original - nframe_modified
+
+        self.decoder2 = nn.Sequential(*[
+            nn.Upsample(scale_factor=(2, 1, 1)),
+            nn.ReplicationPad3d((0, pad, 0, 0, 0, 0)),
+            nn.Conv3d(in_channels * 2, in_channels, kernel_size=(3, 1, 1), padding=(2, 0, 0)),
+            CNBlock(in_channels, 7 / 7 * p),
+        ])  # T x H / 8 x W / 8
+
+        self.end = nn.Sequential(*[
+            modules.AdaptivePooling3D((None, s, s)),
+            modules.LayerNorm(in_channels, dim=1),
+            nn.Conv3d(in_channels, 1, kernel_size=1),
         ])
-    
-    def forward(self, X):
-        B, T = X.shape[:2]
 
-        diffX = self.diff(X)
+    def forward(self, inputs):
+        st_block = super().forward(inputs) # B x C x T x S x S
+        st_block = st_block.flatten(start_dim=3)  # B x C x T x SS
+        avg_block = st_block.mean(dim=-1, keepdim=True)  # B x C x T x 1
 
-        features = self.features(diffX)
-        features = features.reshape(B, T - 1, features.shape[1], -1)
+        if not self.training:
+            return avg_block[..., 0]
 
-        results = self.head(features)
-        return results
-
-    def process_backbone(self, ndframe):
-        temp_shift = TemporalShift(ndframe)
-        backbone = models.convnext_tiny(weights='IMAGENET1K_V1').features
-        
-        new_backbone = []
-        out_channels = 3
-        for i, module in enumerate(backbone.children()):
-            if i % 2 != 0:
-                for cn_block in module.children():
-                    name = type(cn_block).__name__
-
-                    if name == 'CNBlock':
-                        old_block = cn_block.block
-                        out_channels = old_block[0].out_channels
-                        cn_block.block = nn.Sequential(temp_shift, *old_block)
-                        
-                module.attention = SelfAttention(out_channels)
-            
-            new_backbone.append(module)
-
-        return backbone, 768
- 
+        return torch.cat([st_block, avg_block], dim=-1)[:, 0]  # B x T x SS+1
