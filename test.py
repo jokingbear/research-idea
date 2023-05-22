@@ -5,11 +5,12 @@ import torchvision.models as models
 import numpy as np
 import time
 
-from physnext_2 import PhysNext
 
-a = PhysNext(27, 30, in_channels=24)
+from wavenext import WaveNext
 
-b = torch.rand(1, 3, 810, 96, 96)
+a = WaveNext()
+
+b = torch.rand(1, 1, 16 * 30)
 
 with torch.no_grad():
     start = time.time()

@@ -3,11 +3,19 @@ import numpy as np
 
 
 class Video:
-    def __init__(self, video_path):
+
+    def __init__(self, video_path, start_frame=0, duration=None):
+        self.video_path = video_path
         self.vid = cv2.VideoCapture(video_path)
-        start_frame = int(self.vid.get(cv2.CAP_PROP_POS_FRAMES))
-        total_frame = int(self.vid.get(cv2.CAP_PROP_FRAME_COUNT))
-        self.nframes = total_frame - start_frame
+
+        self.vid.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+
+        if duration is not None:
+            self.vid.set(cv2.CAP_PROP_FRAME_COUNT, duration)
+
+    @property
+    def nframes(self):
+        return self.vid.get(cv2.CAP_PROP_FRAME_COUNT)
 
     @property
     def fps(self):
@@ -29,11 +37,9 @@ class Video:
         start_frame = np.round(start_t * self.fps).astype(int)
         end_frame = np.round(end_t * self.fps).astype(int)
 
-        self.nframes = end_frame - start_frame
-        self.vid.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
-        return self
+        return Video(self.video_path, start_frame, end_frame - start_frame)
 
-    def iter_frames(self):
+    def __iter__(self):
         start = int(self.vid.get(cv2.CAP_PROP_POS_FRAMES))
         for frame_idx in range(self.nframes):
             success, image = self.vid.read()

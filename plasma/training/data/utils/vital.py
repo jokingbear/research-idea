@@ -6,7 +6,7 @@ from scipy import signal
 from scipy.signal import butter, filtfilt
 
 
-def butter_bandpass(sig, lowcut, highcut, fs, order=2):
+def butter_bandpass(sig, fs, lowcut, highcut, order=1):
     # butterworth bandpass filter
 
     sig = np.reshape(sig, -1)
