@@ -298,6 +298,7 @@ def _format_print_dict(dic, tab=''):
             _format_print_dict(val, tab + '\t')
         elif isinstance(val, list):
             print(f'{tab}{key}:')
-            pass
+            for item in val:
+                _format_print_dict(item, tab + '\t')
         else:
             print(f'{tab}{key}: {val}')
