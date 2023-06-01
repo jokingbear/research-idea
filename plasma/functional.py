@@ -1,10 +1,11 @@
-def run_pipe(funcs, log_fn=None, verbose=True):
+def run_pipe(funcs, x=None, log_fn=None, verbose=True):
     """
     Run a list or dict of function sequentially, outputs of the previous function are 
     inputed to the next function
 
     Args:
         funcs (list or dict): list or dict of functions to run sequentially
+        x: start arguments
         log_fn (function, optional): logging function to be run after each step. Signature (step name, step results) -> (). 
         Defaults to None.
         verbose (bool, optional): whether to print out which step is being run. Defaults to True.
@@ -23,7 +24,7 @@ def run_pipe(funcs, log_fn=None, verbose=True):
     
     funcs = {k: standardize_func_inputs(funcs[k]) for k in funcs}
 
-    result = None
+    result = x
     for k in funcs:
         if verbose:
             print('running', k)
