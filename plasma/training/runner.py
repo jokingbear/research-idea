@@ -10,7 +10,7 @@ from .callbacks import __mapping__ as callback_map
 from .losses import __mapping__ as loss_maps
 from .metrics import __mapping__ as metric_maps
 from .trainers import __mapping__ as trainer_maps
-from ..hub import get_entries
+from ..hub import run_module
 from .optimizers import __mapping__ as optimizer_map
 
 from distutils.log import warn
@@ -57,22 +57,15 @@ class ConfigRunner:
         })  
 
     def _set_repo(self, **repo_config):
-        repo_entries = get_entries(repo_config["path"])
-
-        entries = repo_entries.list()
+        repo_path = repo_config['path']
         kwargs = self.get_kwargs(repo_config, ["name", "method", "path"])
 
         if "name" in repo_config:
             method = repo_config["name"]
-        elif "train_valid" in entries:
-            method = "train_valid"
-        elif "train" in entries:
-            method = "train"
         else:
-            raise NotImplementedError(
-                "repo need to have train_valid or train method for empty name config")
+            method = 'get_loaders'
 
-        loaders = repo_entries.load(method, **kwargs)
+        loaders = run_module(repo_path, method, **kwargs)
 
         if isinstance(loaders, (tuple, list)):
             self.train, self.valid = loaders
@@ -85,11 +78,10 @@ class ConfigRunner:
             print("valid: ", len(self.valid)) if self.valid is not None else None
 
     def _set_model(self, **model_config):
-        model_entries = get_entries(model_config["path"])
-
+        model_path = model_config['path']
         kwargs = self.get_kwargs(model_config, ["path", "name", "parallel", "checkpoint", "gpu", 'batchnorm'])
         name = model_config["name"]
-        model = model_entries.load(name, **kwargs)
+        model = run_module(model_path, name, **kwargs)
 
         if "checkpoint" in model_config:
             w = torch.load(model_config["checkpoint"], map_location="cpu")
@@ -122,8 +114,7 @@ class ConfigRunner:
         kwargs = self.get_kwargs(loss_config, ["name", "path"])
 
         if "path" in loss_config:
-            entries = get_entries(loss_config["path"])
-            loss = entries.load(name, **kwargs)
+            loss = run_module(loss_config['path'], name, **kwargs)
         elif name in loss_maps:
             loss = loss_maps[name](**kwargs)
         else:
@@ -143,10 +134,8 @@ class ConfigRunner:
             if name in metric_maps:
                 metric = metric_maps[name](**kwargs)
             else:
-                entries = get_entries(m_cfg["path"])
-
                 kwargs = self.get_kwargs(m_cfg, excludes=["name", "path"])
-                metric = entries.load(name, **kwargs)
+                metric = run_module(m_cfg['path'], name, **kwargs)
             
             metrics.append(metric)
 
@@ -178,9 +167,7 @@ class ConfigRunner:
         kwargs = self.get_kwargs(trainer_config, excludes=["name", "path"])
 
         if path is not None:
-            entries = get_entries(path)
-            trainer = entries.load(
-                name, self.model, self.optimizer, self.loss, metrics=self.metrics, **kwargs)
+            trainer = run_module(path, name, self.model, self.optimizer, self.loss, metrics=self.metrics, **kwargs)
         elif name in trainer_maps:
             trainer = trainer_maps[name](
                 self.model, self.optimizer, self.loss, metrics=self.metrics, **kwargs)
