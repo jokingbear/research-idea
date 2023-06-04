@@ -46,7 +46,7 @@ class ImagenetNorm(nn.Module):
         self.std = nn.Parameter(std, requires_grad=False)
 
     def forward(self, inputs):
-        inputs = inputs / 255
+        inputs = inputs  / 255
 
         return (inputs - self.mean) / self.std
 
@@ -87,8 +87,8 @@ class SiamPhys(nn.Module):
         self.st_block = nn.Sequential(*[
             modules.LayerNorm(in_channels * 2, dim=1),
             nn.Upsample(scale_factor=(2, 1, 1)),
-            nn.ReplicationPad3d((0, pad, 0, 0, 0, 0)),
-            nn.Conv3d(in_channels * 2, in_channels, kernel_size=(3, 1, 1), padding=(2, 0, 0)),
+            nn.ReplicationPad3d((0, 0, 0, 0, pad // 2, pad - pad // 2)),
+            nn.Conv3d(in_channels * 2, in_channels, kernel_size=(3, 1, 1), padding=(1, 0, 0)),
             CNBlock(in_channels, 7 / 7 * p),  # T x H / 8 x W / 8
 
             modules.AdaptivePooling3D((None, s, s)),
@@ -100,7 +100,7 @@ class SiamPhys(nn.Module):
         features1 = self.shared_features(inputs1)
         features2 = self.shared_features(inputs2)
 
-        features = torch.maximum(features1, features2)
+        features = (features1 + features2) / 2
         st_block = self.st_block(features)
         st_block = st_block.flatten(start_dim=3)  # B x C x T x SS
         avg_block = st_block.mean(dim=-1, keepdim=True)  # B x C x T x 1
