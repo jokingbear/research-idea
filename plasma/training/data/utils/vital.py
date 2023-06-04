@@ -60,12 +60,17 @@ def hr_fft(sig, fs, lowcut=0.6, highcut=4, harmonics_removal=False, return_psd=F
     return hr, sig_f_original, x_hr
 
 
-def interpolate(signal, original_fs, new_fs):
-    time = np.arange(len(signal)) / original_fs
-    duration = len(signal) / original_fs
+def interpolate(series, original_fs, new_fs):
+    time = np.arange(len(series)) / original_fs
+    duration = len(series) / original_fs
 
-    func = intp.interp1d(time, signal)
+    func = intp.interp1d(time, series)
 
     new_time = np.arange(0, duration, step=1 / new_fs)
 
     return func(new_time)
+
+
+def resample(series, orignal_fs, new_fs):
+    npoint = len(series) * np.round(new_fs / orignal_fs)
+    return signal.resample(series, npoint)
