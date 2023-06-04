@@ -31,11 +31,15 @@ class Video:
         w = int(self.vid.get(cv2.CAP_PROP_FRAME_WIDTH))
         return self.nframes, h, w, 3
 
+    @property
+    def resolution(self):
+        return self.shape[1:3]
+
     def subclip(self, start_t, end_t):
         assert 0 <= start_t < end_t < self.duration, "recheck `start_t` and `end_t`"
 
-        start_frame = np.round(start_t * self.fps).astype(int)
-        end_frame = np.round(end_t * self.fps).astype(int)
+        start_frame = np.ceil(start_t * self.fps).astype(int)
+        end_frame = np.ceil(end_t * self.fps).astype(int)
 
         return Video(self.video_path, start_frame, end_frame - start_frame)
 
