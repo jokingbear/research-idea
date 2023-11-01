@@ -1,33 +1,8 @@
-import pandas as pd
-import multiprocessing as mp
 import os
 
 import torch
-import torch.multiprocessing as torch_mp
 
-from tqdm import tqdm
-from tqdm.notebook import tqdm as tqdm_nb
 from .data.adhoc_data import AdhocData
-from ..functional import auto_func
-from queue import Empty
-
-
-notebook = False
-
-
-def get_progress(iterable=None, total=None, desc=None, leave=False):
-    """
-    get progress bar
-    :param iterable: target to be iterated
-    :param total: total length of the progress bar
-    :param desc: description of the progress bar
-    :return: progress bar
-    """
-
-    if notebook:
-        return tqdm_nb(iterable=iterable, total=total, desc=desc, leave=leave)
-
-    return tqdm(iterable=iterable, total=total, desc=desc, leave=leave)
 
 
 def eval_modules(*modules):
