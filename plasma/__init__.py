@@ -1,9 +1,6 @@
-from tqdm import tqdm
-from tqdm.notebook import tqdm as tqdm_nb
-
-notebook = False
+import plasma.utils
+from .utils import get_tqdm
 
 
-def get_tqdm(*args, **kwargs):
-    pbar = tqdm_nb if notebook else tqdm
-    return pbar(*args, **kwargs)
+def set_tqdm(notebook=True):
+    utils.notebook = notebook
