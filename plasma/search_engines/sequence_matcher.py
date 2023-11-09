@@ -23,7 +23,7 @@ class SequenceMatcher:
         self.trunks = trunks
         self.case = case
 
-    def match_query(self, query: str, k=None, threshold=None, pbar=True, filter_subset=True, normalize_by_word=False):
+    def match_query(self, query: str, k=None, threshold=0.85, pbar=True, normalize_by_word=True):
         matches = self.search_db(query, normalize_by_word, pbar)
 
         if len(matches) == 0:
@@ -62,17 +62,17 @@ class SequenceMatcher:
         blocks = s.get_matching_blocks()
         blocks = [b for b in blocks if b.size > 0]
 
-        matching_results = {}
+        matching_results = {'entity': entity}
         if len(blocks) > 0:
-            start_idx = blocks[0].b
-            end_idx = blocks[-1].b + blocks[-1].size
+            start_idx = blocks[0].a
+            end_idx = blocks[-1].a + blocks[-1].size
 
             if tokens is not None:
-                lower_cond = (tokens['lower'] <= start_idx) & (start_idx <= tokens['upper'])
-                start_idx = tokens[lower_cond].iloc[0]['lower']
+                lower_cond = (tokens['start_idx'] <= start_idx) & (start_idx <= tokens['end_idx'])
+                start_idx = tokens[lower_cond].iloc[0]['start_idx']
 
-                upper_cond = (tokens['lower'] <= end_idx) & (end_idx <= tokens['upper'])
-                end_idx = tokens[upper_cond].iloc[0]['upper']
+                upper_cond = (tokens['start_idx'] <= end_idx) & (end_idx <= tokens['end_idx'])
+                end_idx = tokens[upper_cond].iloc[0]['end_idx']
 
             filtered_query = query[start_idx:end_idx]
             new_matcher = difflib.SequenceMatcher(a=filtered_query, b=entity)

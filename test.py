@@ -3,7 +3,7 @@ import networkx as nx
 
 db = ['tiểu đường', 'đường', 'huyết áp', 'đường huyết']
 
-graph_matcher = engines.GraphMatcher(db, case=False)
+matcher = engines.SequenceMatcher(db)
 
 query = 'tiểu đường là gì, và ảnh hưởng thế nào đến huyết áp'
-graph_matcher.match_query(query)
+matcher.match_query(query,)
