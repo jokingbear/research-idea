@@ -15,6 +15,8 @@ def _word_tokenize(string: str):
 
 
 def _remove_subset(matches: pd.DataFrame):
+    matches = matches.groupby(['start_idx', 'end_idx'],
+                              as_index=False).apply(lambda df: df.iloc[df['score'].argmax()])
     keeps = []
     for idx, row in matches.iterrows():
         start_idx = row['start_idx']

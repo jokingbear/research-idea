@@ -9,7 +9,7 @@ import scipy.stats as stats
 from .utils import _word_tokenize, _remove_subset, word_splitter
 
 
-_sentence_splitter = re.compile('(.*?)([,;?!.]|$)')
+_sentence_splitter = re.compile('(.*?)([:\n,;?!.]|$)')
 
 
 class GraphMatcher:
@@ -26,7 +26,7 @@ class GraphMatcher:
 
         self.case = case
 
-    def match_query(self, query: str, k=None, threshold=0.85, marginal_threshold=0.7):
+    def match_query(self, query: str, k=None, threshold=0.85, marginal_threshold=0.7, compare_to_db=True):
         assert marginal_threshold >= 0.5, (f'the minimum matching should be bigger than 0.5, '
                                            f'currently {marginal_threshold}')
 
@@ -42,7 +42,7 @@ class GraphMatcher:
             candidates_mappings = self._find_token_candidates(sentence_tokens, marginal_threshold)
             candidates_subgraph = self._build_subgraph(candidates_mappings)
             candidates = _list_all_candidates(candidates_mappings, candidates_subgraph)
-            candidates = self._cleanup(candidates, threshold, sentence_tokens)
+            candidates = self._cleanup(candidates, threshold, sentence_tokens, compare_to_db)
 
             candidates['start_idx'] += start
             candidates['end_idx'] += start
@@ -90,11 +90,12 @@ class GraphMatcher:
         entity_tokens = np.unique(entity_tokens)
         return self.token_graphs.subgraph(entity_tokens)
 
-    def _cleanup(self, candidates, threshold, sentence_tokens):
+    def _cleanup(self, candidates, threshold, sentence_tokens, compare_to_db):
         if threshold is not None:
             candidates = candidates[candidates['score'] >= threshold]
 
-        candidates = candidates[candidates['entity'].isin(self.db)]
+        if compare_to_db:
+            candidates = candidates[candidates['entity'].isin(self.db)]
         candidates = _remove_subset(candidates)
         candidates['start_idx'] = sentence_tokens.iloc[candidates['start_idx']]['start_idx'].values
         candidates['end_idx'] = sentence_tokens.iloc[candidates['end_idx'] - 1]['end_idx'].values
