@@ -19,3 +19,18 @@ def partials(func, *args, **kwargs):
         return func(*new_args, *args, **kwargs, **new_kwargs)
 
     return _tmp_func
+
+
+class StepLogger:
+
+    def __init__(self):
+        self.logs = []
+
+    def log_function(self, func, *args, custom_name=None, **kwargs):
+        custom_name = custom_name or func.__qualname__
+
+        results = func(*args, **kwargs)
+
+        self.logs.append({custom_name: results})
+
+        return results
