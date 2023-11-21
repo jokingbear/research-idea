@@ -1,14 +1,9 @@
-import torch
-import torch.nn as nn
-import torchvision.models as models
+import plasma.search_engines as engines
+import networkx as nx
 
-import numpy as np
+db = ['tiểu đường', 'đường', 'huyết áp', 'đường huyết']
 
-from physnext_3 import PhysNext
+matcher = engines.SequenceMatcher(db)
 
-a = PhysNext(5, 30)
-
-b = torch.rand(2, 150, 3, 96, 96)
-
-with torch.no_grad():
-    c = a(b)
+query = 'tiểu đường là gì, và ảnh hưởng thế nào đến huyết áp'
+matcher.match_query(query,)
