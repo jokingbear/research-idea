@@ -1,3 +1,6 @@
+import time
+
+
 def auto_map_func(func):
 
     def auto_input(inputs):
@@ -29,8 +32,10 @@ class StepLogger:
     def log_function(self, func, *args, custom_name=None, **kwargs):
         custom_name = custom_name or func.__qualname__
 
+        start = time.time()
         results = func(*args, **kwargs)
+        end = time.time()
 
-        self.logs.append({custom_name: results})
+        self.logs.append({custom_name: {'results': results, 'time': end - start}})
 
         return results
