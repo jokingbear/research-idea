@@ -9,9 +9,9 @@ from tqdm.notebook import tqdm as tqdm_nb
 notebook = False
 
 
-def get_tqdm(*args, **kwargs):
+def get_tqdm(iterator=None, total=None, desc=None, show=True):
     pbar = tqdm_nb if notebook else tqdm
-    return pbar(*args, **kwargs)
+    return pbar(iterator, total=total, desc=desc, disable=not show)
 
 
 def set_tqdm(is_notebook=True):
