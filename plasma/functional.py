@@ -1,19 +1,20 @@
 import time
 
 
-def auto_map_func(func):
+class auto_map_func:
 
-    def auto_input(inputs):
+    def __init__(self, func):
+        self.func = func
+
+    def __call__(self, inputs):
         if isinstance(inputs, (tuple, list)):
-            return func(*inputs)
+            return self.func(*inputs)
         elif isinstance(inputs, dict):
-            return func(**inputs)
+            return self.func(**inputs)
         elif inputs is None:
-            return func()
+            return self.func()
         else:
-            return func(inputs)
-    
-    return auto_input
+            return self.func(inputs)
 
 
 def partials(func, *args, **kwargs):
