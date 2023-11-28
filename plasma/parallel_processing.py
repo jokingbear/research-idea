@@ -14,7 +14,7 @@ def create_context():
 
 
 def parallel_iterate(arr, iter_func, context_manager: mp.Manager = None, workers=8, batchsize=100, use_index=False,
-                     auto_func=True, **kwargs):
+                     auto_func=True, estimate_length=None, **kwargs):
     """
     Parallel iter an array
 
@@ -25,7 +25,8 @@ def parallel_iterate(arr, iter_func, context_manager: mp.Manager = None, workers
         workers (int, optional): number of worker to run. Defaults to 8.
         batchsize: batch size to run in parallel.
         use_index (bool, optional): whether to add index to each call of iter func. Defaults to False.
-        auto_func: whether to treat tuple or list as args
+        auto_func: whether to treat tuple or list as args.
+        estimate_length: estimate length of the iteration
     Returns:
         list: list of result for each element in the array
     """    
@@ -40,7 +41,7 @@ def parallel_iterate(arr, iter_func, context_manager: mp.Manager = None, workers
     context_manager = context_manager or mp
     with context_manager.Pool(workers) as pool:
         jobs = pool.imap(iter_func, iterator, batchsize)
-        results = [j for j in get_tqdm(jobs, total=len(arr))]
+        results = [j for j in get_tqdm(jobs, total=estimate_length or len(arr))]
 
     return results
 
@@ -61,28 +62,6 @@ def _build_iterator(array, use_index):
                     yield idx, args
             else:
                 yield args
-
-
-def _queue_item_process(in_queue: mp.Queue, func, progress, total_results):
-    while True:
-        i, x = in_queue.get()
-        results = func(x)
-
-        with progress.get_lock():
-            progress.value += 1
-
-        total_results.append((i, results))
-
-
-def _check_progress(progress, desc='running'):
-    current_value = progress.value
-
-    with get_tqdm(desc=desc) as pbar:
-        while True:
-            new_value = progress.value
-            if new_value != current_value:
-                pbar.update(new_value - current_value)
-                current_value = new_value
 
 
 def process_queue(running_func, post_process_func, context_manager: mp.Manager = None,
