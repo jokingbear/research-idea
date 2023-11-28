@@ -1,9 +1,6 @@
-import plasma.search_engines as engines
-import networkx as nx
+import plasma.parallel_processing as pp
+import time
 
-db = ['tiểu đường', 'đường', 'huyết áp', 'đường huyết']
+arr = [0.5] * 100
 
-matcher = engines.SequenceMatcher(db)
-
-query = 'tiểu đường là gì, và ảnh hưởng thế nào đến huyết áp'
-matcher.match_query(query,)
+pp.parallel_iterate(arr, time.sleep, batchsize=2)

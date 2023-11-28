@@ -1,16 +1,20 @@
-def auto_map_func(func):
+import time
 
-    def auto_input(inputs):
+
+class auto_map_func:
+
+    def __init__(self, func):
+        self.func = func
+
+    def __call__(self, inputs):
         if isinstance(inputs, (tuple, list)):
-            return func(*inputs)
+            return self.func(*inputs)
         elif isinstance(inputs, dict):
-            return func(**inputs)
+            return self.func(**inputs)
         elif inputs is None:
-            return func()
+            return self.func()
         else:
-            return func(inputs)
-    
-    return auto_input
+            return self.func(inputs)
 
 
 def partials(func, *args, **kwargs):
@@ -29,8 +33,10 @@ class StepLogger:
     def log_function(self, func, *args, custom_name=None, **kwargs):
         custom_name = custom_name or func.__qualname__
 
+        start = time.time()
         results = func(*args, **kwargs)
+        end = time.time()
 
-        self.logs.append({custom_name: results})
+        self.logs.append({custom_name: {'results': results, 'time': end - start}})
 
         return results

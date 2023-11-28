@@ -1,7 +1,10 @@
+import ctypes
+import time
+
 import pandas as pd
 import multiprocessing as mp
 
-from .functional import auto_map_func
+from .functional import auto_map_func, partials
 from plasma import get_tqdm
 from queue import Empty
 
@@ -10,7 +13,8 @@ def create_context():
     return mp.Manager()
 
 
-def parallel_iterate(arr, iter_func, context_manager: mp.Manager, workers=8, use_index=False, **kwargs):
+def parallel_iterate(arr, iter_func, context_manager: mp.Manager = None, workers=8, batchsize=100, use_index=False,
+                     auto_func=True, estimate_length=None, **kwargs):
     """
     Parallel iter an array
 
@@ -19,23 +23,48 @@ def parallel_iterate(arr, iter_func, context_manager: mp.Manager, workers=8, use
         iter_func (function arg): function to be called for each data, signature (idx, arg) or arg
         context_manager: context manager from multiprocessing module
         workers (int, optional): number of worker to run. Defaults to 8.
+        batchsize: batch size to run in parallel.
         use_index (bool, optional): whether to add index to each call of iter func. Defaults to False.
+        auto_func: whether to treat tuple or list as args.
+        estimate_length: estimate length of the iteration
     Returns:
         list: list of result for each element in the array
     """    
 
-    with (context_manager.Pool(workers) if context_manager is not None else mp.Pool(workers)) as p:
-        if isinstance(arr, zip):
-            jobs = [p.apply_async(iter_func, args=(i, *arg) if use_index else arg, kwds=kwargs) for i, arg in enumerate(arr)]
-        elif isinstance(arr, pd.DataFrame):
-            jobs = [p.apply_async(iter_func, args=(i, row) if use_index else (row,), kwds=kwargs) for i, row in arr.iterrows()]
-        else:
-            jobs = [p.apply_async(iter_func, args=(i, arg) if use_index else (arg,), kwds=kwargs) for i, arg in enumerate(arr)]
-        results = [j.get() for j in get_tqdm(jobs)]
+    if auto_func:
+        iter_func = auto_map_func(iter_func)
+    if len(kwargs) > 0:
+        iter_func = partials(iter_func, **kwargs)
+
+    iterator = _build_iterator(arr, use_index)
+
+    context_manager = context_manager or mp
+    with context_manager.Pool(workers) as pool:
+        jobs = pool.imap(iter_func, iterator, batchsize)
+        results = [j for j in get_tqdm(jobs, total=estimate_length or len(arr))]
+
     return results
 
 
-def process_queue(running_func, post_process_func, context_manager: mp.Manager,
+def _build_iterator(array, use_index):
+    if isinstance(array, pd.DataFrame):
+        for idx, row in array.iterrows():
+            if use_index:
+                yield idx, row
+            else:
+                yield row
+    else:
+        for idx, args in enumerate(array):
+            if use_index:
+                if isinstance(args, tuple):
+                    yield idx, *args
+                else:
+                    yield idx, args
+            else:
+                yield args
+
+
+def process_queue(running_func, post_process_func, context_manager: mp.Manager = None,
                   nprocess=10, infinite_loop=True, timeout=20):
     """
     Create a queue and process item asynchronously
@@ -68,7 +97,7 @@ def process_queue(running_func, post_process_func, context_manager: mp.Manager,
             except Empty:
                 return
 
-    with context_manager.Queue() as q:
+    with (context_manager.Queue() if context_manager is not None else mp.Queue()) as q:
         processes = [mp.Process(target=run_process, args=(q,)) for _ in range(nprocess)]
         
         [p.start() for p in processes]
