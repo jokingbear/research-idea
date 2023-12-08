@@ -1,5 +1,9 @@
-numpy
-pandas
-scipy
-tqdm
-networkx
+numpy~=1.25.2
+pandas~=2.0.3
+scipy~=1.11.3
+tqdm~=4.66.1
+networkx~=3.1
+
+yaml~=0.2.5
+pyyaml~=6.0.1
+setuptools~=68.0.0
