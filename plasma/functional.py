@@ -25,7 +25,7 @@ class partials:
         self.kwargs = kwargs
 
     def __call__(self, *new_args, **new_kwargs):
-        return self.func(*new_args, *self.args, **self.kwargs, **new_kwargs)
+        return self.func(*self.args, *new_args, **self.kwargs, **new_kwargs)
 
 
 class StepLogger:

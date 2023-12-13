@@ -14,7 +14,7 @@ def create_context():
 
 
 def parallel_iterate(arr, iter_func, context_manager: mp.Manager = None, workers=8, batchsize=100, use_index=False,
-                     auto_func=True, estimate_length=None, **kwargs):
+                     estimate_length=None, **kwargs):
     """
     Parallel iter an array
 
@@ -25,14 +25,10 @@ def parallel_iterate(arr, iter_func, context_manager: mp.Manager = None, workers
         workers (int, optional): number of worker to run. Defaults to 8.
         batchsize: batch size to run in parallel.
         use_index (bool, optional): whether to add index to each call of iter func. Defaults to False.
-        auto_func: whether to treat tuple or list as args.
         estimate_length: estimate length of the iteration
     Returns:
         list: list of result for each element in the array
     """    
-
-    if auto_func:
-        iter_func = auto_map_func(iter_func)
     if len(kwargs) > 0:
         iter_func = partials(iter_func, **kwargs)
 
