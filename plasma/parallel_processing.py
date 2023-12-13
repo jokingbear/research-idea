@@ -109,4 +109,4 @@ def process_queue(running_func, post_process_func, context_manager: mp.Manager =
         except Exception:
             raise
         finally:
-            [p.join() for p in processes]
+            [p.terminate() for p in processes]
