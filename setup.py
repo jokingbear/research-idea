@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='plasma',
-    version='1.1.0',
+    version='1.2.0',
     packages=['plasma', 'plasma.hub', 'plasma.modules', 'plasma.training', 'plasma.training.data',
               'plasma.search_engines'],
     url='',

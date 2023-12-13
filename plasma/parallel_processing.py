@@ -97,8 +97,9 @@ def process_queue(running_func, post_process_func, context_manager: mp.Manager =
             except Empty:
                 return
 
-    with (context_manager.Queue() if context_manager is not None else mp.Queue()) as q:
-        processes = [mp.Process(target=run_process, args=(q,)) for _ in range(nprocess)]
+    creator = context_manager or mp
+    with creator.Queue() as q:
+        processes = [creator.Process(target=run_process, args=(q,)) for _ in range(nprocess)]
         
         [p.start() for p in processes]
 
@@ -108,4 +109,4 @@ def process_queue(running_func, post_process_func, context_manager: mp.Manager =
         except Exception:
             raise
         finally:
-            [p.join() for p in processes]
+            [p.terminate() for p in processes]

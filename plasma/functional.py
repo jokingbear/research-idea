@@ -17,12 +17,15 @@ class auto_map_func:
             return self.func(inputs)
 
 
-def partials(func, *args, **kwargs):
+class partials:
 
-    def _tmp_func(*new_args, **new_kwargs):
-        return func(*new_args, *args, **kwargs, **new_kwargs)
+    def __init__(self, func, *args, **kwargs):
+        self.func = func
+        self.args = args
+        self.kwargs = kwargs
 
-    return _tmp_func
+    def __call__(self, *new_args, **new_kwargs):
+        return self.func(*new_args, *self.args, **self.kwargs, **new_kwargs)
 
 
 class StepLogger:
