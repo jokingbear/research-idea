@@ -8,7 +8,6 @@ class Time:
         self.verbose = verbose
 
         self.start = None
-        self.end = None
 
     def __enter__(self):
         self.start = time.time()
@@ -20,14 +19,12 @@ class Time:
             print(self.duration)
         
         self.start = None
-        self.end = None
     
-    @property
     def duration(self) -> float:
         if self.start is not None:
             return time.time() - self.start
 
-        return np.nan
+        raise NotImplementedError('__enter__ method has not been initiated')
 
 
 class StepLogger:
@@ -40,6 +37,6 @@ class StepLogger:
 
         with Time(verbose=False) as timer:
             results = func(*args, **kwargs)
-            self.logs.append({custom_name: {'results': results, 'time': timer.duration}})
+            self.logs.append({custom_name: {'results': results, 'time': timer.duration()}})
 
         return results
