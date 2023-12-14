@@ -14,7 +14,7 @@ def create_context():
 
 
 def parallel_iterate(arr, iter_func, context_manager: mp.Manager = None, workers=8, batchsize=100, use_index=False,
-                     estimate_length=None, **kwargs):
+                     estimate_length=None, progress=True, **kwargs):
     """
     Parallel iter an array
 
@@ -26,6 +26,7 @@ def parallel_iterate(arr, iter_func, context_manager: mp.Manager = None, workers
         batchsize: batch size to run in parallel.
         use_index (bool, optional): whether to add index to each call of iter func. Defaults to False.
         estimate_length: estimate length of the iteration
+        progress: show progress bar
     Returns:
         list: list of result for each element in the array
     """    
@@ -37,7 +38,7 @@ def parallel_iterate(arr, iter_func, context_manager: mp.Manager = None, workers
     context_manager = context_manager or mp
     with context_manager.Pool(workers) as pool:
         jobs = pool.imap(iter_func, iterator, batchsize)
-        results = [j for j in get_tqdm(jobs, total=estimate_length or len(arr))]
+        results = [j for j in get_tqdm(jobs, total=estimate_length or len(arr), show=progress)]
 
     return results
 
