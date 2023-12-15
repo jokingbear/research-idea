@@ -1,6 +1,8 @@
+import plasma.meta.entry_factory as decorator
 from plasma.modules import *
 
 
+@decorator.entry_point
 class Classifier(nn.Sequential):
 
     def __init__(self, **kwargs):

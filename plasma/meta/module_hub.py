@@ -4,7 +4,7 @@ import sys
 from importlib import import_module
 
 
-class ModuleEntry:
+class ModuleHub:
 
     def __init__(self, absolute_path, module_name):
         sys.path.append(str(absolute_path))
