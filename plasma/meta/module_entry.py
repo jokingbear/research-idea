@@ -4,7 +4,7 @@ import sys
 from importlib import import_module
 
 
-class HubEntries:
+class ModuleEntry:
 
     def __init__(self, absolute_path, module_name):
         sys.path.append(str(absolute_path))
@@ -49,3 +49,6 @@ class HubEntries:
 
         spec = insp.getfullargspec(function)
         return spec
+
+    def __repr__(self):
+        return f'module={self.module}'

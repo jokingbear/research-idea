@@ -1,4 +1,4 @@
-from .hub_entries import HubEntries
+from .module_entry import ModuleEntry
 from pathlib import Path
 
 
@@ -9,7 +9,7 @@ def get_entries(path):
     :return: HubEntries
     """
     path = Path(path)
-    return HubEntries(path.parent, path.name.replace(".py", ""))
+    return ModuleEntry(path.parent, path.name.replace(".py", ""))
 
 
 def run_cfg(cfg):
