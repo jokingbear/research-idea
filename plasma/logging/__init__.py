@@ -1,1 +1,1 @@
-from .time_logger import Time, StepLogger
+from .time_logger import Timer, StepLogger
