@@ -1,4 +1,4 @@
-import plasma.parallel_processing as pp
+import plasma.parallel_processing.__init__ as pp
 import time
 
 arr = [0.5] * 100
