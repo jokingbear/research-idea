@@ -14,7 +14,7 @@ class Flip(nn.Module):
 
         self.dims = dims
 
-    def forward(self, x, reverse=False):
+    def forward(self, x, **_):
         return x.flip(dims=self.dims)
 
     def extra_repr(self):

@@ -1,12 +1,8 @@
-import ctypes
-import time
-
 import pandas as pd
 import multiprocessing as mp
 
-from plasma.functional import auto_map_func, partials
+from plasma.functional import partials
 from plasma import get_tqdm
-from queue import Empty
 
 
 def parallel_iterate(arr, iter_func, context_manager: mp.Manager = None, workers=8, batchsize=100, use_index=False,

@@ -1,6 +1,3 @@
-import time
-
-
 class auto_map_func:
 
     def __init__(self, func):

@@ -59,8 +59,6 @@ class SAModule(nn.Module):
         self.gamma = nn.Parameter(torch.zeros(1), requires_grad=True)
 
     def forward(self, feat_map):
-        batch_size, num_channels, height, width = feat_map.size()
-
         # B x C x spatial
         # B x spatial x C
         conv1_proj = self.conv1(feat_map).flatten(start_dim=2)
