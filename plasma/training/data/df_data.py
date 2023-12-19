@@ -12,7 +12,6 @@ class PandasDataset(BaseDataset):
         :param kwargs: additional argument to add to mapper
         """
         super().__init__()
-        #assert (mapper is not None) != (imapper is not None), "either mapper or imapper must be none"
 
         self.df = df.copy()
         self.mapper = mapper

@@ -15,6 +15,11 @@ _sentence_splitter = re.compile('(.*?)([:\n,;?!.]|$)')
 class GraphMatcher:
 
     def __init__(self, db, case=False):
+        """
+        Args:
+            db: database in text
+            case: whether to consider case
+        """
         if not isinstance(db, pd.Series):
             db = pd.Series(db)
 
@@ -27,6 +32,19 @@ class GraphMatcher:
         self.case = case
 
     def match_query(self, query: str, k=None, threshold=0.85, marginal_threshold=0.7, compare_to_db=True):
+        """
+        Find part of the query that matches the interface
+        Args:
+            query: query to be compared to the database
+            k: total number of candidate
+            threshold: threshold for Jaccard score when comparing two strings
+            marginal_threshold: marginal threshold when two words
+            compare_to_db: whether to compared the matched results with the db to make sure the matched results are
+            in the db
+        Returns:
+            A dataframe of matched results
+
+        """
         assert marginal_threshold >= 0.5, (f'the minimum matching should be bigger than 0.5, '
                                            f'currently {marginal_threshold}')
 

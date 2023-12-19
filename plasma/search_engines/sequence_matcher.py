@@ -47,7 +47,7 @@ class SequenceMatcher:
         tokens = _word_tokenize(query) if normalize_by_word else None
 
         matches = []
-        for entity in get_tqdm(self.db, disable=not pbar):
+        for entity in get_tqdm(self.db, show=pbar):
             matches.append(self._compare_string(query, entity, tokens))
 
         return pd.DataFrame(matches)
