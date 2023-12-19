@@ -19,7 +19,7 @@ class ModuleHub:
         :param kwargs: kwargs to input into the function
         :return:
         """
-        function = getattr(self.module, entry_name)
+        function = self[entry_name]
 
         assert insp.isfunction(function) or insp.isclass(function), \
             f"{function} is not a function or a class"
@@ -42,13 +42,16 @@ class ModuleHub:
         :param entry_name: name of the entry
         :return: argspec object
         """
-        function = getattr(self.module, entry_name)
+        function = self[entry_name]
 
         assert insp.isfunction(function) or insp.isclass(function), \
             f"{function} is not a function or a class"
 
         spec = insp.getfullargspec(function)
         return spec
+
+    def __getitem__(self, name):
+        return getattr(self.module, name)
 
     def __repr__(self):
         return f'module={self.module}'

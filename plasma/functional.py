@@ -16,10 +16,14 @@ class auto_map_func:
 
 class partials:
 
-    def __init__(self, func, *args, **kwargs):
+    def __init__(self, func, *args, first=True, **kwargs):
         self.func = func
         self.args = args
         self.kwargs = kwargs
+        self.first = first
 
     def __call__(self, *new_args, **new_kwargs):
-        return self.func(*self.args, *new_args, **self.kwargs, **new_kwargs)
+        if self.first:
+            return self.func(*self.args, *new_args, **self.kwargs, **new_kwargs)
+        else:
+            return self.func(*new_args, *self.args, **new_kwargs, **self.kwargs)
