@@ -2,6 +2,7 @@ import inspect as insp
 import sys
 
 from importlib import import_module
+from .entry_factory import get_module_entry
 
 
 class ModuleHub:
@@ -49,6 +50,20 @@ class ModuleHub:
 
         spec = insp.getfullargspec(function)
         return spec
+
+    @property
+    def name(self):
+        return self.module.__name__
+
+    @property
+    def entry(self):
+        return get_module_entry(self.name)
+
+    def load_entry(self, *args, **kwargs):
+        entry = self.entry
+        assert entry is not None, 'there\'s no marked entry'
+
+        return self.entry(*args, **kwargs)
 
     def __getitem__(self, name):
         return getattr(self.module, name)
