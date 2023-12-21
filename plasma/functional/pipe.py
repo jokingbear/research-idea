@@ -26,9 +26,6 @@ class Pipe:
                 body = ''.join(body)
                 rep.append(f'\t{attr}={lines_rep[0]}\n{body}\t{lines_rep[-1]}\n')
 
-            if isinstance(val, Pipe):
-                pass
-
         rep = ''.join(rep)
         rep = '\n' + rep
         return f'{type(self).__name__}({rep})'
