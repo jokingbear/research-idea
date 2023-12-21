@@ -2,6 +2,7 @@ from abc import abstractmethod
 
 from torch.utils import data
 from torch.utils.data import RandomSampler, SequentialSampler, DistributedSampler
+from ...utils import get_tqdm
 
 
 class BaseDataset(data.Dataset):
@@ -20,8 +21,21 @@ class BaseDataset(data.Dataset):
     def get_item(self, idx):
         return idx
 
-    def get_torch_loader(self, batch_size=32, workers=20, sampler=None, pin=True, drop_last=True, shuffle=True, 
-                         rank=None, num_replicas=None):
+    def get_torch_loader(self, batch_size=32, workers=20, sampler=None, pin=True, drop_last=True, shuffle=True,
+                         rank=None, num_replicas=None, progress=False) -> data.DataLoader:
+        """
+        Args:
+            batch_size: batch size to load
+            workers: number of workers
+            sampler: sampler to sample data
+            pin: whether to pin gpu memory
+            drop_last: whether to drop remaining data that can't be fitted in a batch
+            shuffle: whether to shuffle the data
+            rank: distributed ranking
+            num_replicas: number of distribution replica
+            progress: whether to show progress bar
+        Returns: DataLoader
+        """
         if rank is None:
             sampler = sampler or RandomSampler(self) if shuffle else SequentialSampler(self)
         else:
@@ -29,5 +43,10 @@ class BaseDataset(data.Dataset):
             sampler = DistributedSampler(self, rank=rank, num_replicas=num_replicas, shuffle=shuffle)
             batch_size = batch_size // num_replicas
 
-        return data.DataLoader(self, batch_size, sampler=sampler, num_workers=workers,
-                               pin_memory=pin, drop_last=drop_last)
+        loader = data.DataLoader(self, batch_size, sampler=sampler, num_workers=workers,
+                                 pin_memory=pin, drop_last=drop_last)
+
+        if progress:
+            loader = get_tqdm(loader, total=len(loader))
+
+        return loader

@@ -16,7 +16,7 @@ def eval_modules(*modules):
     return torch.no_grad()
 
 
-def get_loader(arr, mapper, batch_size=32, pin_memory=True, workers=None, **kwargs):
+def get_loader(arr, mapper, batch_size=32, pin_memory=True, workers=None, progress=True, **kwargs):
     """
     get loader from array or dataframe
     :param arr: array to iter
@@ -24,11 +24,13 @@ def get_loader(arr, mapper, batch_size=32, pin_memory=True, workers=None, **kwar
     :param batch_size: the batch size of the loader
     :param pin_memory: whether the loader should pin memory for fast transfer
     :param workers: number of workers to run in parallel
+    :param progress: whether to show progress bar
     :return: pytorch loader
     """
     workers = workers or batch_size // 2
     dataset = AdhocData(arr, mapper, kwargs)
-    loader = dataset.get_torch_loader(batch_size, workers, pin=pin_memory, drop_last=False, shuffle=False)
+    loader = dataset.get_torch_loader(batch_size, workers, pin=pin_memory, drop_last=False,
+                                      shuffle=False, progress=progress)
     return loader
 
 
