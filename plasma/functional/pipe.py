@@ -3,12 +3,19 @@ from abc import abstractmethod
 
 class Pipe:
 
-    def __init__(self, *marked_attributes):
-        self._marked_attributes = marked_attributes
+    def __init__(self, **kwargs):
+        self._marked_attributes = []
+
+        for attr, val in kwargs.items():
+            self._marked_attributes.append(attr)
+            setattr(self, attr, val)
 
     @abstractmethod
     def run(self, *inputs, **kwargs):
         pass
+
+    def __call__(self, *args, **kwargs):
+        return self.run(*args, **kwargs)
 
     def __repr__(self):
         rep = []
