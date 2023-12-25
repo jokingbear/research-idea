@@ -1,3 +1,5 @@
+import re
+
 from abc import abstractmethod
 
 
@@ -25,14 +27,15 @@ class Pipe:
             lines_rep = val_rep.split('\n')
 
             if len(lines_rep) == 1:
-                rep.append(f'\t{attr}={lines_rep[0]}\n')
+                rep.append(f'\t{attr}={lines_rep[0]},\n')
             elif len(lines_rep) > 1:
                 body = []
                 for line in lines_rep[1:-1]:
                     body.append('\t' + line + '\n')
                 body = ''.join(body)
-                rep.append(f'\t{attr}={lines_rep[0]}\n{body}\t{lines_rep[-1]}\n')
+                rep.append(f'\t{attr}={lines_rep[0]}\n{body}\t{lines_rep[-1]},\n')
 
         rep = ''.join(rep)
         rep = '\n' + rep
+        rep = re.sub('\([\t\n]{1,}\)', '()', rep)
         return f'{type(self).__name__}({rep})'
