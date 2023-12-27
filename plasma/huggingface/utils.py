@@ -4,7 +4,7 @@ from huggingface_hub import hf_hub_download, snapshot_download
 from ..meta import import_module
 
 
-def download_module(repo_id, patterns=('*.py', '*.json', '*.yaml'), local_dir='dependencies'):
+def download_module(repo_id, patterns=('*.py', '*.json', '*.yaml', '*.yml'), local_dir='dependencies'):
     module_name = repo_id.split('/')[-1]
 
     path = f'{local_dir}/{module_name}'
