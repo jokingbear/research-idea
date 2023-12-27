@@ -13,8 +13,14 @@ def download_module(repo_id, patterns=('*.py', '*.json', '*.yaml'), local_dir='d
     return import_module(path)
 
 
-def download_checkpoint(repo_id_filename, local_dir=None):
+def download_checkpoint(repo_id_filename, device='cpu', local_dir=None):
+    path = download_file(repo_id_filename, local_dir)
+
+    return torch.load(path, map_location=device)
+
+
+def download_file(repo_id_filename, local_dir=None):
     repo_id, filename = repo_id_filename.split(':')
     path = hf_hub_download(repo_id, filename, local_dir=local_dir)
 
-    return torch.load(path, map_location='cpu')
+    return path
