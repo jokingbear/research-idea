@@ -1,13 +1,10 @@
 from .pipe import Pipe
 
 
-class ConfigPipe(Pipe):
+class AutoPipe(Pipe):
 
     def __setattr__(self, key, value):
         if key != '_marked_attributes':
-            assert isinstance(value, (str, int, float, list, tuple, dict)), \
-                'attribute must be instance of str, int, float, list, tuple, dict'
-
             if key not in self._marked_attributes:
                 self._marked_attributes.append(key)
 
