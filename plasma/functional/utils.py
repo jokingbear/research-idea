@@ -20,23 +20,32 @@ class partials:
         self.func = func
         self.args = args
         self.kwargs = kwargs
-        self.first = pre_apply_before
+        self.pre_apply_before = pre_apply_before
 
     def __call__(self, *new_args, **new_kwargs):
-        if self.first:
+        if self.pre_apply_before:
             return self.func(*self.args, *new_args, **self.kwargs, **new_kwargs)
         else:
             return self.func(*new_args, *self.args, **new_kwargs, **self.kwargs)
 
     def __repr__(self):
-        func_repr = repr(self.func)
+        func_repr = self.func.__name__
 
         params = []
         args = [str(a) for a in self.args]
         params += args
 
+        if self.pre_apply_before:
+            params.append('*')
+        else:
+            params = ['*'] + params
+
         kwargs = [f'{k}={v}' for k, v in self.kwargs.items()]
-        params += kwargs
+        if self.pre_apply_before:
+            params += kwargs
+            params.append('**')
+        else:
+            params += ['**'] + kwargs
 
         params = ','.join(params)
 
