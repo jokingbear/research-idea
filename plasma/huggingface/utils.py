@@ -5,9 +5,9 @@ from ..meta import import_module
 
 
 def download_module(repo_id, patterns=('*.py', '*.json', '*.yaml', '*.yml'), local_dir='dependencies'):
-    module_name = repo_id.split('/')[-1]
-    module_name_revision = module_name.split('@')
-    module_name = module_name[0]
+    module_name_revision = repo_id.split('/')[-1]
+    module_name_revision = module_name_revision.split('@')
+    module_name = module_name_revision[0]
     revision = None if len(module_name_revision) == 1 else module_name_revision[1]
     path = f'{local_dir}/{module_name}'
     path = snapshot_download(repo_id, allow_patterns=patterns, local_dir=path, revision=revision)
@@ -22,8 +22,8 @@ def download_checkpoint(repo_id_filename, device='cpu', local_dir=None):
 
 
 def download_file(repo_id_filename, local_dir=None):
-    repo_id, filename = repo_id_filename.split(':')
-    filename_revision = filename.split('@')
+    repo_id, filename_revision = repo_id_filename.split(':')
+    filename_revision = filename_revision.split('@')
     filename = filename_revision[0]
     revision = None if len(filename_revision) == 1 else filename_revision[1]
     path = hf_hub_download(repo_id, filename, local_dir=local_dir, revision=revision)
