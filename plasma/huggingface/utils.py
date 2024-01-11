@@ -4,16 +4,15 @@ from huggingface_hub import hf_hub_download, snapshot_download
 from ..meta import import_module
 
 
-def download_module(repo_id, patterns=('*.py', '*.json', '*.yaml', '*.yml'), local_dir='dependencies'):
-    repo_id, module_name_revision = repo_id.split('/')[-1]
+def download_module(repo_id: str, patterns=('*.py', '*.json', '*.yaml', '*.yml'), local_dir='dependencies'):
+    revision_splits = repo_id.split('@')
+    revision = None if len(revision_splits) == 1 else revision_splits[-1]
 
-    module_name_revision = module_name_revision.split('@')
-    module_name = module_name_revision[0]
-    revision = None if len(module_name_revision) == 1 else module_name_revision[1]
+    repo_id = revision_splits[0]
+    module_name = repo_id.split('-1')[-1]
 
     path = f'{local_dir}/{module_name}'
-    path = snapshot_download(f'{repo_id}/{module_name}', allow_patterns=patterns,
-                             local_dir=path, revision=revision)
+    path = snapshot_download(repo_id, allow_patterns=patterns, local_dir=path, revision=revision)
 
     return import_module(path)
 
