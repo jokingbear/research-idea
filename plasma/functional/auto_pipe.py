@@ -9,6 +9,3 @@ class AutoPipe(Pipe):
                 self._marked_attributes.append(key)
 
         super().__setattr__(key, value)
-
-    def run(self, inputs):
-        raise TypeError('config pipe does not have a run method')
