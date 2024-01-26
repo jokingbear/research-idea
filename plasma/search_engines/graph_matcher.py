@@ -13,7 +13,7 @@ from ..functional import AutoPipe
 class GraphMatcher(AutoPipe):
 
     def __init__(self, texts, group_splitter='([^:\n,;?!.]+)', token_threshold=0.5, path_threshold=0.8,
-                 select_largest_interval=False, top_k=None):
+                 select_largest_interval=True, top_k=None):
         """
         Args:
             texts: list of texts
