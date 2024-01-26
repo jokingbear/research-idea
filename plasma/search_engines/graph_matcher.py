@@ -48,15 +48,16 @@ class GraphMatcher(AutoPipe):
         groups = re.finditer(self.group_splitter, standardized_query)
         total_candidates = []
         for g in groups:
-            start, end = g.span(0)
+            start, _ = g.span(0)
             candidates = self._analyze_group(g)
-            candidates['query_start_index'] += start
-            candidates['query_end_index'] += start
-            total_candidates.append(candidates)
+            if len(candidates) > 0:
+                candidates['query_start_index'] += start
+                candidates['query_end_index'] += start
+                total_candidates.append(candidates)
 
         total_candidates = pd.concat(total_candidates, axis=0, ignore_index=True)
         total_candidates = (total_candidates.groupby(['query_start_index', 'query_end_index'])
-                            .apply(lambda df: df.sort_values(['substring_matching_score', 'coverage_score'],
+                            .apply(lambda df: df.sort_values(['substring_matching_score', 'word_coverage_score'],
                                                              ascending=False).iloc[:self.top_k or len(df)]))
         total_candidates = total_candidates.drop(columns=['query_start_index', 'query_end_index'])
         if len(total_candidates.index.names) > 2:
@@ -70,6 +71,10 @@ class GraphMatcher(AutoPipe):
         group_tokens = _word_tokenize(match.group(0))
         candidate_db_mappings = self._compare_tokens(group_tokens['token'])
         candidate_paths = self._analyze_path(candidate_db_mappings)
+        
+        if len(candidate_paths) == 0:
+            return pd.DataFrame([])
+        
         mapped_candidates = self._map_data(candidate_paths)
         candidates = self._standardize_data(mapped_candidates, group_tokens)
         return candidates
@@ -97,6 +102,8 @@ class GraphMatcher(AutoPipe):
         for i, row in mappings.iterrows():
             start_candidates = []
             for db_token, score in row['db_tokens'].items():
+                if score >= self.path_threshold:
+                    start_candidates.append(([db_token], score))
                 sub_sequence_steps = mappings['db_tokens'].iloc[i + 1:].tolist()
                 self._walk_path(db_token, sub_sequence_steps, [db_token], [score],
                                 subgraph, start_candidates)
@@ -149,12 +156,12 @@ class GraphMatcher(AutoPipe):
             start_index = tokens.iloc[index]['start_idx']
             end_index = tokens.iloc[index + path_len - 1]['end_idx']
             token_paths.append({'query_start_index': start_index, 'query_end_index': end_index,
-                                'coverage_score': coverage_score})
+                                'word_coverage_score': coverage_score})
 
         token_paths = pd.DataFrame(token_paths)
         final_data = pd.concat([candidates, token_paths], axis=1)
         final_data = final_data[['query_start_index', 'query_end_index', 'data_index', 'original_text',
-                                 'substring_matching_score', 'coverage_score']]
+                                 'substring_matching_score', 'word_coverage_score']]
         return final_data
 
     def _remove_subset(self, candidates):
