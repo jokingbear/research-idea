@@ -59,6 +59,10 @@ class GraphMatcher(AutoPipe):
             return pd.DataFrame([])
 
         total_candidates = pd.concat(total_candidates, axis=0, ignore_index=True)
+
+        if len(total_candidates) == 0:
+            return pd.DataFrame([])
+
         total_candidates = (total_candidates.groupby(['query_start_index', 'query_end_index'])
                             .apply(lambda df: df.sort_values(['substring_matching_score', 'word_coverage_score'],
                                                              ascending=False).iloc[:self.top_k or len(df)]))
