@@ -170,9 +170,8 @@ class GraphMatcher(AutoPipe):
         end_indices = candidates.index.get_level_values('query_end_index')
 
         for i, (start, end) in enumerate(candidates.index):
-            is_contained = (start_indices < start) & (end < end_indices)
-            is_contained |= (start_indices == start) & (end < end_indices)
-            is_contained |= (start_indices < start) & (end == end_indices)
+            is_contained = (start_indices <= start) & (end < end_indices)
+            is_contained |= (start_indices < start) & (end <= end_indices)
             is_contained = np.any(is_contained)
 
             if not is_contained:
