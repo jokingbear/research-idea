@@ -3,16 +3,16 @@ import numpy as np
 
 import networkx as nx
 import difflib
-import re
 import scipy.stats as stats
 
-from .utils import _word_tokenize, word_splitter
 from ..functional import AutoPipe
+from .regex_splitter import RegexTokenizer
 
 
 class GraphMatcher(AutoPipe):
 
-    def __init__(self, texts, group_splitter='([^:\n,;?!.]+)', token_threshold=0.5, path_threshold=0.8,
+    def __init__(self, texts, group_splitter=RegexTokenizer('([^:\n,;?!.]+)'), tokenizer=RegexTokenizer(r'(\w+)'),
+                 token_threshold=0.5, path_threshold=0.8,
                  select_largest_interval=True, top_k=None):
         """
         Args:
@@ -28,15 +28,20 @@ class GraphMatcher(AutoPipe):
             texts = pd.Series(texts)
 
         standardized_texts = texts.str.lower()
-        token_paths = standardized_texts.map(word_splitter.findall)
+        token_paths = []
+        for txt in standardized_texts:
+            path = tokenizer.run(txt)['token'].tolist()
+            token_paths.append(tuple(path))
         graph = nx.DiGraph()
         [nx.add_path(graph, p) for p in token_paths]
 
         self._graph = graph
         self._data = pd.DataFrame({
             'original_text': texts.values,
-            'standardized_text_path': token_paths.map(tuple).values
+            'standardized_text_path': token_paths
         })
+
+        self.tokenizer = tokenizer
         self.group_splitter = group_splitter
         self.token_threshold = token_threshold
         self.path_threshold = path_threshold
@@ -45,11 +50,11 @@ class GraphMatcher(AutoPipe):
 
     def run(self, query: str):
         standardized_query = query.lower()
-        groups = re.finditer(self.group_splitter, standardized_query)
+        groups = self.group_splitter.run(standardized_query)
         total_candidates = []
-        for g in groups:
-            start, _ = g.span(0)
-            candidates = self._analyze_group(g)
+        for _, g in groups.iterrows():
+            start = g['start_idx']
+            candidates = self._analyze_group(g['token'])
             if len(candidates) > 0:
                 candidates['query_start_index'] += start
                 candidates['query_end_index'] += start
@@ -74,8 +79,8 @@ class GraphMatcher(AutoPipe):
             total_candidates = self._remove_subset(total_candidates)
         return total_candidates
 
-    def _analyze_group(self, match: re.Match):
-        group_tokens = _word_tokenize(match.group(0))
+    def _analyze_group(self, group: str):
+        group_tokens = self.tokenizer.run(group)
         candidate_db_mappings = self._compare_tokens(group_tokens['token'])
         candidate_paths = self._analyze_path(candidate_db_mappings)
         
