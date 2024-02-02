@@ -3,153 +3,191 @@ import numpy as np
 
 import networkx as nx
 import difflib
-import re
 import scipy.stats as stats
 
-from .utils import _word_tokenize, _remove_subset, word_splitter
+from ..functional import AutoPipe
+from .regex_splitter import RegexTokenizer
 
 
-_sentence_splitter = re.compile('(.*?)([:\n,;?!.]|$)')
+class GraphMatcher(AutoPipe):
 
-
-class GraphMatcher:
-
-    def __init__(self, db, case=False):
+    def __init__(self, texts, group_splitter=RegexTokenizer('([^:\n,;?!.]+)'), tokenizer=RegexTokenizer(r'(\w+)'),
+                 token_threshold=0.5, path_threshold=0.8,
+                 select_largest_interval=True, top_k=None):
         """
         Args:
-            db: database in text
-            case: whether to consider case
+            texts: list of texts
+            group_splitter: regex for extract group from query text
+            token_threshold: threshold for comparing token
+            path_threshold: threshold for comparing matched path
+            select_largest_interval: whether the engine should remove results contained in other results
+            top_k: filter top k for each match
         """
-        if not isinstance(db, pd.Series):
-            db = pd.Series(db)
+        super().__init__()
+        if not isinstance(texts, pd.Series):
+            texts = pd.Series(texts)
 
-        if not case:
-            db = db.str.lower()
+        standardized_texts = texts.str.lower()
+        token_paths = []
+        for txt in standardized_texts:
+            path = tokenizer.run(txt)['token'].tolist()
+            token_paths.append(tuple(path))
+        graph = nx.DiGraph()
+        [nx.add_path(graph, p) for p in token_paths]
 
-        self.db = db
-        self.token_graphs = self._build_graph()
+        self._graph = graph
+        self._data = pd.DataFrame({
+            'original_text': texts.values,
+            'standardized_text_path': token_paths
+        })
 
-        self.case = case
+        self.tokenizer = tokenizer
+        self.group_splitter = group_splitter
+        self.token_threshold = token_threshold
+        self.path_threshold = path_threshold
+        self.select_largest_interval = select_largest_interval
+        self.top_k = top_k
 
-    def match_query(self, query: str, k=None, threshold=0.85, marginal_threshold=0.7, compare_to_db=True):
-        """
-        Find part of the query that matches the interface
-        Args:
-            query: query to be compared to the database
-            k: total number of candidate
-            threshold: threshold for Jaccard score when comparing two strings
-            marginal_threshold: marginal threshold when two words
-            compare_to_db: whether to compared the matched results with the db to make sure the matched results are
-            in the db
-        Returns:
-            A dataframe of matched results
-
-        """
-        assert marginal_threshold >= 0.5, (f'the minimum matching should be bigger than 0.5, '
-                                           f'currently {marginal_threshold}')
-
-        if not self.case:
-            query = query.lower()
-
-        sentence_groups = [g for g in _sentence_splitter.finditer(query) if len({*g.span(0)}) > 1]
+    def run(self, query: str):
+        standardized_query = query.lower()
+        groups = self.group_splitter.run(standardized_query)
         total_candidates = []
-        for sentence_group in sentence_groups:
-            start, end = sentence_group.span(0)
+        for _, g in groups.iterrows():
+            start = g['start_idx']
+            candidates = self._analyze_group(g['token'])
+            if len(candidates) > 0:
+                candidates['query_start_index'] += start
+                candidates['query_end_index'] += start
+                total_candidates.append(candidates)
 
-            sentence_tokens = _word_tokenize(sentence_group.group(0))
-            candidates_mappings = self._find_token_candidates(sentence_tokens, marginal_threshold)
-            candidates_subgraph = self._build_subgraph(candidates_mappings)
-            candidates = _list_all_candidates(candidates_mappings, candidates_subgraph)
-            candidates = self._cleanup(candidates, threshold, sentence_tokens, compare_to_db)
-
-            candidates['start_idx'] += start
-            candidates['end_idx'] += start
-            total_candidates.append(candidates)
+        if len(total_candidates) == 0:
+            return pd.DataFrame([])
 
         total_candidates = pd.concat(total_candidates, axis=0, ignore_index=True)
-        total_candidates = total_candidates.sort_values('score', ascending=False)
 
-        if k is not None:
-            total_candidates = total_candidates.iloc[:k]
+        if len(total_candidates) == 0:
+            return pd.DataFrame([])
 
+        total_candidates['matched_len'] = total_candidates['query_end_index'] - total_candidates['query_start_index']
+        total_candidates = (total_candidates.groupby(['query_start_index', 'query_end_index'])
+                            .apply(lambda df: df.sort_values(['substring_matching_score', 'word_coverage_score'],
+                                                             ascending=False).iloc[:self.top_k or len(df)]))
+        total_candidates = total_candidates.drop(columns=['query_start_index', 'query_end_index'])
+        if len(total_candidates.index.names) > 2:
+            total_candidates = total_candidates.droplevel(2)
+
+        if self.select_largest_interval:
+            total_candidates = self._remove_subset(total_candidates)
         return total_candidates
 
-    def _build_graph(self):
-        token_paths = self.db.map(word_splitter.findall)
+    def _analyze_group(self, group: str):
+        group_tokens = self.tokenizer.run(group)
+        candidate_db_mappings = self._compare_tokens(group_tokens['token'])
+        candidate_paths = self._analyze_path(candidate_db_mappings)
+        
+        if len(candidate_paths) == 0:
+            return pd.DataFrame([])
+        
+        mapped_candidates = self._map_data(candidate_paths)
+        candidates = self._standardize_data(mapped_candidates, group_tokens)
+        return candidates
 
-        graph = nx.DiGraph()
-        for path in token_paths:
-            if len(path) == 1:
-                graph.add_node(path[0])
-            else:
-                for i in range(1, len(path)):
-                    graph.add_edge(path[i - 1], path[i])
+    def _compare_tokens(self, tokens):
+        candidate_tokens = []
+        for t in tokens:
+            scores = {db_token: difflib.SequenceMatcher(None, a=t, b=db_token).ratio()
+                      for db_token in self._graph.nodes}
+            scores = pd.Series(scores)
+            scores = scores[scores >= self.token_threshold]
 
-        return graph
-
-    def _find_token_candidates(self, sentence_tokens, marginal_threshold):
-        mappings = []
-        for stk in sentence_tokens['token']:
-            scores = pd.Series({etk: difflib.SequenceMatcher(None, stk, etk).ratio() for etk
-                                in self.token_graphs.nodes})
-            scores = scores.sort_values(ascending=False)
-            scores = scores[scores >= marginal_threshold]
-
-            mappings.append({
-                'sentence_token': stk,
-                'entity_tokens': scores.index.values,
-                'scores': scores.values,
+            candidate_tokens.append({
+                'token': t,
+                'db_tokens': scores.sort_values(ascending=False),
             })
 
-        return pd.DataFrame(mappings)
+        return pd.DataFrame(candidate_tokens)
 
-    def _build_subgraph(self, mappings):
-        entity_tokens = np.concatenate(mappings['entity_tokens'], axis=0)
-        entity_tokens = np.unique(entity_tokens)
-        return self.token_graphs.subgraph(entity_tokens)
+    def _analyze_path(self, mappings):
+        total_db_tokens = np.concatenate(mappings['db_tokens'].map(lambda tokens: tokens.index))
+        subgraph = self._graph.subgraph(total_db_tokens)
 
-    def _cleanup(self, candidates, threshold, sentence_tokens, compare_to_db):
-        if threshold is not None:
-            candidates = candidates[candidates['score'] >= threshold]
+        candidates = []
+        for i, row in mappings.iterrows():
+            start_candidates = []
+            for db_token, score in row['db_tokens'].items():
+                if score >= self.path_threshold:
+                    start_candidates.append(([db_token], score))
+                sub_sequence_steps = mappings['db_tokens'].iloc[i + 1:].tolist()
+                self._walk_path(db_token, sub_sequence_steps, [db_token], [score],
+                                subgraph, start_candidates)
+            candidates += [{'token_index': i, 'token': row['token'],
+                            'path': tuple(p), 'score': s} for p, s in start_candidates]
 
-        if compare_to_db:
-            candidates = candidates[candidates['entity'].isin(self.db)]
-        candidates = _remove_subset(candidates)
-        candidates['start_idx'] = sentence_tokens.iloc[candidates['start_idx']]['start_idx'].values
-        candidates['end_idx'] = sentence_tokens.iloc[candidates['end_idx'] - 1]['end_idx'].values
+        return pd.DataFrame(candidates)
+
+    def _walk_path(self, node, next_sequences, current_path, current_scores, graph: nx.DiGraph, accumulators):
+        if len(next_sequences) > 0:
+            for next_node, score in next_sequences[0].items():
+                if graph.has_edge(node, next_node):
+                    new_path = [*current_path, next_node]
+                    new_scores = [*current_scores, score]
+                    total_score = stats.hmean(new_scores)
+
+                    if total_score >= self.path_threshold:
+                        accumulators.append((new_path, total_score))
+
+                    self._walk_path(next_node, next_sequences[1:], new_path, new_scores,
+                                    graph, accumulators)
+
+    def _map_data(self, candidate_paths):
+        remaining_paths = candidate_paths
+        data_text = self._data['standardized_text_path'].map(' '.join)
+        remaining_candidates = []
+        for _, row in remaining_paths.iterrows():
+            text = ' '.join(row['path'])
+
+            temp_candidates = self._data[data_text.str.contains(text, regex=False)].reset_index()
+            temp_candidates['token_index'] = row['token_index']
+            temp_candidates['token'] = row['token']
+            temp_candidates['score'] = row['score']
+            temp_candidates['path'] = [row['path']] * len(temp_candidates)
+            remaining_candidates.append(temp_candidates)
+
+        candidates = pd.concat(remaining_candidates, axis=0, ignore_index=True)
+        candidates = candidates.rename(columns={'score': 'substring_matching_score', 'index': 'data_index'})
 
         return candidates
 
+    def _standardize_data(self, candidates, tokens):
+        token_paths = []
+        for _, row in candidates.iterrows():
+            path_len = len(row['path'])
+            standardized_text_path_len = len(row['standardized_text_path'])
+            coverage_score = path_len / standardized_text_path_len
 
-def _list_all_candidates(mappings, subgraph):
-    total_paths = []
-    for i, row in mappings.iterrows():
-        paths = []
-        for token, score in zip(row['entity_tokens'], row['scores']):
-            paths.append([(token,), score])
-            _walk_path(token, mappings['entity_tokens'].values[i + 1:], mappings['scores'].values[i + 1:], subgraph,
-                       [token], [score], paths)
-        paths = pd.DataFrame(paths, columns=['path', 'scores'])
-        paths['start_idx'] = i
-        paths['end_idx'] = i + paths['path'].map(len)
-        paths['entity'] = paths['path'].map(' '.join)
-        total_paths.append(paths)
+            index = row['token_index']
+            start_index = tokens.iloc[index]['start_idx']
+            end_index = tokens.iloc[index + path_len - 1]['end_idx']
+            token_paths.append({'query_start_index': start_index, 'query_end_index': end_index,
+                                'word_coverage_score': coverage_score})
 
-    total_paths = pd.concat(total_paths, axis=0, ignore_index=True)
-    total_paths['score'] = total_paths['scores'].map(stats.hmean)
+        token_paths = pd.DataFrame(token_paths)
+        final_data = pd.concat([candidates, token_paths], axis=1)
+        final_data = final_data[['query_start_index', 'query_end_index', 'data_index', 'original_text',
+                                 'substring_matching_score', 'word_coverage_score']]
+        return final_data
 
-    return total_paths[['entity', 'score', 'start_idx', 'end_idx']]
+    def _remove_subset(self, candidates):
+        keeps = []
+        start_indices = candidates.index.get_level_values('query_start_index')
+        end_indices = candidates.index.get_level_values('query_end_index')
 
+        for i, (start, end) in enumerate(candidates.index):
+            is_contained = (start_indices <= start) & (end < end_indices)
+            is_contained |= (start_indices < start) & (end <= end_indices)
+            is_contained = np.any(is_contained)
 
-def _walk_path(start, next_token_sequences, next_score_sequences, graph: nx.DiGraph, path, scores, token_acc):
-    if len(next_token_sequences) == 0:
-        return
-    else:
-        neighbors = set(graph.neighbors(start))
-        for new_start, new_score in zip(next_token_sequences[0], next_score_sequences[0]):
-            if new_start in neighbors:
-                new_path = (*path, new_start)
-                new_scores = (*scores, new_score)
-                token_acc.append([new_path, new_scores])
-                _walk_path(new_start, next_token_sequences[1:], next_score_sequences[1:], graph,
-                           new_path, new_scores, token_acc)
+            if not is_contained:
+                keeps.append(i)
+
+        return candidates.iloc[keeps]

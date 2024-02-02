@@ -1,3 +1,5 @@
+import importlib
+
 from .module_hub import ModuleHub
 from pathlib import Path
 from .entry_factory import get_module_entry
@@ -72,3 +74,14 @@ def load_entries(**cfg):
         loaded[k] = v
 
     return loaded
+
+
+def mass_import(file, pattern):
+    path = Path(file)
+    name = path.name.replace('.py', '')
+    if name == '__init__':
+        name = path.parent.name
+
+    for p in path.parent.glob(pattern):
+        reader_name = p.name.replace('.py', '')
+        importlib.import_module(f'.{reader_name}', name)
