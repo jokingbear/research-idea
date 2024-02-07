@@ -1,6 +1,5 @@
 import importlib
 import inspect
-from operator import call
 
 from .module_hub import ModuleHub
 from pathlib import Path
