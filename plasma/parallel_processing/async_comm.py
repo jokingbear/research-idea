@@ -3,17 +3,16 @@ import asyncio as aio
 
 class TaskCommunicator:
 
-    def __init__(self, comfunc, ntask, nitem=0):
+    def __init__(self, comfuncs, nitem=0):
         """
         Args:
             comfunc: function to communicate between processes, the last argument must be a task index and queue
-            ntask: number of process to initiate
-            nitem: maximum number of item in queue
+            qsize: maximum number of item in queue
         """
 
         queue = aio.Queue(nitem)
         self.queue = queue
-        self.coroutines = [comfunc(i, queue) for i in range(ntask)]
+        self.coroutines = [f(i, queue) for i, f in enumerate(comfuncs)]
         self.tasks = []
 
     def __enter__(self):
