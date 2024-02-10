@@ -21,5 +21,5 @@ class ProcessCommunicator:
         [p.start() for p in self.processes]
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, *_):
         [p.terminate() for p in self.processes]
