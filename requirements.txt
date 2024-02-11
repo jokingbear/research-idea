@@ -3,4 +3,5 @@ pandas
 scipy
 tqdm
 networkx
+pyyaml
 setuptools
