@@ -5,18 +5,20 @@ import sys
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
+
 @logger.Timer()
 @logger.FunctionLogger()
-def haha(x, y):
-    return x + y
+def haha(x):
+    return x
 
 
 class A:
 
+    @logger.Timer()
     @logger.FunctionLogger()
-    def run(self, x, y):
-        return x + y
+    def run(self, x):
+        return x
 
 a = A()
-haha(5, 6)
-a.run(5, 6)
+haha('string')
+a.run('string')

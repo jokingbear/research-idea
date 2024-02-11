@@ -25,22 +25,21 @@ class Timer:
         return self.end - self.start
 
     def __call__(self, func):
-        return _timer_proxy(self, self.log_func, func)
+        return _timer_proxy(self, func)
 
 
 class _timer_proxy(proxy_func):
 
-    def __init__(self, timer: Timer, log_func, func):
+    def __init__(self, timer: Timer, func):
         super().__init__(func)
         self.timer = timer
-        self.log_func = log_func
         self.name = func.__qualname__
     
     def __call__(self, *args, **kwds):
         with self.timer as timer:
             results = self.func(*args, **kwds)
         duration = timer.duration
-        self.log_func({self.name: f'{duration:.2f}s'})
+        self.timer.log_func({self.name: f'{duration:.2f}s'})
         return results
     
     def __get__(self, instance, owner):

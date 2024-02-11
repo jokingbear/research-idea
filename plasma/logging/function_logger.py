@@ -10,21 +10,25 @@ class FunctionLogger:
         self.log_func = log_func
     
     def __call__(self, function):
-        return _function_proxy(self.name, self.log_func, function)
+        return _function_proxy(self, function)
+    
+    def _process_results(self, results):
+        return results
 
 
 class _function_proxy(proxy_func):
 
-    def __init__(self, name, log_func, function) -> None:
+    def __init__(self, function_logger: FunctionLogger, function) -> None:
         super().__init__(function)
-        if name is None:
+        if function_logger.name is None:
             name = function.__qualname__
         self.name = name
-        self.log_func = log_func
+        self.logger = function_logger
     
     def __call__(self, *args, **kwargs):
         results = self.func(*args, **kwargs)
-        self.log_func({self.name: results})
+        results = self.logger._process_results(results)
+        self.logger.log_func({self.name: results})
         return results
 
     def __get__(self, instance, owner):
