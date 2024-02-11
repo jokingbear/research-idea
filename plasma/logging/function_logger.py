@@ -10,10 +10,10 @@ class FunctionLogger:
         self.log_func = log_func
     
     def __call__(self, function):
-        return _proxy_func_(self.name, self.log_func, function)
+        return _function_proxy(self.name, self.log_func, function)
 
 
-class _proxy_func_(proxy_func):
+class _function_proxy(proxy_func):
 
     def __init__(self, name, log_func, function) -> None:
         super().__init__(function)

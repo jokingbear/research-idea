@@ -25,10 +25,10 @@ class Timer:
         return self.end - self.start
 
     def __call__(self, func):
-        return _proxy_func_(self, self.log_func, func)
+        return _timer_proxy(self, self.log_func, func)
 
 
-class _proxy_func_(proxy_func):
+class _timer_proxy(proxy_func):
 
     def __init__(self, timer: Timer, log_func, func):
         super().__init__(func)
