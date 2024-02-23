@@ -1,7 +1,5 @@
 import warnings
 
-from sympy import N
-
 
 class ObjectFactory(dict):
 
