@@ -1,7 +1,14 @@
-class auto_map_func:
+from abc import ABC
 
-    def __init__(self, func):
+
+class proxy_func(ABC):
+
+    def __init__(self, func) -> None:
         self.func = func
+        self.__qualname__ = func.__qualname__
+
+
+class auto_map_func(proxy_func):
 
     def __call__(self, inputs):
         if isinstance(inputs, (tuple, list)):
@@ -14,10 +21,10 @@ class auto_map_func:
             return self.func(inputs)
 
 
-class partials:
+class partials(proxy_func):
 
     def __init__(self, func, *args, pre_apply_before=True, **kwargs):
-        self.func = func
+        super().__init__(func)
         self.args = args
         self.kwargs = kwargs
         self.pre_apply_before = pre_apply_before

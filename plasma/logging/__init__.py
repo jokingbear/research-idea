@@ -1,2 +1,2 @@
-from .time_logger import Timer
-from .step_loger import StepLogger
+from .timer import Timer
+from .function_logger import FunctionLogger

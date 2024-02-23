@@ -1,9 +1,11 @@
 import warnings
 
+from sympy import N
+
 
 class ObjectFactory(dict):
 
-    def register(self, name):
+    def register(self, name=None):
         return object_map(self, name)
 
 
@@ -17,5 +19,6 @@ class object_map:
             warnings.warn(f'many entry points for: {self.name}, overriding the current one')
 
     def __call__(self, func_or_class):
-        self._factory[self.name] = func_or_class
+        name = self.name or func_or_class.__qualname__
+        self._factory[name] = func_or_class
         return func_or_class
