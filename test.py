@@ -1,24 +1,7 @@
-import plasma.logging as logger
-import logging
-import sys
+import plasma.search_engines as search_engines
+import pandas as pd
 
+df = pd.read_feather('icd10.feather')
 
-logging.basicConfig(stream=sys.stdout, level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-
-@logger.Timer()
-@logger.FunctionLogger()
-def haha(x):
-    return x
-
-
-class A:
-
-    @logger.Timer()
-    @logger.FunctionLogger()
-    def run(self, x):
-        return x
-
-a = A()
-haha('string')
-a.run('string')
+engine = search_engines.GraphMatcher(df['name'])
+engine.run('Hen suyễn')

@@ -146,7 +146,7 @@ class GraphMatcher(AutoPipe):
         for _, row in remaining_paths.iterrows():
             text = ' '.join(row['path'])
 
-            temp_candidates = self._data[data_text.str.contains(text, regex=False)].reset_index()
+            temp_candidates = self._data[data_text.str.contains(rf'(\s|^){text}(\s|$)', regex=True)].reset_index()
             temp_candidates['token_index'] = row['token_index']
             temp_candidates['token'] = row['token']
             temp_candidates['score'] = row['score']
