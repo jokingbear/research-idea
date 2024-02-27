@@ -142,11 +142,12 @@ class GraphMatcher(AutoPipe):
     def _map_data(self, candidate_paths):
         remaining_paths = candidate_paths
         data_text = self._data['standardized_text_path'].map(' '.join)
+        data_text = ' ' + data_text + ' '
         remaining_candidates = []
         for _, row in remaining_paths.iterrows():
             text = ' '.join(row['path'])
 
-            temp_candidates = self._data[data_text.str.contains(f' {text}', regex=False) | data_text.str.startswith(text)].reset_index()
+            temp_candidates = self._data[data_text.str.contains(f' {text} ', regex=False)].reset_index()
             temp_candidates['token_index'] = row['token_index']
             temp_candidates['token'] = row['token']
             temp_candidates['score'] = row['score']
