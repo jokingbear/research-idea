@@ -82,6 +82,9 @@ class GraphMatcher(AutoPipe):
 
     def _analyze_group(self, group: str):
         group_tokens = self.tokenizer.run(group)
+        if len(group_tokens) == 0:
+            return pd.DataFrame([])
+
         candidate_db_mappings = self._compare_tokens(group_tokens['token'])
         candidate_paths = self._analyze_path(candidate_db_mappings)
         
