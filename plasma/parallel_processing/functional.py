@@ -2,7 +2,8 @@ import pandas as pd
 import multiprocessing as mp
 
 from plasma.functional import partials
-from plasma import get_tqdm
+from tqdm.auto import tqdm
+from warnings import warn
 
 
 def parallel_iterate(arr, iter_func, context_manager: mp.Manager = None, workers=8, batchsize=100, use_index=False,
@@ -25,12 +26,13 @@ def parallel_iterate(arr, iter_func, context_manager: mp.Manager = None, workers
     if len(kwargs) > 0:
         iter_func = partials(iter_func, **kwargs)
 
+    warn('parallel_iterate is deprecated, will be remove in the next release, use tqdm.contrib.concurrent.process_map instead')
     iterator = _build_iterator(arr, use_index)
 
     context_manager = context_manager or mp
     with context_manager.Pool(workers) as pool:
         jobs = pool.imap(iter_func, iterator, batchsize)
-        results = [j for j in get_tqdm(jobs, total=estimate_length or len(arr), show=progress)]
+        results = [j for j in tqdm(jobs, total=estimate_length or len(arr), show=progress)]
 
     return results
 

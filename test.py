@@ -1,8 +1,18 @@
-import plasma.search_engines as search_engines
-import pandas as pd
+import plasma.parallel_processing as pp
+import time
+import multiprocessing as mp
 
-df = pd.read_feather('icd10.feather')
+from tqdm.auto import tqdm
 
-engine = search_engines.GraphMatcher(df['name'])
-results = engine.run('\n- Chắp mi trên có ổ mủ vỡ\n\nSymptoms: \n- TL kính cũ: 20/50')
-results['confidence'] = 2 / (1 / results['substring_matching_score'] + 1 / results['word_coverage_score'])
+
+def haha(i, q):
+    x = q.get()
+    time.sleep(0.5)
+    print(x)
+
+
+if __name__ == '__main__':
+    with pp.ThreadCommunicator([haha] * 1) as pcomm:
+        for i in tqdm(range(100)):
+            pcomm.queue.put_nowait(i)
+            time.sleep(0.1)
