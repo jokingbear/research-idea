@@ -15,7 +15,6 @@ class CPUBlock(Block):
             input_queue: queue for input
             output_queue: queue for output
             use_thread: whether to run comfuncs on different thread or process
-            auto_loop: whether to run comfuncs in infinite loop
         """       
         super().__init__(input_queue, output_queue)
         if use_thread:
