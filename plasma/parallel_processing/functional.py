@@ -26,7 +26,7 @@ def parallel_iterate(arr, iter_func, context_manager: mp.Manager = None, workers
     if len(kwargs) > 0:
         iter_func = partials(iter_func, **kwargs)
 
-    warn('parallel_iterate is deprecated, will be remove in the next release, use tqdm.contrib.concurrent.process_map instead')
+    warn('parallel_iterate is deprecated, will be remove in future releases, use tqdm.contrib.concurrent.process_map instead')
     iterator = _build_iterator(arr, use_index)
 
     context_manager = context_manager or mp

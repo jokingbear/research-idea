@@ -1,4 +1,4 @@
 from .functional import parallel_iterate
-from .process_comm import ProcessCommunicator
-from .thread_comm import ThreadCommunicator
-from .torch_comm import TorchCommunicator
+from .cpu_block import CPUBlock
+from .torch_block import TorchBlock
+from .chained_block import ChainedBlock
