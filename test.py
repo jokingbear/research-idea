@@ -1,18 +1,23 @@
 import plasma.parallel_processing as pp
+import torch
 import time
-import multiprocessing as mp
 
 from tqdm.auto import tqdm
 
 
 def haha(i, q):
     x = q.get()
-    time.sleep(0.5)
-    print(x)
+    a = torch.tensor([1] * x, device='cuda:0')
+    print(a.sum())
+    del a
+    q.task_done()
 
 
 if __name__ == '__main__':
-    with pp.ThreadCommunicator([haha] * 1) as pcomm:
+    with pp.TorchCommunicator(haha, start_method='spawn', auto_loop=True) as comm:
         for i in tqdm(range(100)):
-            pcomm.queue.put_nowait(i)
+            comm.queue.put_nowait(i)
             time.sleep(0.1)
+
+        comm.queue.join()
+    print('done all task')
