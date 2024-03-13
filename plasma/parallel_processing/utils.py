@@ -3,14 +3,13 @@ import time
 from queue import Queue
 
 
-def transit_queue(total, input_queue: Queue, output_queue: Queue):
-    counters = 0
-    while counters != total:
+def sync_queues_determine(total, input_queue: Queue, output_queue: Queue):
+    for _ in range(total):
         x = input_queue.get()
         output_queue.put(x)
 
 
-def transfer_queue(q1: Queue, q2: Queue, delay_time=0.5, loop_time=0.1):
+def sync_queues_undetermine(q1: Queue, q2: Queue, delay_time=0.5, loop_time=0.1):
     if delay_time is not None:
         time.sleep(delay_time)
     
