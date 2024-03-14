@@ -14,13 +14,13 @@ def sync_queues_determine(q1: Queue, q2: Queue, total, return_items=False):
         return items
 
 
-def sync_queues_undetermine(q1: Queue, q2: Queue, delay_time=0.5, loop_time=0.1, return_items=False):
+def sync_queues_with_anchor(q1: Queue, q2: Queue, anchor: Queue, delay_time=0.5, loop_time=0.1, return_items=False):
     if delay_time is not None:
         time.sleep(delay_time)
     
     counter = 0
     items = []
-    while q1.qsize() > 0:
+    while not anchor.all_tasks_done.acquire() or q1.qsize() > 0:
         x = q1.get()
         q2.put(x)
         if loop_time is not None:
