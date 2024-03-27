@@ -2,7 +2,7 @@ from abc import abstractmethod
 
 from torch.utils import data
 from torch.utils.data import RandomSampler, SequentialSampler, DistributedSampler
-from ...utils import get_tqdm
+from tqdm.auto import tqdm
 
 
 class BaseDataset(data.Dataset):
@@ -34,7 +34,7 @@ class BaseDataset(data.Dataset):
             rank: distributed ranking
             num_replicas: number of distribution replica
             progress: whether to show progress bar
-        Returns: DataLoader
+        Returns: Iterator
         """
         if rank is None:
             sampler = sampler or RandomSampler(self) if shuffle else SequentialSampler(self)
@@ -47,6 +47,6 @@ class BaseDataset(data.Dataset):
                                  pin_memory=pin, drop_last=drop_last)
 
         if progress:
-            loader = get_tqdm(loader, total=len(loader))
+            loader = tqdm(loader, total=len(loader))
 
         return loader

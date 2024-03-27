@@ -1,9 +1,8 @@
-import multiprocessing as mp
-
 from .functional import parallel_iterate
-from .process_comm import ProcessCommunicator
-from .async_comm import TaskCommunicator
+from .cpu_block import CPUBlock
+from .torch_block import TorchBlock
+from . import utils
 
-
-def create_context():
-    return mp.Manager()
+from queue import Queue as ThreadQueue
+from multiprocessing import JoinableQueue, SimpleQueue
+from torch.multiprocessing import JoinableQueue as TorchJoinableQueue, SimpleQueue as TorchSimpleQueue
