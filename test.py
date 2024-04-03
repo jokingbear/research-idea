@@ -1,13 +1,11 @@
-import multiprocessing as mp
+import plasma.torch as ptorch
 
 
-def haha(i, q):
-    while True:
-        print('thread ', i, q)
-        if len(q) == 5:
-            break
+class A(ptorch.modules.AlgebraicModule):
+    pass
 
 
-if __name__ == '__main__':
-    q = 2
-    print(mp.JoinableQueue.__qualname__)
+a = A()
+b = A()
+
+print(a + b)
