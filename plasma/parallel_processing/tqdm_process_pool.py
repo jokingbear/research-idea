@@ -11,7 +11,7 @@ class TqdmPool:
     def map(self, arr, func, chunksize, **tqdm_kwargs):
         iterator = self._process_pool.imap(func, arr, chunksize)
 
-        return [*tqdm(iterator, **tqdm_kwargs)]
+        return [r for r in tqdm(iterator, **tqdm_kwargs)]
 
     def submit_task(self, func):
         return self._process_pool.apply_async(func)
