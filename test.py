@@ -1,11 +1,7 @@
-import plasma.torch as ptorch
+import re
+
+from pathlib import Path
+
+packages = [re.sub(r'\\|\/', '.', str(p.parent)) for p in Path('plasma').rglob('__init__.py')]
 
 
-class A(ptorch.modules.AlgebraicModule):
-    pass
-
-
-a = A()
-b = A()
-
-print(a + b)
