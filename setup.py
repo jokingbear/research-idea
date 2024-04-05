@@ -8,7 +8,7 @@ packages = [re.sub(r'\\|\/', '.', str(p.parent)) for p in Path('plasma').rglob('
 
 setup(
     name='plasma',
-    version='1.9.4',
+    version='1.9.5',
     packages=['plasma', *packages],
     url='https://github.com/jokingbear/research-idea',
     license='MIT',
