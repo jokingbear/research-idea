@@ -21,8 +21,16 @@ class BaseDataset(data.Dataset):
     def get_item(self, idx):
         return idx
 
-    def get_torch_loader(self, batch_size=32, workers=20, sampler=None, pin=True, drop_last=True, shuffle=True,
-                         rank=None, num_replicas=None) -> data.DataLoader:
+    def get_torch_loader(self, 
+        batch_size=32, 
+        workers=20, 
+        sampler=None, 
+        pin=True, 
+        drop_last=True, 
+        shuffle=True,
+        rank=None, 
+        num_replicas=None
+    ) -> data.DataLoader:
         """
         Args:
             batch_size: batch size to load
