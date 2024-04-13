@@ -60,9 +60,15 @@ class _HookRunner:
             'kwargs': kwargs
         }
 
-        outputs = self._original_func(*args, **kwargs)
+        try:
+            outputs = self._original_func(*args, **kwargs)
+        except Exception as e:
+            outputs = e
 
         for logger in self._pipe._hooks:
             logger(inputs, outputs)
+
+        if isinstance(outputs, Exception):
+            raise outputs
 
         return outputs
