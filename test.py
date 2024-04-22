@@ -1,13 +1,24 @@
-import multiprocessing as mp
+import plasma.functional as F
 
 
-def haha(i, q):
-    while True:
-        print('thread ', i, q)
-        if len(q) == 5:
-            break
+class Configs(F.BaseConfigs):
+
+    def __init__(self):
+        super().__init__()
+
+        self.device = 1
+        self.other_configs = Configs.Configs2()
+    
+
+    class Configs2(F.BaseConfigs):
+
+        def __init__(self):
+            super().__init__()
+
+            self.device = 1
+            self.others = {
+                'device': 1
+            }
 
 
-if __name__ == '__main__':
-    q = 2
-    print(mp.JoinableQueue.__qualname__)
+a = Configs()

@@ -3,8 +3,8 @@ from .pipe import Pipe
 
 class SequentialPipe(Pipe):
 
-    def __setattr__(self, key, value):
-        if key != '_marked_attributes':
+    def __setattr__(self, key:str, value):
+        if not key.startswith('_'):
             assert isinstance(value, Pipe), 'attribute must be instance of Pipe'
 
             if key not in self._marked_attributes:
