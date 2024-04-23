@@ -7,7 +7,7 @@ from warnings import warn
 
 
 def parallel_iterate(arr, iter_func, context_manager: mp.Manager = None, workers=8, batchsize=100, use_index=False,
-                     estimate_length=None, progress=True, **kwargs):
+                     estimate_length=None, **tqdm_kwargs):
     """
     Parallel iter an array
 
@@ -23,8 +23,6 @@ def parallel_iterate(arr, iter_func, context_manager: mp.Manager = None, workers
     Returns:
         list: list of result for each element in the array
     """
-    if len(kwargs) > 0:
-        iter_func = partials(iter_func, **kwargs)
 
     warn('parallel_iterate is deprecated, will be remove in future releases, use tqdm.contrib.concurrent.process_map instead')
     iterator = _build_iterator(arr, use_index)
@@ -32,7 +30,7 @@ def parallel_iterate(arr, iter_func, context_manager: mp.Manager = None, workers
     context_manager = context_manager or mp
     with context_manager.Pool(workers) as pool:
         jobs = pool.imap(iter_func, iterator, batchsize)
-        results = [j for j in tqdm(jobs, total=estimate_length or len(arr), show=progress)]
+        results = [j for j in tqdm(jobs, total=estimate_length or len(arr), **tqdm_kwargs)]
 
     return results
 
