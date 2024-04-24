@@ -5,13 +5,18 @@ import networkx as nx
 import difflib
 import scipy.stats as stats
 
-from ..functional import AutoPipe
+from ..functional import AutoPipe, partials
 from .regex_splitter import RegexTokenizer
+from ..logging import Timer
+from concurrent.futures import ProcessPoolExecutor
+from ..parallel_processing import TqdmPool
+from .path_walker import PathWalker
+from tqdm.contrib.concurrent import thread_map
 
 
 class GraphMatcher(AutoPipe):
 
-    def __init__(self, texts, group_splitter=RegexTokenizer('([^:\n,;?!.]+)'), tokenizer=RegexTokenizer(r'(\w+)'),
+    def __init__(self, texts, group_splitter='([^:\n,;?!.]+)', tokenizer=r'(\w+)',
                  token_threshold=0.5, path_threshold=0.8,
                  select_largest_interval=True, top_k=None):
         """
@@ -26,6 +31,12 @@ class GraphMatcher(AutoPipe):
         super().__init__()
         if not isinstance(texts, pd.Series):
             texts = pd.Series(texts)
+
+        if isinstance(tokenizer, str):
+            tokenizer = RegexTokenizer(tokenizer)
+        
+        if isinstance(group_splitter, str):
+            group_splitter = RegexTokenizer(group_splitter)
 
         standardized_texts = texts.str.lower()
         token_paths = []
@@ -42,12 +53,13 @@ class GraphMatcher(AutoPipe):
         })
 
         self.tokenizer = tokenizer
-        self.group_splitter = group_splitter
+        self.group_splitter = group_splitter 
         self.token_threshold = token_threshold
-        self.path_threshold = path_threshold
         self.select_largest_interval = select_largest_interval
         self.top_k = top_k
+        self.path_walker = PathWalker(path_threshold, self._graph, self._data)
 
+    @Timer(print)
     def run(self, query: str):
         standardized_query = query.lower()
         groups = self.group_splitter.run(standardized_query)
@@ -78,9 +90,11 @@ class GraphMatcher(AutoPipe):
 
         if self.select_largest_interval:
             total_candidates = self._remove_subset(total_candidates)
+        
         return total_candidates
 
     def _analyze_group(self, group: str):
+        print(group)
         group_tokens = self.tokenizer.run(group)
         if len(group_tokens) == 0:
             return pd.DataFrame([])
@@ -95,6 +109,7 @@ class GraphMatcher(AutoPipe):
         candidates = self._standardize_data(mapped_candidates, group_tokens)
         return candidates
 
+    @Timer(print)
     def _compare_tokens(self, tokens):
         candidate_tokens = []
         for t in tokens:
@@ -110,58 +125,27 @@ class GraphMatcher(AutoPipe):
 
         return pd.DataFrame(candidate_tokens)
 
+    @Timer(print)
     def _analyze_path(self, mappings):
-        total_db_tokens = np.concatenate(mappings['db_tokens'].map(lambda tokens: tokens.index))
-        subgraph = self._graph.subgraph(total_db_tokens)
+        candidates = self.path_walker.run(mappings['db_tokens'].tolist())
+        candidates['token'] = [mappings.iloc[i]['token'] for i in candidates['token_index']]
 
-        candidates = []
-        for i, row in mappings.iterrows():
-            start_candidates = []
-            for db_token, score in row['db_tokens'].items():
-                if score >= self.path_threshold:
-                    start_candidates.append(([db_token], score))
-                sub_sequence_steps = mappings['db_tokens'].iloc[i + 1:].tolist()
-                self._walk_path(db_token, sub_sequence_steps, [db_token], [score],
-                                subgraph, start_candidates)
-            candidates += [{'token_index': i, 'token': row['token'],
-                            'path': tuple(p), 'score': s} for p, s in start_candidates]
+        return candidates
 
-        return pd.DataFrame(candidates)
-
-    def _walk_path(self, node, next_sequences, current_path, current_scores, graph: nx.DiGraph, accumulators):
-        if len(next_sequences) > 0:
-            for next_node, score in next_sequences[0].items():
-                if graph.has_edge(node, next_node):
-                    new_path = [*current_path, next_node]
-                    new_scores = [*current_scores, score]
-                    total_score = stats.hmean(new_scores)
-
-                    if total_score >= self.path_threshold:
-                        accumulators.append((new_path, total_score))
-
-                    self._walk_path(next_node, next_sequences[1:], new_path, new_scores,
-                                    graph, accumulators)
-
+    @Timer(print)
     def _map_data(self, candidate_paths):
-        remaining_paths = candidate_paths
         data_text = self._data['standardized_text_path'].map(' '.join)
         data_text = ' ' + data_text + ' '
-        remaining_candidates = []
-        for _, row in remaining_paths.iterrows():
-            text = ' '.join(row['path'])
 
-            temp_candidates = self._data[data_text.str.contains(f' {text} ', regex=False)].reset_index()
-            temp_candidates['token_index'] = row['token_index']
-            temp_candidates['token'] = row['token']
-            temp_candidates['score'] = row['score']
-            temp_candidates['path'] = [row['path']] * len(temp_candidates)
-            remaining_candidates.append(temp_candidates)
-
-        candidates = pd.concat(remaining_candidates, axis=0, ignore_index=True)
+        mapper = partials(_map_contain, data_text, self._data, pre_apply_before=False)
+        with TqdmPool() as pool:
+            candidates = pool.map(candidate_paths.iterrows(), mapper, 50, total=len(candidate_paths), desc='mapping database')
+        candidates = pd.concat(candidates, axis=0, ignore_index=True)
         candidates = candidates.rename(columns={'score': 'substring_matching_score', 'index': 'data_index'})
 
         return candidates
 
+    @Timer(print)
     def _standardize_data(self, candidates, tokens):
         token_paths = []
         for _, row in candidates.iterrows():
@@ -182,16 +166,23 @@ class GraphMatcher(AutoPipe):
         return final_data
 
     def _remove_subset(self, candidates):
-        keeps = []
-        start_indices = candidates.index.get_level_values('query_start_index')
-        end_indices = candidates.index.get_level_values('query_end_index')
+        start_indices = candidates.index.get_level_values('query_start_index').values
+        end_indices = candidates.index.get_level_values('query_end_index').values
 
-        for i, (start, end) in enumerate(candidates.index):
-            is_contained = (start_indices <= start) & (end < end_indices)
-            is_contained |= (start_indices < start) & (end <= end_indices)
-            is_contained = np.any(is_contained)
+        bound_below = (start_indices <= start_indices[:, np.newaxis]) & (end_indices[:, np.newaxis] < end_indices)
+        bound_above = (start_indices < start_indices[:, np.newaxis]) & (end_indices[:, np.newaxis] <= end_indices)
+        is_contained = bound_below | bound_above
+        is_contained = np.any(is_contained, axis=-1)
 
-            if not is_contained:
-                keeps.append(i)
+        return candidates[~is_contained]
 
-        return candidates.iloc[keeps]
+
+def _map_contain(index_row, data_text, data):
+    row = index_row[1]
+    text = ' '.join(row['path'])
+    temp_candidates = data[data_text.str.contains(f' {text} ', regex=False)].reset_index()
+    temp_candidates['token_index'] = row['token_index']
+    temp_candidates['token'] = row['token']
+    temp_candidates['score'] = row['score']
+    temp_candidates['path'] = [row['path']] * len(temp_candidates)
+    return temp_candidates
