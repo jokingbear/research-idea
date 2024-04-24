@@ -93,7 +93,6 @@ class GraphMatcher(AutoPipe):
         return total_candidates
 
     def _analyze_group(self, group: str):
-        print(group)
         group_tokens = self.tokenizer.run(group)
         if len(group_tokens) == 0:
             return pd.DataFrame([])
@@ -141,7 +140,6 @@ class GraphMatcher(AutoPipe):
 
         return candidates
 
-    @Timer(print)
     def _standardize_data(self, candidates, tokens):
         token_paths = []
         for _, row in candidates.iterrows():
