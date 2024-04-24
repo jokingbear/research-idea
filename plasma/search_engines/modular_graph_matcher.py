@@ -59,7 +59,6 @@ class GraphMatcher(AutoPipe):
         self.top_k = top_k
         self.path_walker = PathWalker(path_threshold, self._graph, self._data)
 
-    @Timer(print)
     def run(self, query: str):
         standardized_query = query.lower()
         groups = self.group_splitter.run(standardized_query)
@@ -109,7 +108,6 @@ class GraphMatcher(AutoPipe):
         candidates = self._standardize_data(mapped_candidates, group_tokens)
         return candidates
 
-    @Timer(print)
     def _compare_tokens(self, tokens):
         candidate_tokens = []
         for t in tokens:
@@ -125,14 +123,12 @@ class GraphMatcher(AutoPipe):
 
         return pd.DataFrame(candidate_tokens)
 
-    @Timer(print)
     def _analyze_path(self, mappings):
         candidates = self.path_walker.run(mappings['db_tokens'].tolist())
         candidates['token'] = [mappings.iloc[i]['token'] for i in candidates['token_index']]
 
         return candidates
 
-    @Timer(print)
     def _map_data(self, candidate_paths):
         data_text = self._data['standardized_text_path'].map(' '.join)
         data_text = ' ' + data_text + ' '
