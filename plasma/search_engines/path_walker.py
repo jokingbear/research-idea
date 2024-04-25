@@ -23,6 +23,10 @@ class PathWalker(AutoPipe):
             local_paths = local_paths[local_paths['score'] >= self.threshold]
             local_paths['token_index'] = len(sequential_db_tokens) - reversed_index - 1
             path_df.append(local_paths)
+        
+        if len(path_df) == 0:
+            return pd.DataFrame(columns=['path', 'score', 'token_index'])
+
         path_df = pd.concat(path_df, axis=0, ignore_index=True)
         path_df['path'] = path_df['path'].map(_render_path)
         return path_df
