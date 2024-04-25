@@ -132,9 +132,7 @@ class GraphMatcher(AutoPipe):
         data_text = self._data['standardized_text_path'].map(' '.join)
         data_text = ' ' + data_text + ' '
 
-        mapper = partials(_map_contain, data_text, self._data, pre_apply_before=False)
-        with TqdmPool() as pool:
-            candidates = pool.map(candidate_paths.iterrows(), mapper, 50, total=len(candidate_paths), desc='mapping database')
+        candidates = [_map_contain(index_row, data_text, self._data) for index_row in candidate_paths.iterrows()]
         candidates = pd.concat(candidates, axis=0, ignore_index=True)
         candidates = candidates.rename(columns={'score': 'substring_matching_score', 'index': 'data_index'})
 
