@@ -30,8 +30,10 @@ class CPUBlock(Block):
 
     def terminate(self, *_):
         for t in self.tasks:
+            self.inputs.put(None)
+
             if isinstance(t, mp.Process):
-                t.kill()
+                t.terminate()
 
 
 class _WhileLoop(proxy_func):
@@ -41,8 +43,7 @@ class _WhileLoop(proxy_func):
             inputs = in_queue.get()
             
             if inputs is not None:
-                outputs = self.func(inputs)
-                out_queue.put(outputs)
+                self.func(inputs, out_queue)
             
             in_queue.task_done()
             if inputs is None:
