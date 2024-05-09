@@ -3,7 +3,6 @@ import pandas as pd
 import scipy.stats as stats
 
 from ..functional import AutoPipe
-from ..logging import Timer
 
 
 class PathWalker(AutoPipe):

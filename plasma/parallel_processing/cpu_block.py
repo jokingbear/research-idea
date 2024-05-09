@@ -32,8 +32,10 @@ class CPUBlock(Block):
         for t in self.tasks:
             self.inputs.put(None)
 
+        for t in self.tasks:
+            t.join()      
             if isinstance(t, mp.Process):
-                t.terminate()
+                t.close()
 
 
 class _WhileLoop(proxy_func):
