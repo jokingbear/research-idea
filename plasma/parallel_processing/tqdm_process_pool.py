@@ -13,8 +13,8 @@ class TqdmPool:
 
         return [r for r in tqdm(iterator, **tqdm_kwargs)]
 
-    def submit_task(self, func):
-        return self._process_pool.apply_async(func)
+    def submit(self, func, *args, **kwargs):
+        return self._process_pool.apply_async(func, args, kwargs)
     
     def __enter__(self):
         self._process_pool.__enter__()

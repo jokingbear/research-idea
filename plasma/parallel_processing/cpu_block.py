@@ -1,9 +1,9 @@
-import concurrent.futures as cf
 import multiprocessing as mp
 import threading
 
 from queue import Queue
 from .base_block import Block
+from ..functional import proxy_func
 
 
 class CPUBlock(Block):
@@ -22,7 +22,7 @@ class CPUBlock(Block):
         else:
             factory = mp.Process
 
-        tasks = [factory(target=f, args=(i, input_queue, output_queue)) for i, f in enumerate(comfuncs)]
+        tasks = [factory(target=_WhileLoop(f), args=(input_queue, output_queue)) for f in comfuncs]
         self.tasks = tasks
 
     def init(self):
@@ -30,5 +30,23 @@ class CPUBlock(Block):
 
     def terminate(self, *_):
         for t in self.tasks:
+            self.inputs.put(None)
+
+        for t in self.tasks:
+            t.join()      
             if isinstance(t, mp.Process):
-                t.kill()
+                t.close()
+
+
+class _WhileLoop(proxy_func):
+
+    def __call__(self, in_queue, out_queue):
+        while True:
+            inputs = in_queue.get()
+            
+            if inputs is not None:
+                self.func(inputs, out_queue)
+            
+            in_queue.task_done()
+            if inputs is None:
+                break

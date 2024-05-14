@@ -5,10 +5,9 @@ from pathlib import Path
 
 packages = [re.sub(r'\\|\/', '.', str(p.parent)) for p in Path('plasma').rglob('__init__.py')]
 
-
 setup(
     name='plasma',
-    version='1.9.11',
+    version='2.0.4',
     packages=['plasma', *packages],
     url='https://github.com/jokingbear/research-idea',
     license='MIT',

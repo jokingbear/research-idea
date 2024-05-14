@@ -5,7 +5,9 @@ class proxy_func(ABC):
 
     def __init__(self, func) -> None:
         self.func = func
-        self.__qualname__ = func.__qualname__
+
+        if hasattr(func, '__qualname__'):
+            self.__qualname__ = func.__qualname__
 
 
 class auto_map_func(proxy_func):
