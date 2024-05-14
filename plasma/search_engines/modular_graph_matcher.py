@@ -10,14 +10,14 @@ from .regex_splitter import RegexTokenizer
 from ..logging import Timer
 from concurrent.futures import ProcessPoolExecutor
 from ..parallel_processing import TqdmPool
-from .path_walker import PathWalker
+from .path_walker_2 import PathWalker
 from tqdm.contrib.concurrent import thread_map
 
 
 class GraphMatcher(AutoPipe):
 
-    def __init__(self, texts, group_splitter='([^:\n,;?!.]+)', tokenizer=r'(\w+)',
-                 token_threshold=0.5, path_threshold=0.8,
+    def __init__(self, texts, group_splitter=r'([^:\n,;?!.]+)', tokenizer=r'(\w+)',
+                 token_threshold=0.6, path_threshold=0.8,
                  select_largest_interval=True, top_k=None):
         """
         Args:
@@ -38,26 +38,28 @@ class GraphMatcher(AutoPipe):
         if isinstance(group_splitter, str):
             group_splitter = RegexTokenizer(group_splitter)
 
-        standardized_texts = texts.str.lower()
-        token_paths = []
-        for txt in standardized_texts:
-            path = tokenizer.run(txt)['token'].tolist()
-            token_paths.append(tuple(path))
-        graph = nx.DiGraph()
-        [nx.add_path(graph, p) for p in token_paths]
-
-        self._graph = graph
-        self._data = pd.DataFrame({
-            'original_text': texts.values,
-            'standardized_text_path': token_paths
-        })
-
         self.tokenizer = tokenizer
         self.group_splitter = group_splitter 
         self.token_threshold = token_threshold
         self.select_largest_interval = select_largest_interval
         self.top_k = top_k
+        self._graph, self._data = self._build_graph(texts)
         self.path_walker = PathWalker(path_threshold, self._graph, self._data)
+
+    def _build_graph(self, texts:pd.Series):
+        standardized_texts = texts.str.lower()
+        token_paths = []
+        for txt in standardized_texts:
+            path = self.tokenizer.run(txt)['token'].tolist()
+            token_paths.append(tuple(path))
+        graph = nx.DiGraph()
+        [nx.add_path(graph, p) for p in token_paths]
+
+        data = pd.DataFrame({
+            'original_text': texts.values,
+            'standardized_text_path': token_paths
+        })
+        return graph, data
 
     def run(self, query: str):
         standardized_query = query.lower()
@@ -72,18 +74,16 @@ class GraphMatcher(AutoPipe):
                 total_candidates.append(candidates)
 
         if len(total_candidates) == 0:
-            return pd.DataFrame([])
-
-        total_candidates = pd.concat(total_candidates, axis=0, ignore_index=True)
-
-        if len(total_candidates) == 0:
-            return pd.DataFrame([])
-
+            total_candidates = pd.DataFrame([], columns=[
+                'query_start_index', 'query_end_index', 'substring_matching_score', 'word_coverage_score'
+            ])
+        else:
+            total_candidates = pd.concat(total_candidates, axis=0, ignore_index=True)
+        
         total_candidates['matched_len'] = total_candidates['query_end_index'] - total_candidates['query_start_index']
-        total_candidates = (total_candidates.groupby(['query_start_index', 'query_end_index'])
-                            .apply(lambda df: df.sort_values(['substring_matching_score', 'word_coverage_score'],
-                                                             ascending=False).iloc[:self.top_k or len(df)]))
-        total_candidates = total_candidates.drop(columns=['query_start_index', 'query_end_index'])
+        total_candidates = total_candidates.groupby(['query_start_index', 'query_end_index'])
+        total_candidates = total_candidates.apply(self._sort_frame, include_groups=False)
+
         if len(total_candidates.index.names) > 2:
             total_candidates = total_candidates.droplevel(2)
 
@@ -94,15 +94,8 @@ class GraphMatcher(AutoPipe):
 
     def _analyze_group(self, group: str):
         group_tokens = self.tokenizer.run(group)
-        if len(group_tokens) == 0:
-            return pd.DataFrame([])
-
         candidate_db_mappings = self._compare_tokens(group_tokens['token'])
         candidate_paths = self._analyze_path(candidate_db_mappings)
-        
-        if len(candidate_paths) == 0:
-            return pd.DataFrame([])
-        
         mapped_candidates = self._map_data(candidate_paths)
         candidates = self._standardize_data(mapped_candidates, group_tokens)
         return candidates
@@ -115,16 +108,13 @@ class GraphMatcher(AutoPipe):
             scores = pd.Series(scores)
             scores = scores[scores >= self.token_threshold]
 
-            candidate_tokens.append({
-                'token': t,
-                'db_tokens': scores.sort_values(ascending=False),
-            })
+            candidate_tokens.append((t, scores.sort_values(ascending=False)))
 
-        return pd.DataFrame(candidate_tokens)
+        return pd.DataFrame(candidate_tokens, columns=['token', 'db_tokens'])
 
     def _analyze_path(self, mappings):
         candidates = self.path_walker.run(mappings['db_tokens'].tolist())
-        candidates['token'] = [mappings.iloc[i]['token'] for i in candidates['token_index']]
+        candidates['token'] = [mappings.iloc[i]['token'] for i in candidates['token_index']] 
 
         return candidates
 
@@ -148,14 +138,20 @@ class GraphMatcher(AutoPipe):
             index = row['token_index']
             start_index = tokens.iloc[index]['start_idx']
             end_index = tokens.iloc[index + path_len - 1]['end_idx']
-            token_paths.append({'query_start_index': start_index, 'query_end_index': end_index,
-                                'word_coverage_score': coverage_score})
+            token_paths.append((start_index, end_index, coverage_score))
 
-        token_paths = pd.DataFrame(token_paths)
+        token_paths = pd.DataFrame(token_paths, columns=['query_start_index', 'query_end_index', 'word_coverage_score'])
         final_data = pd.concat([candidates, token_paths], axis=1)
         final_data = final_data[['query_start_index', 'query_end_index', 'data_index', 'original_text',
                                  'substring_matching_score', 'word_coverage_score']]
         return final_data
+
+    def _sort_frame(self, candidates:pd.DataFrame):
+        candidates = candidates.sort_values(['substring_matching_score', 'word_coverage_score'], ascending=False)
+
+        if self.top_k is not None:
+            candidates = candidates.iloc[:self.top_k]
+        return candidates
 
     def _remove_subset(self, candidates):
         start_indices = candidates.index.get_level_values('query_start_index').values
