@@ -12,15 +12,12 @@ def set_devices(*device_ids):
     os.environ['CUDA_VISIBLE_DEVICES'] = ','.join([str(d) for d in device_ids])
 
 
-class eval:
+class no_grad(torch.no_grad):
 
     def __init__(self, *models:torch.nn.Module) -> None:
+        super().__init__()
         self.models = [m.eval() for m in models]
-        self._no_grad = torch.no_grad()
     
     def __enter__(self):
-        self._no_grad.__enter__()
+        super().__enter__()
         return self.models
-
-    def __exit__(self, *_):
-        self._no_grad.__exit__(*_)
