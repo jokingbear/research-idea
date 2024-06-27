@@ -1,4 +1,5 @@
 import torch
+import os
 
 from huggingface_hub import hf_hub_download, snapshot_download
 from ..meta import import_module
@@ -31,3 +32,10 @@ def download_file(repo_id_filename, local_dir=None):
 
     path = hf_hub_download(repo_id, filename, local_dir=local_dir, revision=revision)
     return path
+
+
+def set_dir(path='./.cache'):
+    if not os.path.exists(path):
+        os.makedirs(path)
+    
+    os.environ['HF_HOME'] = path
