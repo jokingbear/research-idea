@@ -39,3 +39,4 @@ def set_dir(path='./.cache'):
         os.makedirs(path)
     
     os.environ['HF_HOME'] = path
+    os.environ['TRANSFORMERS_CACHE'] = path
