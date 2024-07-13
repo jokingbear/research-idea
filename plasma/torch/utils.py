@@ -21,3 +21,7 @@ class no_grad(torch.no_grad):
     def __enter__(self):
         super().__enter__()
         return self.models
+
+
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
