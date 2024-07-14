@@ -1,12 +1,11 @@
 import time
-import logging
 
 from ..functional import partials, proxy_func
 
 
 class Timer:
 
-    def __init__(self, log_func=logging.info) -> None:
+    def __init__(self, log_func=print) -> None:
         self.log_func = log_func
         self.start = None
         self.end = None
