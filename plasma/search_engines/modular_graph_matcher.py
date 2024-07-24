@@ -97,7 +97,11 @@ class GraphMatcher(AutoPipe):
         candidate_db_mappings = self._compare_tokens(group_tokens['token'])
         candidate_paths = self._analyze_path(candidate_db_mappings)
         mapped_candidates = self._map_data(candidate_paths)
-        candidates = self._standardize_data(mapped_candidates, group_tokens)
+        
+        candidates = []
+        if mapped_candidates is not None:
+            candidates = self._standardize_data(mapped_candidates, group_tokens)
+        
         return candidates
 
     def _compare_tokens(self, tokens):
@@ -123,10 +127,11 @@ class GraphMatcher(AutoPipe):
         data_text = ' ' + data_text + ' '
 
         candidates = [_map_contain(index_row, data_text, self._data) for index_row in candidate_paths.iterrows()]
-        candidates = pd.concat(candidates, axis=0, ignore_index=True)
-        candidates = candidates.rename(columns={'score': 'substring_matching_score', 'index': 'data_index'})
+        if len(candidates) > 0:
+            candidates = pd.concat(candidates, axis=0, ignore_index=True)
+            candidates = candidates.rename(columns={'score': 'substring_matching_score', 'index': 'data_index'})
 
-        return candidates
+            return candidates
 
     def _standardize_data(self, candidates, tokens):
         token_paths = []

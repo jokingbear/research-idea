@@ -1,11 +1,9 @@
-import logging
-
 from ..functional import partials, proxy_func
 
 
 class FunctionLogger:
 
-    def __init__(self, name=None, log_func=logging.info) -> None:
+    def __init__(self, name=None, log_func=print) -> None:
         self.name = name
         self.log_func = log_func
     

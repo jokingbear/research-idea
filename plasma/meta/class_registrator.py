@@ -3,24 +3,29 @@ import warnings
 
 class ObjectFactory(dict):
 
-    def register(self, name=None, verbose=True):
-        return object_map(self, name, verbose)
+    def register(self, *names, verbose=True):
+        return object_map(self, names, verbose)
 
 
 class object_map:
 
-    def __init__(self, factory: ObjectFactory, name, verbose):
+    def __init__(self, factory: ObjectFactory, names, verbose):
         self._factory = factory
-        self.name = name
+        self.names = names
         self.verbose = verbose
 
-        if self.name in self._factory:
-            warnings.warn(f'many entry points for: {self.name}, overriding the current one')
+        if self.names in self._factory:
+            warnings.warn(f'many entry points for: {self.names}, overriding the current one')
 
     def __call__(self, func_or_class):
-        name = self.name or func_or_class.__qualname__
-        self._factory[name] = func_or_class
+        names = self.names
+        if len(names) == 0:
+            names = [func_or_class.__qualname__]
 
-        if self.verbose:
-            print(f'registered {name}: {func_or_class}')
+        for name in names:
+            self._factory[name] = func_or_class
+
+            if self.verbose:
+                print(f'registered {name}: {func_or_class}')
+
         return func_or_class
