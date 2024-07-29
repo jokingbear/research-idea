@@ -11,7 +11,7 @@ class ObjectFactory(dict):
         obj_dict = {}
         results = {}
         for k, initiator in self.items():
-            if initiator not in k:
+            if initiator not in obj_dict:
                 obj_dict[initiator] = initiator(*args, **kwargs)
             
             results[k] = obj_dict[initiator]
