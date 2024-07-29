@@ -4,6 +4,9 @@ import pandas as pd
 
 class ObjectFactory(dict):
 
+    def __init__(self):
+        super().__init__()
+
     def register(self, *names, verbose=True):
         return object_map(self, names, verbose)
     
