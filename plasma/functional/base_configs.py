@@ -1,4 +1,4 @@
-from .auto_pipe import AutoPipe
+from .pipe import AutoPipe
 
 
 class BaseConfigs(AutoPipe):
@@ -17,4 +17,3 @@ class BaseConfigs(AutoPipe):
                     elif isinstance(obj, dict):
                         if update_attr in obj:
                             obj[update_attr] = update_val
-

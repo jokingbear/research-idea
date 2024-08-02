@@ -1,15 +1,10 @@
-from .pipe import Pipe
+from .pipe import AutoPipe
 
 
-class SequentialPipe(Pipe):
+class SequentialPipe(AutoPipe):
 
     def __setattr__(self, key:str, value):
-        if not key.startswith('_'):
-            assert isinstance(value, Pipe), 'attribute must be instance of Pipe'
-
-            if key not in self._marked_attributes:
-                self._marked_attributes.append(key)
-
+        assert isinstance(value, AutoPipe), 'attribute must be instance of AutoPipe'
         super().__setattr__(key, value)
 
     def run(self, inputs):
