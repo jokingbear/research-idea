@@ -1,5 +1,4 @@
 import warnings
-import pandas as pd
 
 
 class ObjectFactory(dict):
