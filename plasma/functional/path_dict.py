@@ -1,13 +1,28 @@
 import pandas as pd
 
 
-class PathInquirer:
+class ObjectInquirer:
 
-    def __init__(self, data):
-        self.data = data
+    def __init__(self, obj):
+        self.original_object = obj
+
+        self._registered_obj_getter = {
+            dict: _identity,
+            list: _identity,
+            pd.DataFrame: _dataframe,
+            pd.Series: _series
+        }
     
+    def register_getter(self, obj_type:type, func):
+        self._registered_obj_getter[obj_type] = func
+
     def __getitem__(self, path):
-        data = self._cast_data(self.data)
+        obj_type = type(self.original_object)
+        getter = self._registered_obj_getter.get(obj_type, None)
+        if getter is None:
+            raise NotImplementedError(f'there is no key getter for object of type {obj_type}, please call register function')
+
+        data = getter(self.original_object)
 
         if isinstance(path, list):
             obj = data[path[0]]
@@ -19,13 +34,18 @@ class PathInquirer:
         else:
             return data[path]
 
-    def _cast_data(self, data):
-        if isinstance(data, pd.DataFrame):
-            data = data.iloc
-        elif isinstance(data, pd.Series):
-            data = data.loc
-        
-        return data
-
     def __repr__(self) -> str:
-        return repr(self.data)
+        return repr(self.original_object)
+
+
+
+def _identity(obj):
+    return obj
+
+
+def _dataframe(df:pd.DataFrame):
+    return df.iloc
+
+
+def _series(s:pd.Series):
+    return s.loc

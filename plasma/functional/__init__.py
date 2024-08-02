@@ -4,4 +4,4 @@ from .sequential_pipe import SequentialPipe
 from .auto_pipe import AutoPipe
 from .lambda_pipe import LambdaPipe
 from .base_configs import BaseConfigs
-from .path_dict import PathInquirer
+from .path_dict import ObjectInquirer
