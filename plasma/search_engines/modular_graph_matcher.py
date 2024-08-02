@@ -3,15 +3,10 @@ import numpy as np
 
 import networkx as nx
 import difflib
-import scipy.stats as stats
 
-from ..functional import AutoPipe, partials
+from ..functional import AutoPipe
 from .regex_splitter import RegexTokenizer
-from ..logging import Timer
-from concurrent.futures import ProcessPoolExecutor
-from ..parallel_processing import TqdmPool
 from .path_walker_2 import PathWalker
-from tqdm.contrib.concurrent import thread_map
 
 
 class GraphMatcher(AutoPipe):
