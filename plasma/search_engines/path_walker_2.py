@@ -1,6 +1,5 @@
 import networkx as nx
 import pandas as pd
-import scipy.stats as stats
 
 from ..functional import AutoPipe
 

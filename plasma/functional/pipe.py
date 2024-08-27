@@ -1,18 +1,13 @@
 import re
 
 from abc import abstractmethod
-from .utils import partials
 
 
-class Pipe:
+class AutoPipe:
 
-    def __init__(self, **kwargs):
+    def __init__(self):
         self._marked_attributes = []
         self._hooks = []
-
-        for attr, val in kwargs.items():
-            self._marked_attributes.append(attr)
-            setattr(self, attr, val)
 
     @abstractmethod
     def run(self, *inputs, **kwargs):
@@ -20,8 +15,13 @@ class Pipe:
     
     def add_logger(self, logging_func):
         self._hooks.append(logging_func)
-
         self.run = _HookRunner(self)
+
+    def __setattr__(self, key:str, value):
+        if key[0] != '_' and key not in self._marked_attributes:
+            self._marked_attributes.append(key)
+
+        super().__setattr__(key, value)
 
     def __call__(self, *args, **kwargs):
         return self.run(*args, **kwargs)
@@ -50,7 +50,7 @@ class Pipe:
 
 class _HookRunner:
 
-    def __init__(self, pipe: Pipe) -> None:
+    def __init__(self, pipe:AutoPipe) -> None:
         self._pipe = pipe
         self._original_func = pipe.run
     

@@ -13,10 +13,7 @@ def download_module(repo_id: str, patterns=('*.py', '*.json', '*.yaml', '*.yml')
     module_name = repo_id.split('-1')[-1]
 
     if local_dir is None:
-        if 'HF_HOME' in os.environ:
-            local_dir = os.environ['HF_HOME']
-        else:
-            local_dir = 'dependencies'
+        local_dir = os.environ.get('HF_HOME', 'dependencies')
 
     path = f'{local_dir}/{module_name}'
     path = snapshot_download(repo_id, allow_patterns=patterns, local_dir=path, revision=revision)
@@ -37,8 +34,8 @@ def download_file(repo_id_filename, local_dir=None):
     filename = filename_revision[0]
     revision = None if len(filename_revision) == 1 else filename_revision[1]
     
-    if local_dir is None and 'HF_HOME' in os.environ:
-        local_dir = os.environ['HF_HOME']
+    if local_dir is None:
+        local_dir = os.environ.get('HF_HOME', None)
 
     path = hf_hub_download(repo_id, filename, local_dir=local_dir, revision=revision)
     return path

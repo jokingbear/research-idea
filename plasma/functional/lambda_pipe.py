@@ -1,4 +1,4 @@
-from .auto_pipe import AutoPipe
+from .pipe import AutoPipe
 
 
 class LambdaPipe(AutoPipe):

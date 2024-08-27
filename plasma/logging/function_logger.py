@@ -8,13 +8,10 @@ class FunctionLogger:
         self.log_func = log_func
     
     def __call__(self, function):
-        return _function_proxy(self, function)
-    
-    def _process_results(self, results):
-        return results
+        return _logger_proxy(self, function)
 
 
-class _function_proxy(proxy_func):
+class _logger_proxy(proxy_func):
 
     def __init__(self, function_logger: FunctionLogger, function) -> None:
         super().__init__(function)
@@ -25,7 +22,6 @@ class _function_proxy(proxy_func):
     
     def __call__(self, *args, **kwargs):
         results = self.func(*args, **kwargs)
-        results = self.logger._process_results(results)
         self.logger.log_func({self.name: results})
         return results
 

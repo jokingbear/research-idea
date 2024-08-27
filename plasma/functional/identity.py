@@ -1,7 +1,7 @@
-from .pipe import Pipe
+from .pipe import AutoPipe
 
 
-class Identity(Pipe):
+class Identity(AutoPipe):
 
     def run(self, *inputs):
         if len(inputs) == 0:
