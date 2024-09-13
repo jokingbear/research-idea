@@ -30,7 +30,9 @@ class ObjectInquirer:
         value = getter(self.original_object, current_key)
 
         if len(next_path) > 0:
-            return ObjectInquirer(value)[next_path]
+            new_inquirer = ObjectInquirer(value)
+            new_inquirer._registered_obj_getter = self._registered_obj_getter
+            return new_inquirer[next_path]
 
         return value
 
