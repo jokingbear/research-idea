@@ -3,11 +3,13 @@ import warnings
 
 class ObjectFactory(dict):
 
-    def __init__(self):
+    def __init__(self, append=False):
         super().__init__()
 
+        self.append = append
+
     def register(self, *names, verbose=True):
-        return object_map(self, names, verbose)
+        return object_map(self, names, self.append, verbose)
     
     def shared_init(self, *args, **kwargs):
         obj_dict = {}
@@ -26,9 +28,10 @@ class ObjectFactory(dict):
 
 class object_map:
 
-    def __init__(self, factory: ObjectFactory, names, verbose):
+    def __init__(self, factory: ObjectFactory, names, append, verbose):
         self._factory = factory
         self.names = names
+        self.append = append
         self.verbose = verbose
 
         if self.names in self._factory:
@@ -40,7 +43,10 @@ class object_map:
             names = [func_or_class.__qualname__]
 
         for name in names:
-            self._factory[name] = func_or_class
+            if self.append:
+                self._factory[name] = self._factory.get(name, []).append(func_or_class)
+            else:
+                self._factory[name] = func_or_class
 
             if self.verbose:
                 print(f'registered {name}: {func_or_class}')
