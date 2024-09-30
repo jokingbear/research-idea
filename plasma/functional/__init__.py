@@ -5,3 +5,4 @@ from .lambda_pipe import LambdaPipe
 from .base_configs import BaseConfigs
 from .path_dict import ObjectInquirer
 from .helper_func import obj2pickle
+from .backward_pipe import Pipe
