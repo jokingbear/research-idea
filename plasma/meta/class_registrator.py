@@ -15,10 +15,15 @@ class ObjectFactory(dict):
         obj_dict = {}
         results = {}
         for k, initiator in self.items():
-            if initiator not in obj_dict:
-                obj_dict[initiator] = initiator(*args, **kwargs)
-            
-            results[k] = obj_dict[initiator]
+            if isinstance(initiator, list):
+                for init in initiator:
+                    if init not in obj_dict:
+                        obj_dict[init] = init(*args, **kwargs)
+                results[k] = [obj_dict[i] for i in initiator]
+            else:
+                if initiator not in obj_dict:
+                    obj_dict[initiator] = initiator(*args, **kwargs)
+                results[k] = obj_dict[initiator]
 
         return results
     
