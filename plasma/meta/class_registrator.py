@@ -48,10 +48,12 @@ class object_map:
             names = [func_or_class.__qualname__]
 
         for name in names:
+            target = func_or_class
             if self.append:
-                self._factory[name] = self._factory.get(name, []).append(func_or_class)
-            else:
-                self._factory[name] = func_or_class
+                target = self._factory.get(name, [])
+                target.append(func_or_class)
+
+            self._factory[name] = target
 
             if self.verbose:
                 print(f'registered {name}: {func_or_class}')
