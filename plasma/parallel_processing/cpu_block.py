@@ -4,6 +4,7 @@ import threading
 from queue import Queue
 from .base_block import Block
 from ..functional import proxy_func
+from .signals import Signal
 
 
 class CPUBlock(Block):
@@ -44,9 +45,9 @@ class _WhileLoop(proxy_func):
         while True:
             inputs = in_queue.get()
             
-            if inputs is not None:
+            if inputs != Signal.CANCEL:
                 self.func(inputs, out_queue)
             
             in_queue.task_done()
-            if inputs is None:
+            if inputs == Signal.CANCEL:
                 break
