@@ -31,7 +31,7 @@ class CPUBlock(Block):
 
     def terminate(self, *_):
         for t in self.tasks:
-            self.inputs.put(None)
+            self.inputs.put(Signal.CANCEL)
 
         for t in self.tasks:
             t.join()      
