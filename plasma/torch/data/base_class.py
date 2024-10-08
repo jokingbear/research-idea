@@ -2,6 +2,7 @@ from abc import abstractmethod
 
 from torch.utils import data
 from torch.utils.data import RandomSampler, SequentialSampler, DistributedSampler
+from warnings import warn
 
 
 class BaseDataset(data.Dataset):
@@ -28,6 +29,9 @@ class BaseDataset(data.Dataset):
     def register_collator(self, collate_fn):
         self.collator = collate_fn
 
+    def get_sampler(self):
+        return None
+
     def get_torch_loader(self, 
         batch_size=32, 
         workers=20, 
@@ -42,7 +46,7 @@ class BaseDataset(data.Dataset):
         Args:
             batch_size: batch size to load
             workers: number of workers
-            sampler: sampler to sample data
+            sampler: sampler to sample data [deprecated]
             pin: whether to pin gpu memory
             drop_last: whether to drop remaining data that can't be fitted in a batch
             shuffle: whether to shuffle the data
@@ -50,6 +54,11 @@ class BaseDataset(data.Dataset):
             num_replicas: number of distribution replica
         Returns: Iterator
         """
+
+        if sampler is not None:
+            warn('sampler arg is deprecated, override the get_sampler method to use custom sampler')
+        else:
+            sampler = self.get_sampler()
 
         if sampler is None:
             if rank is None:

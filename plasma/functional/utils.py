@@ -1,4 +1,5 @@
 from abc import ABC
+from typing import Any
 
 
 class proxy_func(ABC):
@@ -59,3 +60,15 @@ class partials(proxy_func):
         params = ','.join(params)
 
         return f'{func_repr}({params})'
+
+
+class chain:
+
+    def __init__(self, func1, func2) -> None:
+        self.func1 = func1
+        self.func2 = func2
+
+    def __call__(self, *args: Any, **kwds: Any) -> Any:
+        results1 = self.func1(*args, **kwds)
+        results2 = self.func2(results1)
+        return results2

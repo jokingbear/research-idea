@@ -4,7 +4,7 @@ import threading
 from queue import Queue
 from .base_block import Block
 from ..functional import proxy_func
-from .signals import Signal
+from .queues.signals import Signal
 
 
 class CPUBlock(Block):
