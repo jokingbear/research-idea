@@ -4,4 +4,6 @@ from .torch_block import TorchBlock
 from . import utils
 from .tqdm_process_pool import TqdmPool
 
-from .queues import ThreadQueue, ProcessQueue, Signal
+from queue import Queue as ThreadQueue
+from multiprocessing import JoinableQueue, SimpleQueue
+from torch.multiprocessing import JoinableQueue as TorchJoinableQueue, SimpleQueue as TorchSimpleQueue

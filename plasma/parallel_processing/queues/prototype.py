@@ -36,10 +36,14 @@ class QueuePrototype(AutoPipe):
             raise RuntimeError('queue is already running, please release it to chain new function')
         self._callback = chain(self._callback, callback)
 
+    def release(self):
+        self.__init_private_state()
+
     def __init_private_state(self):
         self._callback = None
         self._state = None
         self._running = False
 
-    def release(self):
-        self.__init_private_state()
+    @property
+    def running(self):
+        return self._running

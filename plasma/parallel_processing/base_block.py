@@ -1,6 +1,10 @@
+from warnings import warn
+
+
 class Block:
 
     def __init__(self, inputs, outputs):
+        warn('this class is deprecated and will be removed in the future, please use communicators and queues')
         self.inputs = inputs
         self.outputs = outputs
 
