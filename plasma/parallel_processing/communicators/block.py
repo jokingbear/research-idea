@@ -11,7 +11,9 @@ class BlockPrototype(AutoPipe):
 
         assert not in_queue.running, 'in queue shouldn\'t be run outside'
         in_queue.register_callback(self.on_received)
-        in_queue.chain(out_queue.put)
+
+        if out_queue is not None:
+            in_queue.chain(out_queue.put)
 
         self.inputs = in_queue
         self.outputs = out_queue
