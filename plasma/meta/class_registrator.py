@@ -1,4 +1,8 @@
 import warnings
+import networkx as nx
+import inspect
+
+from ..functional import auto_map_func
 
 
 class ObjectFactory(dict):
@@ -30,6 +34,48 @@ class ObjectFactory(dict):
     def normal_init(self, *args, **kwargs):
         return {k: initiator(*args, **kwargs) for k, initiator in self.items()}
 
+    def mapped_init(self, mapped_args:dict):
+        results = {}
+        for k, initiator in self.items():
+            if k in mapped_args:
+                if isinstance(initiator, list):
+                    results[k] = [auto_map_func(init)(arg) for init, arg in zip(initiator, mapped_args[k])]
+                else:
+                    results[k] = auto_map_func(initiator)(mapped_args[k])
+
+        return results
+    
+    def inject_dependencies(self, leaves_args:dict):
+        assert not self.append, 'inject_dependencies does not support list init at the moment'
+        dependency_graph = nx.DiGraph()
+
+        for key, initiator in self.items():
+            dependency_graph.add_node(key, init=initiator)
+        
+        leaf_factories = ObjectFactory()
+        for n, attrs in dependency_graph.nodes.items():
+            init = attrs['init']
+            arg_specs = inspect.getfullargspec(init)
+            args = [a for a in arg_specs.args if a != 'self']
+            
+            count = 0
+            for arg in args:
+                if arg in dependency_graph:
+                    dependency_graph.add_edge(n, arg)
+                elif count > 0:
+                    raise ValueError(f'dependency "{arg}" has not been registered')
+                else:
+                    leaf_factories[n] = init
+                
+                count += 1
+        
+        initiateds = leaf_factories.mapped_init(leaves_args)
+        for n, attrs in dependency_graph.nodes.items():
+            init = attrs['init']
+            _recursive_init(dependency_graph, n, init, initiateds)
+        
+        return initiateds
+
 
 class object_map:
 
@@ -59,3 +105,13 @@ class object_map:
                 print(f'registered {name}: {func_or_class}')
 
         return func_or_class
+
+
+def _recursive_init(graph:nx.DiGraph, key, init, results):
+    if key not in results:
+        args = {}
+        for n in graph.neighbors(key):
+            _recursive_init(graph, n, graph[n].get('init'), results)
+            args[n] = results[n]
+        
+        results[key] = init(**args)
