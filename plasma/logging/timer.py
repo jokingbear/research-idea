@@ -16,6 +16,8 @@ class Timer:
 
     def __exit__(self, *_):
         self.end = time.time()
+        if self.log_func is None:
+            print(self.duration)
 
     @property
     def duration(self):
