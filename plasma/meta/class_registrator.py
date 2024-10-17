@@ -55,17 +55,20 @@ class ObjectFactory(dict):
         leaf_factories = ObjectFactory()
         for n, attrs in dependency_graph.nodes.items():
             init = attrs['init']
+            if n in leaves_args:
+                leaf_factories[n] = init
+
             arg_specs = inspect.getfullargspec(init)
             args = [a for a in arg_specs.args if a != 'self']
             
             count = 0
             for arg in args:
-                if arg in dependency_graph:
+                if n in leaves_args:
+                    leaf_factories[n] = init
+                elif arg in dependency_graph:
                     dependency_graph.add_edge(n, arg)
                 elif count > 0:
                     raise ValueError(f'dependency "{arg}" has not been registered')
-                else:
-                    leaf_factories[n] = init
                 
                 count += 1
         

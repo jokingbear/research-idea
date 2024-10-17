@@ -23,3 +23,14 @@ class BaseConfigs(AutoPipe):
                     elif isinstance(obj, dict):
                         if update_attr in obj:
                             obj[update_attr] = update_val
+
+    def to_dict(self):
+        results = {}
+        for attr in self._marked_attributes:
+            obj = getattr(self, attr)
+
+            if isinstance(obj, BaseConfigs):
+                obj = obj.to_dict()
+            results[attr] = obj
+
+        return results
