@@ -17,9 +17,6 @@ class CallerPrototype(AutoPipe):
     def on_received(self, data):
         pass
 
-    def register_callback(self, callback):
-        self.outputs.register_callback(callback)
-
     def run(self):
         self.outputs.run()
     

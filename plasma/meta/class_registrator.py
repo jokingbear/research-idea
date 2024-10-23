@@ -63,9 +63,7 @@ class ObjectFactory(dict):
             
             count = 0
             for arg in args:
-                if n in leaves_args:
-                    leaf_factories[n] = init
-                elif arg in dependency_graph:
+                if arg in dependency_graph:
                     dependency_graph.add_edge(n, arg)
                 elif count > 0:
                     raise ValueError(f'dependency "{arg}" has not been registered')
