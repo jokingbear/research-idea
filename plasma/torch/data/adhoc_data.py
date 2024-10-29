@@ -1,3 +1,5 @@
+import pandas as pd
+
 from .base_class import BaseDataset
 
 
@@ -14,5 +16,9 @@ class AdhocData(BaseDataset):
         return len(self.source)
 
     def get_item(self, idx):
-        item = self.source[idx]
+        if isinstance(self.source, (pd.DataFrame, pd.Series)):
+            item = self.source.iloc[idx]
+        else:
+            item = self.source[idx]
+
         return self.mapping(item, **self.kwargs)
