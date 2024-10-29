@@ -7,11 +7,6 @@ from warnings import warn
 
 class BaseDataset(data.Dataset):
 
-    def __init__(self) -> None:
-        super().__init__()
-
-        self.collator = None
-
     def __len__(self):
         return self.get_len()
 
@@ -26,17 +21,12 @@ class BaseDataset(data.Dataset):
     def get_item(self, idx):
         return idx
 
-    def register_collator(self, collate_fn):
-        self.collator = collate_fn
-
-    def get_sampler(self):
-        return None
-
     def get_torch_loader(self, 
         batch_size=32, 
         workers=20, 
         sampler=None,
         pin=True, 
+        collator=None,
         drop_last=True, 
         shuffle=True,
         rank=None, 
@@ -55,11 +45,6 @@ class BaseDataset(data.Dataset):
         Returns: Iterator
         """
 
-        if sampler is not None:
-            warn('sampler arg is deprecated, override the get_sampler method to use custom sampler')
-        else:
-            sampler = self.get_sampler()
-
         if sampler is None:
             if rank is None:
                 sampler = RandomSampler(self) if shuffle else SequentialSampler(self)
@@ -73,6 +58,6 @@ class BaseDataset(data.Dataset):
                                  num_workers=workers, 
                                  pin_memory=pin, 
                                  drop_last=drop_last, 
-                                 collate_fn=self.collator)
+                                 collate_fn=collator)
 
         return loader
