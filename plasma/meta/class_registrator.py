@@ -78,7 +78,7 @@ class ObjectFactory(dict):
             init = attrs['init']
             _recursive_init(dependency_graph, n, init, initiateds)
         
-        return initiateds
+        return {k: v for k, v in initiateds.items() if k in dependency_graph}
 
 
 class object_map:
@@ -113,9 +113,14 @@ class object_map:
 
 def _recursive_init(graph:nx.DiGraph, key, init, results):
     if key not in results:
-        args = {}
-        for n in graph.neighbors(key):
-            _recursive_init(graph, n, graph[n].get('init'), results)
-            args[n] = results[n]
+        arg_specs = inspect.getfullargspec(init)
+        arg_names = [a for a in arg_specs.args if a != 'self']
         
+        args = {}
+        for a in arg_names:
+            if a in graph:
+                _recursive_init(graph, a, graph[a].get('init'), results)
+            
+            args[a] = results
+
         results[key] = init(**args)
