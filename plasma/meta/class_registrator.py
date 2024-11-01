@@ -66,7 +66,7 @@ class ObjectFactory(dict):
                 if arg in dependency_graph:
                     dependency_graph.add_edge(n, arg)
                 elif count > 0:
-                    raise ValueError(f'dependency "{arg}" has not been registered')
+                    raise ValueError(f'dependency "{arg}" has not been registered for {init}')
                 
                 count += 1
         
