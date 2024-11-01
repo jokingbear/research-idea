@@ -73,7 +73,7 @@ class ObjectFactory(dict):
                 
                 count += 1
         
-        initiateds = leaf_factories.mapped_init(leaves_args)
+        initiateds.update(leaf_factories.mapped_init(leaves_args))
         for n, attrs in dependency_graph.nodes.items():
             init = attrs['init']
             _recursive_init(dependency_graph, n, init, initiateds)
