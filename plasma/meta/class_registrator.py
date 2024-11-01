@@ -121,6 +121,6 @@ def _recursive_init(graph:nx.DiGraph, key, init, results):
             if a in graph:
                 _recursive_init(graph, a, graph[a].get('init'), results)
             
-            args[a] = results
+            args[a] = results[a]
 
         results[key] = init(**args)
