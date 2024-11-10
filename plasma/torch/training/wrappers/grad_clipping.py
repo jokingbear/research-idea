@@ -12,7 +12,7 @@ class GradientClipping(TrainerWrapper):
         self.norm_type = norm_type
     
     def chain(self, trainer, i, inputs, outputs):
-        model = trainer._model
+        model = trainer.model
 
         torch.nn.utils.clip_grad_norm_(
             [p for p in model.parameters() if p.requires_grad], 

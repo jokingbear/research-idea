@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import Any
 
 
@@ -9,6 +9,15 @@ class proxy_func(ABC):
 
         if hasattr(func, '__qualname__'):
             self.__qualname__ = func.__qualname__
+
+    @abstractmethod
+    def __call__(self, *args: Any, **kwds: Any) -> Any:
+        pass
+
+    def __get__(self, instance, owner):
+        def run_instance(*args, **kwargs):
+            return self.__call__(instance, *args, **kwargs)
+        return run_instance
 
 
 class auto_map_func(proxy_func):

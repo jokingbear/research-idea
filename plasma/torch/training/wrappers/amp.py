@@ -16,7 +16,7 @@ class AMP(TrainerWrapper):
 
     def run(self, trainer_class):
         new_trainer_class = super().run(trainer_class)
-        new_trainer_class.backward = partials(self.backward, self)
+        new_trainer_class.backward = partials(AMP.backward, self)
         return new_trainer_class
     
     def combine_forward(self, forwarder):
@@ -32,7 +32,7 @@ class AMP(TrainerWrapper):
     def chain(self, trainer, i, inputs, outputs):
         self._scaler.scale(outputs).backward()
         if self.unscale:
-            opt = trainer._optimizer
+            opt = trainer.optimizer
             self._scaler.unscale_(opt)
     
     def backward(self, trainer, obj_val):
