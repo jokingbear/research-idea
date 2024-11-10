@@ -2,7 +2,6 @@ import torch
 import torch.amp as amp
 
 from ....functional import partials
-from ..prototypes.trainer import BaseTrainer
 from ..prototypes.trainer_wrapper import TrainerWrapper
 
 
@@ -15,28 +14,28 @@ class AMP(TrainerWrapper):
         self.cast_type = cast_type
         self.unscale = unscale
 
-    def run(self, trainer_class: type[BaseTrainer]):
+    def run(self, trainer_class):
         new_trainer_class = super().run(trainer_class)
         new_trainer_class.backward = partials(self.backward, self)
         return new_trainer_class
     
     def combine_forward(self, forwarder):
-        def alt_forward(trainer, state, i, inputs):
+        def alt_forward(trainer, i, inputs):
             with torch.autocast('cuda', self.cast_type):
-                outputs = forwarder(trainer, state, i, inputs)
+                outputs = forwarder(trainer, i, inputs)
 
-            self.chain(trainer, state, i, inputs, outputs)
+            self.chain(trainer, i, inputs, outputs)
             return outputs
 
         return alt_forward
 
-    def chain(self, trainer, state, i, inputs, outputs):
+    def chain(self, trainer, i, inputs, outputs):
         self._scaler.scale(outputs).backward()
         if self.unscale:
-            opt = state.optimizer
+            opt = trainer._optimizer
             self._scaler.unscale_(opt)
     
-    def backward(self, trainer, state, obj_val):
-        opt = state.optimizer
+    def backward(self, trainer, obj_val):
+        opt = trainer.optimizer
         self._scaler.step(opt)
         self._scaler.update()

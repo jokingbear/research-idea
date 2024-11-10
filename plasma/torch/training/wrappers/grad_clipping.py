@@ -11,8 +11,8 @@ class GradientClipping(TrainerWrapper):
         self.max_norm = max_norm
         self.norm_type = norm_type
     
-    def chain(self, trainer, state, i, inputs, outputs):
-        model = state.model
+    def chain(self, trainer, i, inputs, outputs):
+        model = trainer._model
 
         torch.nn.utils.clip_grad_norm_(
             [p for p in model.parameters() if p.requires_grad], 
