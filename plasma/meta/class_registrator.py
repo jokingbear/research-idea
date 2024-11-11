@@ -53,6 +53,7 @@ class ObjectFactory(dict):
             dependency_graph.add_node(key, init=initiator)
         
         leaf_factories = ObjectFactory()
+        initiateds = {}
         for n, attrs in dependency_graph.nodes.items():
             init = attrs['init']
             if n in leaves_args:
@@ -65,17 +66,19 @@ class ObjectFactory(dict):
             for arg in args:
                 if arg in dependency_graph:
                     dependency_graph.add_edge(n, arg)
+                elif arg in leaves_args:
+                    initiateds[arg] = leaves_args[arg]
                 elif count > 0:
-                    raise ValueError(f'dependency "{arg}" has not been registered')
+                    raise ValueError(f'dependency "{arg}" has not been registered for {init}')
                 
                 count += 1
         
-        initiateds = leaf_factories.mapped_init(leaves_args)
+        initiateds.update(leaf_factories.mapped_init(leaves_args))
         for n, attrs in dependency_graph.nodes.items():
             init = attrs['init']
             _recursive_init(dependency_graph, n, init, initiateds)
         
-        return initiateds
+        return {k: v for k, v in initiateds.items() if k in dependency_graph}
 
 
 class object_map:
@@ -110,9 +113,14 @@ class object_map:
 
 def _recursive_init(graph:nx.DiGraph, key, init, results):
     if key not in results:
-        args = {}
-        for n in graph.neighbors(key):
-            _recursive_init(graph, n, graph[n].get('init'), results)
-            args[n] = results[n]
+        arg_specs = inspect.getfullargspec(init)
+        arg_names = [a for a in arg_specs.args if a != 'self']
         
+        args = {}
+        for a in arg_names:
+            if a in graph:
+                _recursive_init(graph, a, graph[a].get('init'), results)
+            
+            args[a] = results[a]
+
         results[key] = init(**args)

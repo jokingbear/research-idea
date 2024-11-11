@@ -24,6 +24,3 @@ class _logger_proxy(proxy_func):
         results = self.func(*args, **kwargs)
         self.logger.log_func({self.name: results})
         return results
-
-    def __get__(self, instance, owner):
-        return partials(self, instance)

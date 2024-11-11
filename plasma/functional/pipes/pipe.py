@@ -3,14 +3,14 @@ import re
 from abc import abstractmethod
 
 
-class AutoPipe:
+class AutoPipe[T]:
 
     def __init__(self):
         self._marked_attributes = []
         self._hooks = []
 
     @abstractmethod
-    def run(self, *inputs, **kwargs):
+    def run(self, *inputs, **kwargs) -> T:
         pass
     
     def add_logger(self, logging_func):
