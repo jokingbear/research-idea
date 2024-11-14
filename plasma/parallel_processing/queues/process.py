@@ -5,7 +5,7 @@ from .utils import internal_run
 from .prototype import QueuePrototype
 
 
-class ProcessQueue(QueuePrototype):
+class ProcessQueue(QueuePrototype[list[mp.Process]]):
 
     def __init__(self, persistent=False, n=1):
         super().__init__(block=False)

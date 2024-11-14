@@ -19,7 +19,8 @@ class BlockPrototype(AutoPipe):
         self.outputs = out_queue
 
     def run(self):
-        self.inputs.run()
+        if not self.inputs.running:
+            self.inputs.run()
 
     @abstractmethod
     def on_received(self, data):
