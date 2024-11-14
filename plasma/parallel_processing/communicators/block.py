@@ -9,7 +9,7 @@ class BlockPrototype(AutoPipe):
     def __init__(self, in_queue:QueuePrototype, out_queue:QueuePrototype):
         super().__init__()
 
-        assert not in_queue.running, 'in queue shouldn\'t be run outside'
+        assert not in_queue.running, 'in queue should not be run outside of block'
         in_queue.register_callback(self.on_received)
 
         if out_queue is not None:
