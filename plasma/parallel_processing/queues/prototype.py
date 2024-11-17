@@ -12,7 +12,7 @@ class QueuePrototype[T](AutoPipe):
 
     def run(self):
         if self._callback is None:
-            raise AttributeError('register callback has not been called on this queue')
+            raise AttributeError('register_callback has not been called on this queue')
 
         if not self._block and self._state is not None:
             raise AttributeError('queue is already running')
