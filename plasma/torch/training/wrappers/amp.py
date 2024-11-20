@@ -24,8 +24,9 @@ class AMP(TrainerWrapper):
             with torch.autocast('cuda', self.cast_type):
                 outputs = forwarder(trainer, i, inputs)
 
-            self.chain(trainer, i, inputs, outputs)
-            return outputs
+            if outputs is not None:
+                self.chain(trainer, i, inputs, outputs)
+                return outputs
 
         return alt_forward
 
@@ -36,6 +37,7 @@ class AMP(TrainerWrapper):
             self._scaler.unscale_(opt)
     
     def backward(self, trainer, obj_val):
-        opt = trainer.optimizer
-        self._scaler.step(opt)
-        self._scaler.update()
+        if obj_val is not None:
+            opt = trainer.optimizer
+            self._scaler.step(opt)
+            self._scaler.update()
