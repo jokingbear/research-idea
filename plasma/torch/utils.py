@@ -12,5 +12,5 @@ def set_devices(*device_ids):
     os.environ['CUDA_VISIBLE_DEVICES'] = ','.join([str(d) for d in device_ids])
 
 
-def count_parameters(model):
+def count_parameters(model:torch.nn.Module):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)

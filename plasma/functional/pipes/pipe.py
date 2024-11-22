@@ -38,6 +38,7 @@ class AutoPipe[T]:
                 rep.append(f'\t{attr}={lines_rep[0]}\n{body}\t{lines_rep[-1]},\n')
 
         rep = ''.join(rep)
-        rep = '\n' + rep
-        rep = re.sub(r'\([\t\n]{1,}\)', '()', rep)
+        if len(rep) > 0:
+            rep = '\n' + rep
+            rep = re.sub(r'\([\t\n]{1,}\)', '()', rep)
         return f'{type(self).__name__}({rep})'
