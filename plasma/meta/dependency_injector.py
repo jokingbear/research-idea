@@ -15,9 +15,8 @@ class DependencyInjector(AutoPipe):
     def run(self, init_args:dict) -> dict:
         object_dict = {}
         for key, object_initiator in self.factory.items():
-            if key not in object_dict:
-                self._recursive_init(key, object_initiator, object_dict, init_args)
-
+            self._recursive_init(key, object_initiator, object_dict, init_args)
+                
         return object_dict
 
     def _recursive_init(self, key, object_initiator, object_dict:dict, init_args:dict):
