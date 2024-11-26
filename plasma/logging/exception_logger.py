@@ -5,11 +5,11 @@ from collections import namedtuple
 class ExceptionLogger:
     ExceptionIO = namedtuple('ExIO', ['name', 'args', 'kwargs', 'exception'])
 
-    def __init__(self, name=None, log_func=print, raise_on_exception=True, exception_return=None) -> None:
+    def __init__(self, name=None, log_func=print, raise_on_exception=True, on_exception_return=None) -> None:
         self.name = name
         self.log_func = log_func
         self.raise_on_exception = raise_on_exception
-        self.exception_value = exception_return
+        self.on_exception_value = on_exception_return
     
     def __call__(self, function):
         name = self.name or function.__qualname__
@@ -25,6 +25,6 @@ class ExceptionLogger:
                 
                 if self.raise_on_exception:
                     raise e
-                return self.exception_value
+                return self.on_exception_value
 
         return run
