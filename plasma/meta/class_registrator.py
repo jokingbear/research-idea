@@ -44,41 +44,6 @@ class ObjectFactory(dict):
                     results[k] = auto_map_func(initiator)(mapped_args[k])
 
         return results
-    
-    def inject_dependencies(self, leaves_args:dict):
-        assert not self.append, 'inject_dependencies does not support list init at the moment'
-        dependency_graph = nx.DiGraph()
-
-        for key, initiator in self.items():
-            dependency_graph.add_node(key, init=initiator)
-        
-        leaf_factories = ObjectFactory()
-        initiateds = {}
-        for n, attrs in dependency_graph.nodes.items():
-            init = attrs['init']
-            if n in leaves_args:
-                leaf_factories[n] = init
-
-            arg_specs = inspect.getfullargspec(init)
-            args = [a for a in arg_specs.args if a != 'self']
-            
-            count = 0
-            for arg in args:
-                if arg in dependency_graph:
-                    dependency_graph.add_edge(n, arg)
-                elif arg in leaves_args:
-                    initiateds[arg] = leaves_args[arg]
-                elif count > 0:
-                    raise ValueError(f'dependency "{arg}" has not been registered for {init}')
-                
-                count += 1
-        
-        initiateds.update(leaf_factories.mapped_init(leaves_args))
-        for n, attrs in dependency_graph.nodes.items():
-            init = attrs['init']
-            _recursive_init(dependency_graph, n, init, initiateds)
-        
-        return {k: v for k, v in initiateds.items() if k in dependency_graph}
 
 
 class object_map:

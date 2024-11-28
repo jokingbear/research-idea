@@ -2,7 +2,7 @@ from ...functional import AutoPipe, chain
 from abc import abstractmethod
 
 
-class QueuePrototype(AutoPipe):
+class QueuePrototype[T](AutoPipe):
 
     def __init__(self, block):
         super().__init__()
@@ -12,7 +12,7 @@ class QueuePrototype(AutoPipe):
 
     def run(self):
         if self._callback is None:
-            raise AttributeError('register callback hasn\'t been called on this queue')
+            raise AttributeError('register_callback has not been called on this queue')
 
         if not self._block and self._state is not None:
             raise AttributeError('queue is already running')
@@ -21,7 +21,7 @@ class QueuePrototype(AutoPipe):
         self._state = self._init_state()
         
     @abstractmethod
-    def _init_state(self):
+    def _init_state(self) -> T:
         pass
 
     @abstractmethod

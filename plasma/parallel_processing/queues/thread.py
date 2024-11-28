@@ -6,9 +6,9 @@ from .utils import internal_run
 from .prototype import QueuePrototype
 
 
-class ThreadQueue(QueuePrototype):
+class ThreadQueue(QueuePrototype[list[threading.Thread]]):
 
-    def __init__(self, persistent=False, n=1):
+    def __init__(self, n=1, persistent=False):
         super().__init__(block=False)
 
         self.persistent = persistent
@@ -17,7 +17,7 @@ class ThreadQueue(QueuePrototype):
 
     def _init_state(self):
         if self._callback is None:
-            raise AttributeError('there\'s no registered callback for this queue.')
+            raise AttributeError('there is no registered callback for this queue.')
         
         threads = [threading.Thread(target=internal_run, args=(self._queue, self.persistent, self._callback)) for i in range(self.n)]
         [t.start() for t in threads]

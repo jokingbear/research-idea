@@ -36,7 +36,7 @@ class BaseDataset(data.Dataset):
         Args:
             batch_size: batch size to load
             workers: number of workers
-            sampler: sampler to sample data [deprecated]
+            sampler: sampler to sample data
             pin: whether to pin gpu memory
             drop_last: whether to drop remaining data that can't be fitted in a batch
             shuffle: whether to shuffle the data

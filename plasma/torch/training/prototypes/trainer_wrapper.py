@@ -18,7 +18,9 @@ class TrainerWrapper(AutoPipe):
     def combine_forward(self, forwarder):
         def alt_forward(trainer, i, inputs):
             outputs = forwarder(trainer, i, inputs)
-            self.chain(trainer, i, inputs, outputs)
-            return outputs
+
+            if outputs is not None:
+                self.chain(trainer, i, inputs, outputs)
+                return outputs
         
         return alt_forward
