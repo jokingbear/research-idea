@@ -6,25 +6,29 @@ from abc import abstractmethod
 
 class BlockPrototype(AutoPipe):
 
-    def __init__(self, in_queue:QueuePrototype, out_queue:QueuePrototype):
-        super().__init__()
-
-        assert not in_queue.running, 'in queue should not be run outside of block'
-        in_queue.register_callback(self.on_received)
-
-        if out_queue is not None:
-            in_queue.chain(out_queue.put)
-
-        self.inputs = in_queue
-        self.outputs = out_queue
-
     def run(self):
-        if not self.inputs.running:
-            self.inputs.run()
+        assert hasattr(self, '_inputs') and self._inputs is not None, 'register_inputs has not been called on his block'
+        self._inputs.run()
+
+    def register_inputs(self, queue:QueuePrototype):
+        if queue.running:
+            queue.release()
+        
+        queue.register_callback(self.on_received)
+        self._inputs = queue
+    
+    def register_outputs(self, queue:QueuePrototype):
+        assert hasattr(self, '_inputs') and self._inputs is not None, 'register_inputs has not been called on his block'
+        
+        if hasattr(self, '_outputs') and self._outputs is not None:
+            self.register_inputs(self._inputs)
+
+        self._inputs.chain(queue.put)
+        self._outputs = queue
 
     @abstractmethod
     def on_received(self, data):
         pass
 
     def release(self):
-        self.inputs.release()
+        self._inputs.release()

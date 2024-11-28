@@ -8,7 +8,7 @@ from .prototype import QueuePrototype
 
 class ThreadQueue(QueuePrototype[list[threading.Thread]]):
 
-    def __init__(self, persistent=False, n=1):
+    def __init__(self, n=1, persistent=False):
         super().__init__(block=False)
 
         self.persistent = persistent
