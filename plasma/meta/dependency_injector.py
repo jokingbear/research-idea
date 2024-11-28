@@ -12,12 +12,18 @@ class DependencyInjector(AutoPipe):
         self.factory = factory
         self.strict = strict
 
-    def run(self, init_args:dict) -> dict:
+    def run(self, init_args:dict, *names) -> dict:
+        if len(names) == 0:
+            names = {*self.factory}
+        else:
+            names = {*names}
+
         object_dict = {}
         for key, object_initiator in self.factory.items():
-            self._recursive_init(key, object_initiator, object_dict, init_args)
+            if key in names: 
+                self._recursive_init(key, object_initiator, object_dict, init_args)
                 
-        return object_dict
+        return {k:v for k, v in object_dict.items() if k in names}
 
     def _recursive_init(self, key, object_initiator, object_dict:dict, init_args:dict):
         if key not in object_dict:
