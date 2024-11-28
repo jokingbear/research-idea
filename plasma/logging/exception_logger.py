@@ -25,6 +25,9 @@ class ExceptionLogger:
                 
                 if self.raise_on_exception:
                     raise e
+                
+                if callable(self.on_exception_value):
+                    return self.on_exception_value(exio)
                 return self.on_exception_value
 
         return run

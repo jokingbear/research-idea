@@ -71,7 +71,7 @@ class partials(proxy_func):
         return f'{func_repr}({params})'
 
 
-class chain:
+class chain(proxy_func):
 
     def __init__(self, func1, func2) -> None:
         self.func1 = func1
