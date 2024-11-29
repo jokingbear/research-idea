@@ -35,11 +35,10 @@ class CallerPrototype(AutoPipe):
 
             if last_block is not None:
                 last_block.register_outputs(block_inputs[k])
-            elif i + 1 == len(self._blocks):
-                current_block.register_outputs(outputs)
 
             last_block = current_block
 
+        current_block.register_outputs(outputs)
         outputs.register_callback(self.on_received)
         self._outputs = outputs
 
