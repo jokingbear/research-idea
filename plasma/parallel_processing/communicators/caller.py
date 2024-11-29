@@ -24,17 +24,16 @@ class CallerPrototype(AutoPipe):
     
     def register_inout(self, outputs:QueuePrototype, **block_inputs:QueuePrototype):
         last_block:BlockPrototype = None
-        for i, k in enumerate(self._blocks):
+        for i, (k, current_block) in enumerate(self._blocks.items()):
             assert k in block_inputs, f'block {k} is not in input dict'
 
             if i == 0:
                 self._inputs = block_inputs[k]
-
-            current_block = self._blocks[k]
-            current_block.register_inputs(block_inputs[k])
-
+            
+            pipe = block_inputs[k]
+            current_block.register_inputs(pipe)
             if last_block is not None:
-                last_block.register_outputs(block_inputs[k])
+                last_block.register_outputs(pipe)
 
             last_block = current_block
 
