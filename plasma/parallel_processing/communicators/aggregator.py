@@ -1,26 +1,35 @@
 import time
+import multiprocessing as mp
 
 from ...functional import State
 from tqdm.auto import tqdm
+from multiprocessing.managers import SyncManager, ValueProxy
 
 
 class Aggregator(State):
 
-    def __init__(self, total:int, sleep=0.5, manager=None):
+    def __init__(self, total:int, sleep=0.5, manager:SyncManager=None, ignore_none=True):
         super().__init__()
-
+        
         self._results = [] if manager is None else manager.list()
+        self._finished:int|ValueProxy[int] = 0 if manager is None else mp.Value('i', 0)
+
         self._marked_attributes.append('finished')
         self.total = total
         self.sleep = sleep
+        self.ignore_none = ignore_none
         self._manager = manager
     
     def run(self, data):
+        if isinstance(self._finished, int):
+            self._finished += 1
+        else:
+            self._finished.value += 1
+
+        if data is None and self.ignore_none:
+            return
+
         self._results.append(data)
-    
-    @property
-    def finished(self):
-        return len(self._results)
 
     def wait(self, **tqdm_kwargs):
         with tqdm(total=self.total, **tqdm_kwargs) as prog:
@@ -37,5 +46,13 @@ class Aggregator(State):
     def results(self):
         return [*self._results]
 
+    @property
+    def finished(self):
+        if isinstance(self._finished, int):
+            return self._finished
+        
+        return self._finished.value
+
     def release(self):
         self._results = [] if self._manager is None else self._manager.list()
+        self._finished = 0 if self._manager is None else mp.Value('i', 0)
