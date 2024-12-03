@@ -1,3 +1,5 @@
+import pandas as pd
+
 from ...functional import State, LambdaPipe, AutoPipe
 from ..queues import QueuePrototype
 
@@ -7,61 +9,77 @@ class Flow(State):
     def __init__(self):
         super().__init__()
 
-        self._blocks:dict[str, AutoPipe] = {}
-        self._queues:dict[str, QueuePrototype|Flow] = {}
+        self._pipes:dict[str, AutoPipe] = {}
+        self._blocks:list[QueuePrototype|Flow] = []
 
     def run(self):
         assert hasattr(self, 'inputs') and hasattr(self, 'outputs'), 'registerIOs has not been called on this instance.'
-        assert len(self._blocks) > 0, 'Flow must have at least 1 block.'
+        assert len(self._pipes) > 0, 'Flow must have at least 1 block.'
 
-        [b.run() for b in self._queues.values()]
+        [b.run() for b in self._blocks]
+        return self
     
     def registerIOs(self, **pipeIOs:QueuePrototype|dict[str, QueuePrototype]):
-        blocks = [*self._blocks.items()]
-        for i, (k, current_block) in enumerate(blocks):
-            inputs = self._resolve_inputs(k, current_block, pipeIOs)
-            outputs = self._resolve_outputs(i, k, blocks, pipeIOs)
-            
+        blocks = pd.Series(self._pipes)
+        for i, current_block in enumerate(blocks):            
             if isinstance(current_block, Flow):
-                current_block.registerIOs(**inputs, outputs=outputs)
+                inputs, outputs = self._resolve_flow(i, blocks, pipeIOs)
+                self._blocks.append(current_block)
             else:
-                inputs.register_callback(current_block.run)
-                if outputs is not None:
-                    inputs.chain(outputs.put)
+                inputs, outputs = self._resolve_pipe(i, blocks, pipeIOs)
+                self._blocks.append(inputs)
             
-            self._queues[k] = current_block if isinstance(current_block, Flow) else inputs
             if i == 0:
                 self.inputs = inputs
         
         self.outputs = outputs
 
-    def _resolve_inputs(self, block_key:str, block:AutoPipe, pipeIOs:dict) -> QueuePrototype|dict[str, QueuePrototype]:
-        assert block_key in pipeIOs, f'{block_key} not in pipeIOs'
-        inputs = pipeIOs[block_key]
-        if isinstance(inputs, dict):
-            assert isinstance(block, Flow), f'{block_key} in pipeIOs is a dict, but {block_key} is not a Flow.'
-            assert 'outputs' not in inputs, f'{block_key} in pipeIOs cannot contain key outputs.'
-        
-        return inputs
+    def _resolve_flow(self, index:int, blocks:pd.Series, pipeIOs:dict) -> tuple[QueuePrototype, QueuePrototype]:
+        block_key = blocks.index[index]
 
-    def _resolve_outputs(self, current_index:int, current_key:str, 
-                         blocks:list[tuple[str, AutoPipe]], 
-                         pipeIOs:dict[str, QueuePrototype|dict[str, QueuePrototype]]) -> QueuePrototype:
-        next_index = current_index + 1
+        input_queues = pipeIOs[block_key]
+        assert isinstance(input_queues, dict), f'{block_key} must be of type dict'
+        outputs = self._resolve_outputs(index, blocks, pipeIOs)
+
+        block:Flow = blocks.loc[block_key]
+        block.registerIOs(**input_queues, outputs=outputs)
+        
+        return block.inputs, block.outputs
+
+    def _resolve_pipe(self, index:int, blocks:pd.Series, pipeIOs:dict) -> tuple[QueuePrototype, QueuePrototype]:
+        block_key = blocks.index[index]
+
+        inputs = pipeIOs[block_key]
+        assert isinstance(inputs, QueuePrototype), f'{block_key} must be of type QueuePrototype'
+
+        pipe = blocks.iloc[index]
+        inputs.register_callback(pipe)
+        outputs = self._resolve_outputs(index, blocks, pipeIOs)
+        if outputs is not None:
+            inputs.chain(outputs.put)
+        
+        return inputs, outputs
+
+    def _resolve_outputs(self, index:int, blocks:pd.Series, pipeIOs:dict) -> QueuePrototype:
+        next_index = index + 1
         outputs = None
+        current_key = blocks.index[index]
         if f'{current_key}_outputs' in pipeIOs:
             outputs = pipeIOs[f'{current_key}_outputs']
+            ref = f'{current_key}_outputs'
         elif next_index < len(blocks):
-            next_key, _ = blocks[next_index]
+            next_key = blocks.index[next_index]
             outputs = pipeIOs[next_key]
             if isinstance(outputs, dict):
                 for k, q in outputs.items():
-                    assert q is not None, f'{next_key}.{k} cannot be None.'
+                    ref = f'{next_key}.{k}'
                     outputs = q
                     break
         elif next_index == len(blocks) and 'outputs' in pipeIOs:
             outputs = pipeIOs['outputs']
-        
+            ref = 'outputs'
+
+        assert isinstance(outputs, QueuePrototype) or outputs is None, f'{ref} must be of type QueuePrototype'
         return outputs
 
     def put(self, data):
@@ -70,8 +88,8 @@ class Flow(State):
 
     def release(self):
         assert hasattr(self, 'outputs'), 'register_inout method has not been called on this caller'
-        [b.release() for b in self._queues.values()]
-        [b.release() for b in self._blocks.values() if isinstance(b, State)]
+        [b.release() for b in self._blocks]
+        [b.release() for b in self._pipes.values() if isinstance(b, State)]
 
         if self.outputs is not None:
             self.outputs.release()
@@ -81,9 +99,9 @@ class Flow(State):
             assert not isinstance(value, QueuePrototype), 'cannot assign a queue as a block'
 
             if isinstance(value, AutoPipe):
-                self._blocks[key] = value
+                self._pipes[key] = value
             elif callable(value):
-                self._blocks[key] = LambdaPipe(value)
+                self._pipes[key] = LambdaPipe(value)
             else:
                 raise ValueError(f'{key} is not an Autopipe or function instance.')
             
@@ -91,7 +109,16 @@ class Flow(State):
 
     def __repr__(self):
         texts = []
-        for k, v in self._blocks.items():
+        for k, v in self._pipes.items():
             text_v = repr(v) if isinstance(v, LambdaPipe) else type(v)
             texts.append(f'{k}-{text_v}')
+            if isinstance(v, Flow):
+                v_repr = repr(v)
+                texts.extend('\t' + s for s in v_repr.split('\n'))
         return '\n'.join(texts)
+
+    def __enter__(self):
+        return self.run()
+    
+    def __exit__(self, *_):
+        self.release()

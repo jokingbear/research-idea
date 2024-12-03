@@ -25,12 +25,13 @@ class ProcessQueue(QueuePrototype[list[mp.Process]]):
     
     def release(self):
         self._queue.join()
-        for _ in self._state:
-            self.put(Signal.CANCEL)
-        self._queue.join()
+        if self._state is not None:
+            for _ in self._state:
+                self.put(Signal.CANCEL)
+            self._queue.join()
 
-        for p in self._state:
-            p.join()
-            p.close()
+            for p in self._state:
+                p.join()
+                p.close()
         
         super().release()
