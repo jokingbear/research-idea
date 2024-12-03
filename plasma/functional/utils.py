@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Any
+from .pipes import SequentialPipe
 
 
 class proxy_func(ABC):
@@ -71,13 +72,13 @@ class partials(proxy_func):
         return f'{func_repr}({params})'
 
 
-class chain(proxy_func):
+class chain[T](SequentialPipe[T]):
 
     def __init__(self, func1, func2) -> None:
+        super().__init__()
+
         self.func1 = func1
         self.func2 = func2
 
-    def __call__(self, *args: Any, **kwds: Any) -> Any:
-        results1 = self.func1(*args, **kwds)
-        results2 = self.func2(results1)
-        return results2
+    def __get__(self, instance, owner):
+        return partials(self.run, instance)

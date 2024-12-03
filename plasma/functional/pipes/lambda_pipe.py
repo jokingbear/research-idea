@@ -10,3 +10,6 @@ class LambdaPipe(AutoPipe):
     
     def run(self, *inputs, **kwargs):
         return self.func(*inputs, **kwargs)
+
+    def __repr__(self):
+        return repr(self.func)

@@ -1,8 +1,8 @@
-from ...functional import AutoPipe, chain
+from ...functional import State, chain
 from abc import abstractmethod
 
 
-class QueuePrototype[T](AutoPipe):
+class QueuePrototype[T](State):
 
     def __init__(self, block):
         super().__init__()
