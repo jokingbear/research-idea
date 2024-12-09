@@ -8,15 +8,19 @@ def internal_run(queue:Queue, persistent, callback):
     while True:
         data = queue.get()
 
-        if data != Signal.CANCEL:
-            try:
+        try:
+            if data != Signal.CANCEL:
                 callback(data)
-            except Exception as e:
-                logging.error(e)
-                if persistent:
-                    queue.put(data)
+        except Exception as e:
+            queue.task_done()
 
-        queue.task_done()
+            if persistent:
+                print(e)
+                queue.put(data)
+            else: 
+                raise e
+        finally:
+            queue.task_done()
 
-        if data == Signal.CANCEL:
-            break
+            if data == Signal.CANCEL:
+                break
