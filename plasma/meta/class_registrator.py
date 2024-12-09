@@ -5,7 +5,7 @@ import inspect
 from ..functional import auto_map_func
 
 
-class ObjectFactory(dict):
+class ObjectFactory[K,V](dict[K, type[V]]):
 
     def __init__(self, append=False):
         super().__init__()
@@ -15,7 +15,7 @@ class ObjectFactory(dict):
     def register(self, *names, verbose=True):
         return object_map(self, names, self.append, verbose)
     
-    def shared_init(self, *args, **kwargs):
+    def shared_init(self, *args, **kwargs) -> dict[K, V]:
         obj_dict = {}
         results = {}
         for k, initiator in self.items():
@@ -31,10 +31,10 @@ class ObjectFactory(dict):
 
         return results
     
-    def normal_init(self, *args, **kwargs):
+    def normal_init(self, *args, **kwargs) -> dict[K, V]:
         return {k: initiator(*args, **kwargs) for k, initiator in self.items()}
 
-    def mapped_init(self, mapped_args:dict):
+    def mapped_init(self, mapped_args:dict) -> dict[K, V]:
         results = {}
         for k, initiator in self.items():
             if k in mapped_args:
