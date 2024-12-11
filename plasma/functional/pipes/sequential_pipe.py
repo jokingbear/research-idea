@@ -1,7 +1,7 @@
-from .pipe import AutoPipe
+from .state import State
 
 
-class SequentialPipe(AutoPipe):
+class SequentialPipe[T](State[T]):
 
     def __init__(self, **pipes):
         super().__init__()
@@ -11,7 +11,7 @@ class SequentialPipe(AutoPipe):
 
     def __setattr__(self, key:str, value):
         if key[0] != '_':
-            assert isinstance(value, AutoPipe), 'attribute must be instance of AutoPipe'
+            assert callable(value), 'attribute must be instance of AutoPipe or a function'
 
         super().__setattr__(key, value)
 
@@ -21,3 +21,8 @@ class SequentialPipe(AutoPipe):
             inputs = p(inputs)
 
         return inputs
+    
+    def reset(self):
+        for p in self._marked_attributes:
+            if isinstance(p, State):
+                p.reset()

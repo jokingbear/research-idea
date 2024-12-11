@@ -8,7 +8,10 @@ from .entry_factory import get_module_entry
 class ModuleHub:
 
     def __init__(self, absolute_path, module_name):
-        sys.path.append(str(absolute_path))
+        absolute_path = str(absolute_path)
+        if absolute_path not in sys.path:
+            sys.path.append(absolute_path)
+
         self.module = import_module(module_name)
 
     def load(self, entry_name, *args, **kwargs):

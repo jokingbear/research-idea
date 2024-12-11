@@ -1,14 +1,14 @@
-from ...functional import AutoPipe, chain
+from ...functional import State, chain
 from abc import abstractmethod
 
 
-class QueuePrototype[T](AutoPipe):
+class QueuePrototype[T](State):
 
     def __init__(self, block):
         super().__init__()
 
         self._block = block
-        self.__init_private_state()
+        self.__clean_state()
 
     def run(self):
         if self._callback is None:
@@ -37,10 +37,9 @@ class QueuePrototype[T](AutoPipe):
         self._callback = chain(self._callback, callback)
 
     def release(self):
-        self.__init_private_state()
+        self.__clean_state()
 
-    def __init_private_state(self):
-        self._callback = None
+    def __clean_state(self):
         self._state = None
         self._running = False
 

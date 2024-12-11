@@ -28,10 +28,11 @@ class ThreadQueue(QueuePrototype[list[threading.Thread]]):
     
     def release(self):
         self._queue.join()
-        for _ in self._state:
-            self.put(Signal.CANCEL)
-        self._queue.join()
+        if self._state is not None:
+            for _ in self._state:
+                self.put(Signal.CANCEL)
+            self._queue.join()
 
-        for t in self._state:
-            t.join()
+            for t in self._state:
+                t.join()
         super().release()
