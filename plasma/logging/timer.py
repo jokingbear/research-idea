@@ -61,6 +61,3 @@ class TimeIO:
     timer:Timer
     args:list
     kwargs:dict
-
-
-Timer.TimeIO = TimeIO
