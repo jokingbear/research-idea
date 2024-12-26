@@ -16,5 +16,6 @@ class ChainDataset(BaseDataset):
         for ds in self.datasets:
             if offset <= idx < offset + len(ds):
                 return ds[idx - offset]
+            offset += len(ds)
 
         raise IndexError(f'index {idx} is out of bound')
