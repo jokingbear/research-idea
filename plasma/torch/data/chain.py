@@ -1,4 +1,5 @@
 from .base_class import BaseDataset
+from functools import cached_property
 
 
 class ChainDataset(BaseDataset):
@@ -19,3 +20,9 @@ class ChainDataset(BaseDataset):
             offset += len(ds)
 
         raise IndexError(f'index {idx} is out of bound')
+
+    @cached_property
+    def offsets(self):
+        offsets = [0]
+        for d in self.datasets[:-1]:
+            offsets.append(offsets[-1] + len(d))

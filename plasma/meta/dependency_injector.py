@@ -44,6 +44,8 @@ class DependencyInjector(AutoPipe):
 
                         raise KeyError(f'{arg} is not registered in object_dict or factory')
                     args[arg] = object_dict[arg]
+                else:
+                    raise KeyError(f'{arg} is not in init_args or factory')
             
             if len(args) == len(arg_names):
                 object_dict[key] = object_initiator(**args)
