@@ -26,3 +26,5 @@ class ChainDataset(BaseDataset):
         offsets = [0]
         for d in self.datasets[:-1]:
             offsets.append(offsets[-1] + len(d))
+
+        return offsets
