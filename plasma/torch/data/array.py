@@ -1,6 +1,6 @@
 import pandas as pd
 
-from .base_class import BaseDataset, abstractmethod
+from .base import BaseDataset, abstractmethod
 
 
 class DynamicDataset(BaseDataset):

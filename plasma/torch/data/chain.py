@@ -1,4 +1,4 @@
-from .base_class import BaseDataset
+from .base import BaseDataset
 from functools import cached_property
 
 
