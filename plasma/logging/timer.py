@@ -36,7 +36,19 @@ class Timer:
     
     @property
     def end(self):
+        if self._end is None:
+            return None
+
         return datetime.datetime.fromtimestamp(self._end)
+
+    def check(self):
+        if self._start is None:
+            raise ValueError('please call enter and exit method appropriately')
+        
+        if self._end is not None:
+            return self.duration
+
+        return datetime.timedelta(seconds=time.time() - self._start)
 
     def __call__(self, func):
         name = func.__qualname__
