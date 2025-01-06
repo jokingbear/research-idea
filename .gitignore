@@ -38,3 +38,5 @@ scratches
 dependencies
 
 .cache
+
+.env

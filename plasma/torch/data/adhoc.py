@@ -1,6 +1,6 @@
 import pandas as pd
 
-from .base_class import BaseDataset
+from .base import BaseDataset
 
 
 class AdhocData(BaseDataset):

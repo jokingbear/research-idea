@@ -30,20 +30,29 @@ class DependencyInjector(AutoPipe):
             argspecs = inspect.getfullargspec(object_initiator)
             arg_names = [a for a in argspecs.args if a != 'self']
             
-            args = {}
+            arg_maps = {}
             for arg in arg_names:
+                arg_object = _NotInitialized
+
                 if arg in init_args:
-                    args[arg] = init_args[arg]
+                    arg_object = init_args[arg]
                 elif arg in self.factory:
                     self._recursive_init(arg, self.factory[arg], object_dict, init_args)
-                
-                    if arg not in object_dict:
-                        if not self.strict:
-                            print(f'{key} does not have dependency {arg}, skipping key {key}')
-                            break
+                    arg_object = object_dict.get(arg, _NotInitialized)
 
-                        raise KeyError(f'{arg} is not registered in object_dict or factory')
-                    args[arg] = object_dict[arg]
-            
-            if len(args) == len(arg_names):
-                object_dict[key] = object_initiator(**args)
+                if arg_object is _NotInitialized:
+                    error_message = f'{arg} is not in init_args or dependency graph at key: {key}'
+                    if not self.strict:
+                        print(error_message)
+                        break
+                    else:
+                        raise KeyError(error_message)
+
+                arg_maps[arg] = arg_object
+
+            if len(arg_maps) == len(arg_names):
+                object_dict[key] = object_initiator(**arg_maps)
+
+
+class _NotInitialized:
+    pass
