@@ -63,7 +63,7 @@ class GraphMatcher(AutoPipe):
         if len(candidates) > 0:
             candidates = pd.concat(candidates, axis=0, ignore_index=True)
         else:
-            colums = ['query_start_index', 'query_end_index', 'data_index', 'original', 'substring_score', 'match_len', 'coverage_score']
+            colums = ['query_start_index', 'query_end_index', 'data_index', 'original', 'substring_matching_score', 'match_len', 'coverage_score']
             candidates = pd.DataFrame([], columns=colums)
         
         sorting_criteria = ['substring_matching_score', 'match_len']
