@@ -1,6 +1,6 @@
 import pandas as pd
 
-from .base import BaseDataset, abstractmethod
+from .base import BaseDataset
 
 
 class DynamicDataset(BaseDataset):
@@ -13,17 +13,13 @@ class DynamicDataset(BaseDataset):
     def get_len(self):
         return len(self._data)
     
-    def get_item(self, idx):
-        element = self.get_element(idx)
-        return self.map_element(element)
+    def __getitem__(self, idx):
+        item = self.pick_element(idx)
+        return self.get_item(item)
     
-    def get_element(self, idx):
+    def pick_element(self, idx):
         data = self._data
         if isinstance(data, (pd.DataFrame, pd.Series)):
             return data.iloc[idx]
         else:
             return data[idx]
-
-    @abstractmethod    
-    def map_element(self, element):
-        pass
