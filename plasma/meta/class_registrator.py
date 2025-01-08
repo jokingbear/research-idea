@@ -74,18 +74,3 @@ class object_map:
                 print(f'registered {name}: {func_or_class}')
 
         return func_or_class
-
-
-def _recursive_init(graph:nx.DiGraph, key, init, results):
-    if key not in results:
-        arg_specs = inspect.getfullargspec(init)
-        arg_names = [a for a in arg_specs.args if a != 'self']
-        
-        args = {}
-        for a in arg_names:
-            if a in graph:
-                _recursive_init(graph, a, graph[a].get('init'), results)
-            
-            args[a] = results[a]
-
-        results[key] = init(**args)
