@@ -39,6 +39,9 @@ class QueuePrototype[T](State):
     def release(self):
         self.__clean_state()
 
+    def join(self):
+        pass
+
     def __clean_state(self):
         self._state = None
         self._running = False

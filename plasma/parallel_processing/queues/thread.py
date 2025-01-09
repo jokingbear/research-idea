@@ -36,3 +36,6 @@ class ThreadQueue(QueuePrototype[list[threading.Thread]]):
             for t in self._state:
                 t.join()
         super().release()
+
+    def join(self):
+        self._queue.join()
