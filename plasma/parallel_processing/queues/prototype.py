@@ -19,6 +19,7 @@ class QueuePrototype[T](State):
 
         self._running = True
         self._state = self._init_state()
+        return self
         
     @abstractmethod
     def _init_state(self) -> T:
