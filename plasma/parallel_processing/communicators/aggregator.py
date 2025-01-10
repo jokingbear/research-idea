@@ -11,7 +11,6 @@ class Aggregator(State):
     def __init__(self, total:int, sleep=0.5, manager:SyncManager=None, ignore_none=True, count_none=True):
         super().__init__()
         
-        manager = manager or mp.Manager()
         self._results = [] if manager is None else manager.list()
         self._finished:int|ValueProxy[int] = 0 if manager is None else mp.Value('i', 0)
 

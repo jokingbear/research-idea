@@ -1,18 +1,18 @@
 import multiprocessing as mp
 
 from ...functional import State
+from multiprocessing.managers import SyncManager
 
 
 class Proxy(State):
 
-    def __init__(self, obj, manager=None):
+    def __init__(self, obj, manager:SyncManager=None):
         super().__init__()
 
-        manager = manager or mp.Manager()
         self._manager = manager
         self.obj = obj
 
-        outputs = manager.dict()
+        outputs = {} if manager is None else manager.dict()
         self._outputs = outputs
     
     def run(self, process_func, out_key=None):
@@ -20,8 +20,7 @@ class Proxy(State):
             result = process_func(self.obj)
         except Exception as e:
             result = e
-            if out_key is None:
-                out_key = f'{process_func.__qualname__}_exception'
+            out_key = f'{process_func.__qualname__}_exception'
     
         if out_key is not None:
             self._outputs[out_key] = result
@@ -32,4 +31,4 @@ class Proxy(State):
     
     def release(self):
         del self._outputs
-        self._outputs = self._manager.dict()
+        self._outputs = {} if self._manager is None else self._manager.dict()
