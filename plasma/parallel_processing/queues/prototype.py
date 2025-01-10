@@ -31,17 +31,19 @@ class QueuePrototype[T](State):
 
     def register_callback(self, callback):
         self._callback = callback
+        return self
 
     def chain(self, callback):
         if self._running:
             raise RuntimeError('queue is already running, please release it to chain new function')
         self._callback = chain(self._callback, callback)
+        return self
 
     def release(self):
         self.__clean_state()
 
     def join(self):
-        pass
+        return self
 
     def __clean_state(self):
         self._state = None
