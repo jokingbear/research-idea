@@ -7,6 +7,7 @@ def internal_run(queue:Queue, persistent, callback):
         data = queue.get()
         
         if data is Signal.CANCEL:
+            queue.task_done()
             break
         else:
             exception = None
