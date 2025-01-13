@@ -4,15 +4,15 @@ from ...functional import State
 from multiprocessing.managers import SyncManager
 
 
-class Proxy(State):
+class ObjectInquirer(State):
 
-    def __init__(self, obj, manager:SyncManager=None):
+    def __init__(self, obj, manager:SyncManager):
         super().__init__()
 
         self._manager = manager
         self.obj = obj
 
-        outputs = {} if manager is None else manager.dict()
+        outputs = manager.dict()
         self._outputs = outputs
     
     def run(self, process_func, out_key=None):
@@ -30,5 +30,10 @@ class Proxy(State):
         return dict(self._outputs)
     
     def release(self):
-        del self._outputs
-        self._outputs = {} if self._manager is None else self._manager.dict()
+        self._outputs = self._manager.dict()
+
+    def __getattribute__(self, name):
+        if name[0] != '_' and name not in {'run', 'release', 'results', '__init__'} and hasattr(self.obj, name):
+            return self.run()
+
+        return super().__getattribute__(name)

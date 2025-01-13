@@ -1,5 +1,3 @@
-import logging
-
 from queue import Queue
 from .signals import Signal
 
@@ -8,7 +6,7 @@ def internal_run(queue:Queue, persistent, callback):
     while True:
         data = queue.get()
         
-        if data == Signal.CANCEL:
+        if data is Signal.CANCEL:
             break
         else:
             exception = None
