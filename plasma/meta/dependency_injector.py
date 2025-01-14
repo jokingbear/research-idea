@@ -30,7 +30,7 @@ class DependencyInjector(AutoPipe):
             argspecs = inspect.getfullargspec(object_initiator)
             arg_names = [a for a in argspecs.args if a != 'self']
             
-            arg_maps = argspecs.kwonlydefaults or {}
+            arg_maps = {}
             for arg in arg_names:
                 arg_object = _NotInitialized
 
