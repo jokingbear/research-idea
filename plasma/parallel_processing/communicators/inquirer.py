@@ -1,4 +1,4 @@
-import multiprocessing as mp
+import inspect
 
 from ...functional import State
 from multiprocessing.managers import SyncManager
