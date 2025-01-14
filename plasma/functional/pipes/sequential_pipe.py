@@ -22,7 +22,7 @@ class SequentialPipe[T](State[T]):
 
         return inputs
     
-    def reset(self):
+    def release(self):
         for p in self._marked_attributes:
             if isinstance(p, State):
-                p.reset()
+                p.release()
