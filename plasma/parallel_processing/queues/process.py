@@ -35,3 +35,6 @@ class ProcessQueue(QueuePrototype[list[mp.Process]]):
                 p.close()
         
         super().release()
+
+    def join(self):
+        self._queue.join()

@@ -1,17 +1,15 @@
-import logging
-
 from queue import Queue
 from .signals import Signal
 
 
 def internal_run(queue:Queue, persistent, callback):
-    while True:
+    is_not_cancelled = True
+    while is_not_cancelled:
         data = queue.get()
-        
-        if data == Signal.CANCEL:
-            break
-        else:
-            exception = None
+        exception = None
+
+        is_not_cancelled = data is not Signal.CANCEL
+        if is_not_cancelled:
             try:
                 callback(data)
             except Exception as e:
@@ -19,6 +17,6 @@ def internal_run(queue:Queue, persistent, callback):
                     queue.put(data)
                 exception = e
 
-            queue.task_done()
-            if exception is not None:
-                raise exception
+        queue.task_done()
+        if exception is not None:
+            raise exception

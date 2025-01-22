@@ -41,7 +41,7 @@ class Aggregator(State):
 
     @property
     def results(self):
-        return [*self._results]
+        return list(self._results)
 
     @property
     def finished(self):

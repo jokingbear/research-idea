@@ -5,7 +5,6 @@ class BaseConfigs(AutoPipe):
 
     def __init__(self):
         super().__init__()
-
         public_members = [a for a in dir(self) if a[0] != '_' and (isinstance(getattr(self, a), BaseConfigs) or not callable(getattr(self, a)))]
         self._marked_attributes.extend(public_members)
 
