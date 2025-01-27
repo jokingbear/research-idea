@@ -2,10 +2,10 @@ import multiprocessing as mp
 
 from .signals import Signal
 from .utils import internal_run
-from .prototype import QueuePrototype
+from .base import Queue
 
 
-class ProcessQueue(QueuePrototype[list[mp.Process]]):
+class ProcessQueue(Queue[list[mp.Process]]):
 
     def __init__(self, n=1, persistent=False):
         super().__init__(block=False)

@@ -3,10 +3,10 @@ import threading
 from queue import Queue
 from .signals import Signal
 from .utils import internal_run
-from .prototype import QueuePrototype
+from .base import Queue
 
 
-class ThreadQueue(QueuePrototype[list[threading.Thread]]):
+class ThreadQueue(Queue[list[threading.Thread]]):
 
     def __init__(self, n=1, persistent=False):
         super().__init__(block=False)
