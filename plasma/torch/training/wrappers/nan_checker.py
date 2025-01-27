@@ -1,6 +1,6 @@
 import torch
 
-from ..prototypes.trainer_wrapper import TrainerWrapper
+from ..bases.trainer_wrapper import TrainerWrapper
 
 
 class NanChecker(TrainerWrapper):

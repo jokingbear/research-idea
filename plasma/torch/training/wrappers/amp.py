@@ -2,7 +2,7 @@ import torch
 import torch.amp as amp
 
 from ....functional import partials
-from ..prototypes.trainer_wrapper import TrainerWrapper
+from ..bases.trainer_wrapper import TrainerWrapper
 
 
 class AMP(TrainerWrapper):

@@ -1,5 +1,5 @@
 from torch.utils.tensorboard import SummaryWriter
-from ..prototypes.trainer_wrapper import TrainerWrapper
+from ..bases.trainer_wrapper import TrainerWrapper
 
 
 class Tensorboard(TrainerWrapper):

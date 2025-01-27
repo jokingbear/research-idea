@@ -10,7 +10,7 @@ from torch.optim.optimizer import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 
 
-class BaseTrainer(AutoPipe):
+class Trainer(AutoPipe):
     current_epoch = -1
     max_epoch:int
     model:nn.Module
