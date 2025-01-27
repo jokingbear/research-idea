@@ -26,7 +26,7 @@ class Trainer(AutoPipe):
         pass
     
     @abstractmethod
-    def backward(self, bjective_val:torch.Tensor):
+    def backward(self, objective_val:torch.Tensor):
         pass
     
     def finalize_iteration(self):
