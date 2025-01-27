@@ -15,9 +15,6 @@ class __meta(type):
                 else:
                     members.append(f'{formatter}{member} = {value}')
         return '\n'.join(members + sub_configs)
-    
-    def __setattr__(self, name, value):
-        return super().__setattr__(name, value)
 
 
 class BaseConfigs(metaclass=__meta):
@@ -26,16 +23,16 @@ class BaseConfigs(metaclass=__meta):
         raise NotImplementedError('this class does not support init')
 
     @classmethod
-    def update(cls, update_dict:dict):
-        for key, value in update_dict.items():
-            current_value = getattr(cls, key)
-
-            if isinstance(value, dict): 
-                if isinstance(current_value, dict):
-                    current_value.update(value)
-                else:
-                    current_value.update(value)
-            else:
-                setattr(cls, key, value)
+    def update(cls, **update_keys):
+        for member in dir(cls):
+            value = getattr(cls, member)
+            
+            if member[0] != '_' and value.__class__.__name__ != 'method':
+                if value.__class__.__qualname__ == '__meta':
+                    value.update(**update_keys)
+                elif isinstance(value, dict):
+                    value.update({k:v for k, v in update_keys.items() if k in value})
+                elif member in update_keys:
+                    setattr(cls, member, update_keys[member])
         
         return cls
