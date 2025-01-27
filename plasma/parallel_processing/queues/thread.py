@@ -1,6 +1,6 @@
 import threading
+import queue
 
-from queue import Queue
 from .signals import Signal
 from .utils import internal_run
 from .base import Queue
@@ -13,7 +13,7 @@ class ThreadQueue(Queue[list[threading.Thread]]):
 
         self.persistent = persistent
         self.n = n
-        self._queue = Queue()
+        self._queue = queue.Queue()
 
     def _init_state(self):
         if self._callback is None:

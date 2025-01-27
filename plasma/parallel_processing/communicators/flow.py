@@ -1,7 +1,7 @@
 import pandas as pd
 
 from ...functional import State, LambdaPipe, AutoPipe
-from ..queues import QueuePrototype
+from ..queues import Queue
 
 
 class Flow(State):
@@ -10,7 +10,7 @@ class Flow(State):
         super().__init__()
 
         self._pipes:dict[str, AutoPipe] = {}
-        self._blocks:list[QueuePrototype|Flow] = []
+        self._blocks:list[Queue|Flow] = []
 
     def run(self):
         assert hasattr(self, 'inputs') and hasattr(self, 'outputs'), 'registerIOs has not been called on this instance.'
@@ -19,7 +19,7 @@ class Flow(State):
         [b.run() for b in self._blocks]
         return self
     
-    def registerIOs(self, **pipeIOs:QueuePrototype|dict[str, QueuePrototype]):
+    def registerIOs(self, **pipeIOs:Queue|dict[str, Queue]):
         blocks = pd.Series(self._pipes)
         for i, current_block in enumerate(blocks):            
             if isinstance(current_block, Flow):
@@ -34,7 +34,7 @@ class Flow(State):
         
         self.outputs = outputs
 
-    def _resolve_flow(self, index:int, blocks:pd.Series, pipeIOs:dict) -> tuple[QueuePrototype, QueuePrototype]:
+    def _resolve_flow(self, index:int, blocks:pd.Series, pipeIOs:dict) -> tuple[Queue, Queue]:
         block_key = blocks.index[index]
 
         input_queues = pipeIOs[block_key]
@@ -46,11 +46,11 @@ class Flow(State):
         
         return block.inputs, block.outputs
 
-    def _resolve_pipe(self, index:int, blocks:pd.Series, pipeIOs:dict) -> tuple[QueuePrototype, QueuePrototype]:
+    def _resolve_pipe(self, index:int, blocks:pd.Series, pipeIOs:dict) -> tuple[Queue, Queue]:
         block_key = blocks.index[index]
 
         inputs = pipeIOs[block_key]
-        assert isinstance(inputs, QueuePrototype), f'{block_key} must be of type QueuePrototype'
+        assert isinstance(inputs, Queue), f'{block_key} must be of type QueuePrototype'
 
         pipe = blocks.iloc[index]
         inputs.register_callback(pipe)
@@ -60,7 +60,7 @@ class Flow(State):
         
         return inputs, outputs
 
-    def _resolve_outputs(self, index:int, blocks:pd.Series, pipeIOs:dict) -> QueuePrototype:
+    def _resolve_outputs(self, index:int, blocks:pd.Series, pipeIOs:dict) -> Queue:
         next_index = index + 1
         outputs = None
         current_key = blocks.index[index]
@@ -79,7 +79,7 @@ class Flow(State):
             outputs = pipeIOs['outputs']
             ref = 'outputs'
 
-        assert isinstance(outputs, QueuePrototype) or outputs is None, f'{ref} must be of type QueuePrototype'
+        assert isinstance(outputs, Queue) or outputs is None, f'{ref} must be of type QueuePrototype'
         return outputs
 
     def put(self, data):
@@ -96,7 +96,7 @@ class Flow(State):
 
     def __setattr__(self, key: str, value):
         if key[0] != '_' and key not in {'inputs', 'outputs'}:
-            assert not isinstance(value, QueuePrototype), 'cannot assign a queue as a block'
+            assert not isinstance(value, Queue), 'cannot assign a queue as a block'
 
             if isinstance(value, AutoPipe):
                 self._pipes[key] = value

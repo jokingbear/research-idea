@@ -1,5 +1,4 @@
 import networkx as nx
-import difflib
 import pandas as pd
 
 from ..functional import AutoPipe
