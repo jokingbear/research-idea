@@ -3,13 +3,13 @@ import re
 from abc import abstractmethod
 
 
-class AutoPipe[T]:
+class AutoPipe:
 
     def __init__(self):
         self._marked_attributes = []
 
     @abstractmethod
-    def run(self, *inputs, **kwargs) -> T:
+    def run(self, *inputs, **kwargs):
         pass
     
     def __setattr__(self, key:str, value):

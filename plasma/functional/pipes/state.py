@@ -2,7 +2,7 @@ from .pipe import AutoPipe
 from abc import abstractmethod
 
 
-class State[T](AutoPipe[T]):
+class State(AutoPipe):
 
     @abstractmethod
     def release(self):
