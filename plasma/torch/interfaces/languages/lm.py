@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 
 @dataclass
-class Language(nn.Module):
+class Language[Cache](nn.Module):
     tokenizer:Tokenizer
     nfeatures:int
 
@@ -17,5 +17,5 @@ class Language(nn.Module):
                 attentions:torch.Tensor=None,
                 generative_indices:torch.Tensor=None,
                 context_embeddings:torch.Tensor=None,
-                cache=None)->torch.Tensor:
+                cache:Cache=None) -> tuple[torch.Tensor, Cache]:
         pass
