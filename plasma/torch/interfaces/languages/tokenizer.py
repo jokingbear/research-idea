@@ -1,14 +1,12 @@
 from abc import abstractmethod
-from dataclasses import dataclass
 
 
-@dataclass
 class Tokenizer:
     bos_token:str
     bos_token_id:int
     eos_token:str
     eos_token_id:int
-    special_tokens: dict[int, str]
+    special_tokens: list[str]
 
     @abstractmethod
     def encode(self, text:str, add_start_end=True)->list[int]:
