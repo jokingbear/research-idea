@@ -6,7 +6,6 @@ from abc import abstractmethod
 from dataclasses import dataclass
 
 
-@dataclass
 class Language[Cache](nn.Module):
     tokenizer:Tokenizer
     nfeatures:int
