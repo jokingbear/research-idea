@@ -3,7 +3,6 @@ import torch.nn as nn
 
 from .tokenizer import Tokenizer
 from abc import abstractmethod
-from dataclasses import dataclass
 
 
 class Language[Cache](nn.Module):
