@@ -1,11 +1,11 @@
 import torch
 
-from ....functional import AutoPipe
+from ....functional import SimplePipe
 from abc import abstractmethod
 from .trainer import Trainer
 
 
-class TrainerWrapper(AutoPipe):
+class TrainerWrapper(SimplePipe[type[Trainer], type[Trainer]]):
     
     @abstractmethod
     def chain(self, trainer:Trainer, i:int, inputs, outputs:torch.Tensor):
