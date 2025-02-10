@@ -1,7 +1,6 @@
 import torch
 
 from ....functional import SimplePipe
-from abc import abstractmethod
 from .trainer import Trainer
 from functools import wraps
 
