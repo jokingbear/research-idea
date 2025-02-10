@@ -16,6 +16,7 @@ class Trainer(AutoPipe):
     model:nn.Module
     optimizer:Optimizer
     scheduler:LRScheduler
+    scaler: torch.GradScaler = None
 
     @abstractmethod
     def init_train_loader(self) -> DataLoader:
@@ -28,9 +29,13 @@ class Trainer(AutoPipe):
     @abstractmethod
     def backward(self, objective_val:torch.Tensor):
         pass
-    
-    def finalize_iteration(self):
-        pass
+
+    def optimize(self, objective_val:torch.Tensor):
+        if self.scaler is not None:
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
+        else:
+            self.optimizer.step()
     
     def finalize_epoch(self):
         pass
@@ -43,7 +48,7 @@ class Trainer(AutoPipe):
             for i, inputs in enumerate(tqdm(loader, total=len(loader))):
                 obj_val = self.forward(i, inputs)
                 self.backward(obj_val)
-                self.finalize_iteration()
+                self.optimize(obj_val)
 
             self.finalize_epoch()
 

@@ -11,7 +11,10 @@ class GradientClipping(TrainerWrapper):
         self.max_norm = max_norm
         self.norm_type = norm_type
     
-    def chain(self, trainer, i, inputs, outputs):
+    def backward(self, trainer, obj_val):
+        if trainer.scaler is not None:
+            trainer.scaler.unscale_(trainer.optimizer)
+
         model = trainer.model
 
         torch.nn.utils.clip_grad_norm_(
