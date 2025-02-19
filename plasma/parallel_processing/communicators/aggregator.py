@@ -1,12 +1,10 @@
 import time
 import multiprocessing as mp
-import threading
 
 from ...functional import State
 from tqdm.auto import tqdm
 from multiprocessing.managers import SyncManager, ValueProxy
-from multiprocessing import shared_memory
-from ..queues import Signal
+from queue import Empty
 
 
 class Aggregator(State):
@@ -39,10 +37,6 @@ class Aggregator(State):
                 self._aggregate(data)
 
     def wait(self, **tqdm_kwargs):
-        if self._process_queue is not None:
-            self._synchronizer = threading.Thread(target=self.__aggregate)
-            self._synchronizer.start()
-
         with tqdm(total=self.total, **tqdm_kwargs) as prog:
             n = self.finished
             prog.update(n)
@@ -65,8 +59,10 @@ class Aggregator(State):
                     data = self._process_queue.get(timeout=0.01)
                     self._aggregate(data)
                     self._process_queue.task_done()
-            except:
+            except Empty:
                 pass
+            except:
+                raise
 
         return self._results.copy()
 
@@ -89,12 +85,3 @@ class Aggregator(State):
 
     def _aggregate(self, data):
         self._results.append(data)
-
-    def __aggregate(self):
-        while not self.finished:
-            try:
-                data = self._process_queue.get(timeout=0.01) 
-                self._aggregate(data)
-                self._process_queue.task_done()
-            except:
-                pass
