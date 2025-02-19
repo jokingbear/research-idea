@@ -10,12 +10,13 @@ from torch.optim.optimizer import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 
 
-class BaseTrainer(AutoPipe):
+class Trainer(AutoPipe):
     current_epoch = -1
     max_epoch:int
     model:nn.Module
     optimizer:Optimizer
     scheduler:LRScheduler
+    scaler: torch.GradScaler = None
 
     @abstractmethod
     def init_train_loader(self) -> DataLoader:
@@ -26,11 +27,15 @@ class BaseTrainer(AutoPipe):
         pass
     
     @abstractmethod
-    def backward(self, bjective_val:torch.Tensor):
+    def backward(self, objective_val:torch.Tensor):
         pass
-    
-    def finalize_iteration(self):
-        pass
+
+    def optimize(self, objective_val:torch.Tensor):
+        if self.scaler is not None:
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
+        else:
+            self.optimizer.step()
     
     def finalize_epoch(self):
         pass
@@ -43,7 +48,7 @@ class BaseTrainer(AutoPipe):
             for i, inputs in enumerate(tqdm(loader, total=len(loader))):
                 obj_val = self.forward(i, inputs)
                 self.backward(obj_val)
-                self.finalize_iteration()
+                self.optimize(obj_val)
 
             self.finalize_epoch()
 

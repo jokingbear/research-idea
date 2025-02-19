@@ -1,2 +1,2 @@
 from . import wrappers
-from .prototypes import *
+from .bases import *

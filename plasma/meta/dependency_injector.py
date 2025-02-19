@@ -12,7 +12,7 @@ class DependencyInjector(AutoPipe):
         self.factory = factory
         self.strict = strict
 
-    def run(self, init_args:dict, *names) -> dict:
+    def run(self, *names, **init_args) -> dict:
         if len(names) == 0:
             names = {*self.factory}
         else:

@@ -1,7 +1,7 @@
 from .state import State
 
 
-class SequentialPipe[T](State[T]):
+class SequentialPipe[I, O](State):
 
     def __init__(self, **pipes):
         super().__init__()
@@ -15,7 +15,7 @@ class SequentialPipe[T](State[T]):
 
         super().__setattr__(key, value)
 
-    def run(self, inputs):
+    def run(self, inputs:I) -> O:
         for attr in self._marked_attributes:
             p = getattr(self, attr)
             inputs = p(inputs)
