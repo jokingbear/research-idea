@@ -18,9 +18,9 @@ class Aggregator(State):
         
         process_queue = None if manager is None else mp.JoinableQueue()
         self._process_queue = process_queue
-
+        self._synchronizer = None
         self._finished:int|ValueProxy[int] = 0 if manager is None else mp.Value('i', 0)
-  
+
         self._marked_attributes.append('finished')
         self.total = total
         self.sleep = sleep
@@ -39,6 +39,10 @@ class Aggregator(State):
                 self._aggregate(data)
 
     def wait(self, **tqdm_kwargs):
+        if self._process_queue is not None:
+            self._synchronizer = threading.Thread(target=self.__aggregate)
+            self._synchronizer.start()
+
         with tqdm(total=self.total, **tqdm_kwargs) as prog:
             n = self.finished
             prog.update(n)
@@ -49,12 +53,18 @@ class Aggregator(State):
                 n = new_n
                 prog.update(diff)
 
+        if self._synchronizer is not None:
+            self._synchronizer.join()
+            self._synchronizer = None
+
     @property
     def results(self):
         if self._process_queue is not None:
             try:
                 while True:
-                    self._aggregate(self._process_queue.get(timeout=0.01))
+                    data = self._process_queue.get(timeout=0.01)
+                    self._aggregate(data)
+                    self._process_queue.task_done()
             except:
                 pass
 
@@ -79,3 +89,12 @@ class Aggregator(State):
 
     def _aggregate(self, data):
         self._results.append(data)
+
+    def __aggregate(self):
+        while not self.finished:
+            try:
+                data = self._process_queue.get(timeout=0.01) 
+                self._aggregate(data)
+                self._process_queue.task_done()
+            except:
+                pass
