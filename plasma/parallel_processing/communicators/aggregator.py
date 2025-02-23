@@ -11,9 +11,10 @@ class Aggregator(State):
 
     def __init__(self, total:int, sleep=1e-2, manager:SyncManager=None, process_base=False, ignore_none=True, count_none=True):
         super().__init__()
-
+        assert manager is not None, 'manager is deprecated, use proces_base instead'
         self._results = []
 
+        process_base = process_base or manager is not None
         process_queue = None if not process_base else mp.JoinableQueue()
         self._process_queue = process_queue
         self._finished:int|ValueProxy[int] = 0 if manager is None else mp.Value('i', 0)
@@ -30,10 +31,10 @@ class Aggregator(State):
             self._update_step()
 
         if data is not None or (data is None and not self.ignore_none):
-            if self._process_queue is not None:
-                self._process_queue.put(data)
-            else:
-                self._aggregate(data)
+            self._aggregate(data)
+
+        if self._finished.value == self.total and self._process_queue is not None:
+            self._process_queue.put(self._results)
 
     def wait(self, **tqdm_kwargs):
         with tqdm(total=self.total, **tqdm_kwargs) as prog:
@@ -46,21 +47,13 @@ class Aggregator(State):
                 n = new_n
                 prog.update(diff)
         
+        if self._process_queue is not None:
+            self._results = self._process_queue.get()
+
         return self.results
 
     @property
     def results(self):
-        if self._process_queue is not None:
-            try:
-                while True:
-                    data = self._process_queue.get(timeout=0.01)
-                    self._aggregate(data)
-                    self._process_queue.task_done()
-            except Empty:
-                pass
-            except:
-                raise
-
         return self._results.copy()
 
     @property
@@ -72,7 +65,7 @@ class Aggregator(State):
 
     def release(self):
         self._results = []
-        self._finished = 0 if self._manager is None else mp.Value('i', 0)
+        self._finished = 0 if not self.process_base else mp.Value('i', 0)
 
     def _update_step(self):
         if isinstance(self._finished, int):
