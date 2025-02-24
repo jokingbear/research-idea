@@ -7,13 +7,13 @@ from .base import Queue
 
 class ProcessQueue(Queue[list[mp.Process]]):
 
-    def __init__(self, n=1, persistent=False):
+    def __init__(self, qsize=0, n=1, persistent=False):
         super().__init__(block=False)
 
         self.persistent = persistent
         self.n = n
         
-        self._queue = mp.JoinableQueue()
+        self._queue = mp.JoinableQueue(qsize)
 
     def _init_state(self):
         processes = [mp.Process(target=internal_run, args=(self._queue, self.persistent, self._callback)) for _ in range(self.n)]
