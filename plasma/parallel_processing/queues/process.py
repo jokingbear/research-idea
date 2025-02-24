@@ -7,7 +7,7 @@ from .base import Queue
 
 class ProcessQueue(Queue[list[mp.Process]]):
 
-    def __init__(self, qsize=0, n=1, persistent=False):
+    def __init__(self, n=1, persistent=False, qsize=0):
         super().__init__(block=False)
 
         self.persistent = persistent
