@@ -18,7 +18,7 @@ class Aggregator(State):
         process_base = process_base or manager is not None
         process_queue = None if not process_base else mp.JoinableQueue()
         self._process_queue = process_queue
-        self._finished:int|ValueProxy[int] = 0 if manager is None else mp.Value('i', 0)
+        self._finished:int|ValueProxy[int] = 0 if not process_base else mp.Value('i', 0)
 
         self._marked_attributes.append('finished')
         self.total = total
@@ -34,7 +34,7 @@ class Aggregator(State):
         if data is not None or (data is None and not self.ignore_none):
             self._aggregate(data)
 
-        if self._finished.value == self.total and self._process_queue is not None:
+        if self._process_queue is not None and self._finished.value == self.total:
             self._process_queue.put(self._results)
 
     def wait(self, **tqdm_kwargs):
