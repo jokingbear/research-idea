@@ -4,7 +4,6 @@ import multiprocessing as mp
 from ...functional import State
 from tqdm.auto import tqdm
 from multiprocessing.managers import SyncManager, ValueProxy
-from queue import Empty
 
 
 class Aggregator(State):

@@ -27,10 +27,10 @@ class Trainer(AutoPipe):
         pass
     
     @abstractmethod
-    def backward(self, objective_val:torch.Tensor):
+    def backward(self, i:int, inputs, objective_val:torch.Tensor):
         pass
 
-    def optimize(self, objective_val:torch.Tensor):
+    def optimize(self, i:int, inputs, objective_val:torch.Tensor):
         if self.scaler is not None:
             self.scaler.step(self.optimizer)
             self.scaler.update()
@@ -47,8 +47,8 @@ class Trainer(AutoPipe):
             self.current_epoch = e
             for i, inputs in enumerate(tqdm(loader, total=len(loader))):
                 obj_val = self.forward(i, inputs)
-                self.backward(obj_val)
-                self.optimize(obj_val)
+                self.backward(i, inputs, obj_val)
+                self.optimize(i, inputs, obj_val)
 
             self.finalize_epoch()
 

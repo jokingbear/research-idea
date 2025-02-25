@@ -10,7 +10,7 @@ class TrainerWrapper(SimplePipe[type[Trainer], type[Trainer]]):
     def forward(self, trainer:Trainer, i:int, inputs, outputs:torch.Tensor):
         return outputs
     
-    def backward(self, trainer:Trainer, obj_val: torch.Tensor):
+    def backward(self, trainer:Trainer, i:int, inputs, obj_val: torch.Tensor):
         pass
     
     def run(self, trainer_class:type[Trainer]):
@@ -31,8 +31,8 @@ class TrainerWrapper(SimplePipe[type[Trainer], type[Trainer]]):
 
     def _chain_backward(self, backwarder):
         @wraps(backwarder)
-        def alt_backward(trainer, obj_val):
-            backwarder(trainer, obj_val)
-            self.backward(trainer, obj_val)
+        def alt_backward(trainer, i, inputs, obj_val):
+            backwarder(trainer, i, inputs, obj_val)
+            self.backward(trainer, i, inputs, obj_val)
         
         return alt_backward
