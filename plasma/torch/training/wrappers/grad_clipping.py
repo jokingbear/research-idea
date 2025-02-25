@@ -12,6 +12,9 @@ class GradientClipping(TrainerWrapper):
         self.norm_type = norm_type
     
     def backward(self, trainer, i, inputs, obj_val):
+        if obj_val is None:
+            return
+
         if trainer.scaler is not None:
             trainer.scaler.unscale_(trainer.optimizer)
 
