@@ -4,21 +4,22 @@ from abc import abstractmethod
 
 class Queue[T](State):
 
-    def __init__(self, block):
+    def __init__(self, block=None):
         super().__init__()
 
-        self._block = block
+        if block is not None:
+            print('block is deprecated')
+
+        self._running = False
         self.__clean_state()
 
     def run(self):
         if self._callback is None:
             raise AttributeError('register_callback has not been called on this queue')
-
-        if not self._block and self._state is not None:
-            raise AttributeError('queue is already running')
-
-        self._running = True
-        self._state = self._init_state()
+        
+        if not self._running:
+            self._running = True
+            self._state = self._init_state()
         return self
         
     @abstractmethod
