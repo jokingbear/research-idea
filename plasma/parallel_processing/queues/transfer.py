@@ -1,0 +1,27 @@
+from .base import Queue
+from multiprocessing import JoinableQueue
+from ...functional import partials
+from .utils import internal_run
+from threading import Thread
+from .signals import Signal
+
+
+class TransferQueue(Queue[Thread]):
+
+    def __init__(self):
+        super().__init__()
+
+        self._receiver = JoinableQueue()
+
+    def put(self, x):
+        self._receiver.put(x)
+
+    def _init_state(self):
+        runner = partials(internal_run, self._receiver, False, self._callback)
+        thread = Thread(target=runner) 
+        thread.start()
+        return thread
+
+    def release(self):
+        self._receiver.put(Signal.CANCEL)
+        self._state.join()

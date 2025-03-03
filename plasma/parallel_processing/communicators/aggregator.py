@@ -4,7 +4,6 @@ import multiprocessing as mp
 from ...functional import State
 from tqdm.auto import tqdm
 from multiprocessing.managers import SyncManager, ValueProxy
-from queue import Empty
 
 
 class Aggregator(State):
@@ -36,6 +35,9 @@ class Aggregator(State):
 
         if self._process_queue is not None and self._finished.value == self.total:
             self._process_queue.put(self._results)
+        
+        if self._finished.value == self.total:
+            return self._results
 
     def wait(self, **tqdm_kwargs):
         with tqdm(total=self.total, **tqdm_kwargs) as prog:
