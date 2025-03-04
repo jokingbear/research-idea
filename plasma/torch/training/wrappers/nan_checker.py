@@ -1,10 +1,10 @@
 import torch
 
-from ..bases.trainer_wrapper import TrainerWrapper
+from ..bases import ForwardWrapper
 
 
-class NanChecker(TrainerWrapper):
+class NanChecker(ForwardWrapper):
 
-    def forward(self, trainer, i, inputs, outputs):
+    def append(self, trainer, i, inputs, outputs):
         if bool(torch.isnan(outputs).prod()):
             raise RuntimeError('loss is nan')

@@ -1,2 +1,3 @@
 from .trainer import Trainer
-from .trainer_wrapper import TrainerWrapper
+from .backward_wrapper import BackwardWrapper
+from .forward_wrapper import ForwardWrapper
