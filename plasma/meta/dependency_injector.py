@@ -23,7 +23,17 @@ class DependencyInjector(AutoPipe):
         for n in names:
             self._recursive_init(n, object_dict, init_args)
                 
-        return object_dict
+        return {n: object_dict.get(n, _NotInitialized) for n in names}
+    
+    def add_dependency(self, name, value):
+        assert name[0] != '_', 'dependency cannot start with _'
+        assert callable(value), 'depdency should be callable'
+        setattr(name, value)
+
+    @property
+    def injection_points(self):
+        return {k: attrs.get('value', _NotInitialized) for k, attrs in self._dep_graph.nodes.items() 
+                if self._dep_graph.out_degree(k) == 0}
 
     def _recursive_init(self, key, object_dict:dict, init_args:dict):
         if key not in object_dict and key in self._dep_graph:
@@ -92,11 +102,15 @@ class _NotInitialized:
 
 
 def _render_node(graph:nx.DiGraph, key, prefix='|', indent=' ' * 2):
-    lines = [key]
-    for n in graph.neighbors(key):
-        rendered_lines = _render_node(graph, n, prefix, indent)
-        rendered_lines = rendered_lines.split('\n')
-        rendered_lines = [prefix + indent + t for t in rendered_lines]
-        lines.extend(rendered_lines)
+    node = graph.nodes[key]
+    if 'value' in node:
+        lines = [f'{key}={type(node["value"])}']
+    else:
+        lines = [key]
+        for n in graph.neighbors(key):
+            rendered_lines = _render_node(graph, n, prefix, indent)
+            rendered_lines = rendered_lines.split('\n')
+            rendered_lines = [prefix + indent + t for t in rendered_lines]
+            lines.extend(rendered_lines)
     
     return '\n'.join(lines)
