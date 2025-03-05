@@ -35,6 +35,14 @@ class DependencyInjector(AutoPipe):
         return {k: attrs.get('value', _NotInitialized) for k, attrs in self._dep_graph.nodes.items() 
                 if self._dep_graph.out_degree(k) == 0}
 
+    def inspect(self, name):
+        if name in self._dep_graph:
+            attributes = self._dep_graph.nodes[name]
+            if 'value' in attributes:
+                return attributes['value']
+            
+            return attributes['initiator']
+
     def _recursive_init(self, key, object_dict:dict, init_args:dict):
         if key not in object_dict and key in self._dep_graph:
             arg_maps = {}
