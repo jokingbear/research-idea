@@ -1,6 +1,3 @@
-from functools import wraps
-
-
 def automap(func):
 
     def alt_func(inputs):
