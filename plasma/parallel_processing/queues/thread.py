@@ -9,7 +9,7 @@ from .base import Queue
 class ThreadQueue(Queue[list[threading.Thread]]):
 
     def __init__(self, n=1, persistent=False, qsize=0):
-        super().__init__(block=False)
+        super().__init__()
 
         self.persistent = persistent
         self.n = n

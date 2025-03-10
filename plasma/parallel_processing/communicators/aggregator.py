@@ -36,7 +36,7 @@ class Aggregator(State):
         if self._process_queue is not None and self._finished.value == self.total:
             self._process_queue.put(self._results)
         
-        if self._finished.value == self.total:
+        if self.finished == self.total:
             return self._results
 
     def wait(self, **tqdm_kwargs):

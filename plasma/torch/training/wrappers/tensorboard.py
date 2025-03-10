@@ -1,8 +1,8 @@
 from torch.utils.tensorboard import SummaryWriter
-from ..bases.trainer_wrapper import TrainerWrapper
+from ..bases import ForwardWrapper
 
 
-class Tensorboard(TrainerWrapper):
+class Tensorboard(ForwardWrapper):
 
     def __init__(self, log_dir):
         super().__init__()
@@ -11,7 +11,7 @@ class Tensorboard(TrainerWrapper):
         self._writer = SummaryWriter(self.log_dir)
         self._counter = 0
 
-    def forward(self, trainer, i, inputs, outputs):
+    def append(self, trainer, i, inputs, outputs):
         writer = self._writer
         epoch = trainer.current_epoch
         loss_val = outputs

@@ -13,8 +13,6 @@ def internal_run(queue:Queue, persistent, callback):
             try:
                 callback(data)
             except Exception as e:
-                if persistent:
-                    queue.put(data)
                 exception = e
 
         queue.task_done()
