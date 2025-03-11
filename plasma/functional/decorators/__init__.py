@@ -1,1 +1,1 @@
-from .utils import automap
+from .utils import automap, propagate

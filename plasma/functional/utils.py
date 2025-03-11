@@ -15,11 +15,6 @@ class proxy_func(ABC):
     def __call__(self, *args: Any, **kwds: Any) -> Any:
         pass
 
-    def __get__(self, instance, owner):
-        def run_instance(*args, **kwargs):
-            return self.__call__(instance, *args, **kwargs)
-        return run_instance
-
 
 class auto_map_func(proxy_func):
 
@@ -72,7 +67,7 @@ class partials(proxy_func):
         return f'{func_repr}({params})'
 
 
-class chain(SequentialPipe):
+class chain(proxy_func):
 
     def __init__(self, func1, func2) -> None:
         super().__init__()
@@ -80,5 +75,5 @@ class chain(SequentialPipe):
         self.func1 = func1
         self.func2 = func2
 
-    def __get__(self, instance, owner):
-        return partials(self.run, instance)
+    def __repr__(self):
+        return f'{self.func1} -> {self.func2}'
