@@ -68,8 +68,10 @@ class GraphMatcher(AutoPipe):
         sorting_criteria = ['substring_matching_score', 'matched_len']
         candidates = candidates.groupby(['query_start_index', 'query_end_index']).apply(lambda df: df.sort_values(sorting_criteria, ascending=False),
                                                                                         include_groups=False)
-        candidates = candidates.droplevel(level=None)
-        return candidates
+        try:
+            candidates = candidates.droplevel(level=None)
+        finally:
+            return candidates
     
     def _run_text(self, start_idx:int, text:str):
         token_frame = self.token_splitter.run(text)
