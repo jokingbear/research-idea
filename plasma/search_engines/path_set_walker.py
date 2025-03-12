@@ -37,7 +37,7 @@ class PathWalker(AutoPipe):
                 if 'candidate' in self._graph.nodes[token]:
                     data.append([(token,), idx, idx + 1, 1, score])
         
-        data = pd.DataFrame(data, columns=['candidate', 'query_start_index', 'query_end_index', 'match_len', 'score'])
+        data = pd.DataFrame(data, columns=['candidate', 'query_start_index', 'query_end_index', 'matched_len', 'score'])
         return data
 
     def _run_multi(self, token_frame:pd.DataFrame):
@@ -51,7 +51,7 @@ class PathWalker(AutoPipe):
                     candidate_frame = pd.DataFrame({'candidate': list(candidates)})
                     candidate_frame['query_start_index'] = idx
                     candidate_frame['query_end_index'] = end_idx + 1
-                    candidate_frame['match_len'] = end_idx - idx + 1
+                    candidate_frame['matched_len'] = end_idx - idx + 1
                     candidate_frame['start_token'] = db_token
                     candidate_frame['end_token'] = token_frame.iloc[end_idx]['matches'].index[end_match_idx]
                     data.append(candidate_frame)
@@ -59,13 +59,13 @@ class PathWalker(AutoPipe):
         if len(data) > 0:
             data = pd.concat(data, axis=0, ignore_index=True)
             
-            aligned_frame = data[['start_token', 'end_token', 'query_start_index', 'match_len', 'candidate']]
+            aligned_frame = data[['start_token', 'end_token', 'query_start_index', 'matched_len', 'candidate']]
             scorer = partials(_score_1st_match, token_frame, pre_apply_before=False)
             scorer = auto_map_func(scorer)
             scores = [scorer(row) for row in aligned_frame.itertuples(index=False)]
             data['score'] = scores
             data = data[data['score'] >= self.threshold]
-            return data[['candidate', 'query_start_index', 'query_end_index', 'match_len', 'score']]
+            return data[['candidate', 'query_start_index', 'query_end_index', 'matched_len', 'score']]
 
     def _walk(self, text_index:int, match_index:int, token_frame:pd.DataFrame, path_candidates:set, results: dict):
         next_index = text_index + 1
@@ -91,12 +91,12 @@ class PathWalker(AutoPipe):
 
     def _sort_values(self, df:pd.DataFrame):
         n = self.top_k or len(df)
-        return df.sort_values(['score', 'match_len'], ascending=False).iloc[:n]
+        return df.sort_values(['score', 'matched_len'], ascending=False).iloc[:n]
 
 
-def _score_1st_match(start_token, end_token, start_query_index, match_len, candidate, token_frame):
+def _score_1st_match(start_token, end_token, start_query_index, matched_len, candidate, token_frame):
     for i, token in enumerate(candidate):
-        j = i + match_len
+        j = i + matched_len
         if token == start_token and j <= len(candidate) and candidate[j - 1] == end_token:
             substring = candidate[i:j]
             if all(tk in token_frame.iloc[start_query_index + k]['matches'].index for k, tk in enumerate(substring)):

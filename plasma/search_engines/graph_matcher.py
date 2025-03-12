@@ -62,10 +62,10 @@ class GraphMatcher(AutoPipe):
         if len(candidates) > 0:
             candidates = pd.concat(candidates, axis=0, ignore_index=True)
         else:
-            colums = ['query_start_index', 'query_end_index', 'data_index', 'original', 'substring_matching_score', 'match_len', 'coverage_score']
+            colums = ['query_start_index', 'query_end_index', 'data_index', 'original', 'substring_matching_score', 'matched_len', 'coverage_score']
             candidates = pd.DataFrame([], columns=colums)
         
-        sorting_criteria = ['substring_matching_score', 'match_len']
+        sorting_criteria = ['substring_matching_score', 'matched_len']
         candidates = candidates.groupby(['query_start_index', 'query_end_index']).apply(lambda df: df.sort_values(sorting_criteria, ascending=False),
                                                                                         include_groups=False)
         return candidates
@@ -75,11 +75,11 @@ class GraphMatcher(AutoPipe):
         token_frame['matches'] = self.token_matcher.run(token_frame['token'])
         candidates = self.walker.run(token_frame)
         
-        candidates['coverage_score'] = candidates['match_len'] / candidates['candidate'].map(len)
+        candidates['coverage_score'] = candidates['matched_len'] / candidates['candidate'].map(len)
         candidates['query_start_index'] = token_frame.iloc[candidates['query_start_index']]['start_idx'].values + start_idx
         candidates['query_end_index'] = token_frame.iloc[candidates['query_end_index'] - 1]['end_idx'].values + start_idx
         candidates = candidates.merge(self._data, left_on='candidate', right_on='tokenized')
 
-        colums = ['query_start_index', 'query_end_index', 'data_index', 'original', 'score', 'match_len', 'coverage_score']
+        colums = ['query_start_index', 'query_end_index', 'data_index', 'original', 'score', 'matched_len', 'coverage_score']
         candidates = candidates[colums].rename(columns={'score': 'substring_matching_score'})
         return candidates
