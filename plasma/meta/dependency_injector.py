@@ -30,6 +30,14 @@ class DependencyInjector(AutoPipe):
         assert callable(value), 'depdency should be callable'
         setattr(name, value)
 
+    def decorate_dependency(self, name):
+
+        def decorator(func_or_class):
+            self.add_dependency(name, func_or_class)
+            return func_or_class
+
+        return decorator
+
     @property
     def injection_points(self):
         return {k: attrs.get('value', _NotInitialized) for k, attrs in self._dep_graph.nodes.items() 
