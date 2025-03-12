@@ -9,6 +9,7 @@ class Queue[T](State):
 
         if block is not None:
             print('block is deprecated')
+            self._block = block
 
         self._running = False
         self.__clean_state()

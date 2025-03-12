@@ -73,4 +73,3 @@ class Timer:
 
     def __repr__(self):
         return f'(start={self.start}, end={self.end}, duration={self.duration})'
-
