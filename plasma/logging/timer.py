@@ -5,21 +5,14 @@ from functools import wraps
 from dataclasses import dataclass
 
 
-@dataclass
-class TimeIO:
-    name:str
-    args:list
-    kwargs:dict
-
-
 class Timer:
-    io = TimeIO
 
     def __init__(self, log_func=print, log_inputs=False) -> None:
         self.log_func = log_func
         self.log_inputs = log_inputs
         self._start = None
         self._end = None
+        self.io = TimeIO
 
     def __enter__(self):
         self._end = None
@@ -65,7 +58,7 @@ class Timer:
         def run_timer(*args, **kwargs):
             with self:
                 results = func(*args, **kwargs)
-            timeio = TimeIO(name, args if self.log_inputs else [], kwargs if self.log_inputs else {})
+            timeio = TimeIO(name, self, args if self.log_inputs else [], kwargs if self.log_inputs else {})
             self.log_func(timeio)
             return results
 
@@ -73,3 +66,11 @@ class Timer:
 
     def __repr__(self):
         return f'(start={self.start}, end={self.end}, duration={self.duration})'
+
+
+@dataclass
+class TimeIO:
+    name:str
+    timer: Timer
+    args:list
+    kwargs:dict
