@@ -32,7 +32,7 @@ class ProcessQueue(Queue[list[mp.Process]]):
 
             for p in self._state:
                 p.join()
-                p.close()
+                p.terminate()
         
         super().release()
 
