@@ -67,13 +67,10 @@ class partials(proxy_func):
         return f'{func_repr}({params})'
 
 
-class chain(proxy_func):
+class chain(SequentialPipe):
 
     def __init__(self, func1, func2) -> None:
         super().__init__()
 
         self.func1 = func1
         self.func2 = func2
-
-    def __repr__(self):
-        return f'{self.func1} -> {self.func2}'
