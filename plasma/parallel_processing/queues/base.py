@@ -1,5 +1,6 @@
 from ...functional import State, chain
 from abc import abstractmethod
+from warnings import warn
 
 
 class Queue[T](State):
@@ -8,7 +9,7 @@ class Queue[T](State):
         super().__init__()
 
         if block is not None:
-            print('block is deprecated')
+            warn('block is deprecated')
             self._block = block
 
         self._running = False

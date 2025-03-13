@@ -16,9 +16,10 @@ class Tensorboard(ForwardWrapper):
         loss_val = outputs
         step = self._counter
 
-        writer.add_scalar('loss', loss_val.float(), step)
-        if trainer.scheduler is not None:
-            for i, lr in enumerate(trainer.scheduler.get_last_lr()):
-                writer.add_scalar(f'lr-{i}', lr, step)
+        if loss_val is not None:
+            writer.add_scalar('loss', loss_val.float(), step)
+            if trainer.scheduler is not None:
+                for i, lr in enumerate(trainer.scheduler.get_last_lr()):
+                    writer.add_scalar(f'lr-{i}', lr, step)
 
         self._counter += 1
