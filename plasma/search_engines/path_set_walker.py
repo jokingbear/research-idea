@@ -26,6 +26,8 @@ class PathWalker(AutoPipe):
                 candidates = pd.concat([single_candidates, multi_candidates], axis=0, ignore_index=True)
             candidates = _remove_overlap(candidates)
 
+        candidates = candidates.copy()
+        candidates['coverage_score'] = candidates['matched_len'] / candidates['candidate'].map(len)
         candidates = candidates.groupby(['query_start_index', 'query_end_index'], as_index=False).apply(self._sort_values)
         return candidates
 
@@ -75,14 +77,19 @@ class PathWalker(AutoPipe):
         else:
             next_tokens = token_frame.iloc[next_index]['matches']
             current_token = token_frame.iloc[text_index]['matches'].index[match_index]
-            for next_match_index, next_token in enumerate(next_tokens.index):
-                if (current_token, next_token) in self._graph.edges:
-                    full_next_candidates = self._graph.edges[current_token, next_token]['paths']
 
-                    if len(path_candidates) > 0:
-                        candidates = path_candidates.intersection(full_next_candidates)
-                    else:
-                        candidates = full_next_candidates
+            if len(next_tokens) == 0:
+                results[text_index, match_index] = path_candidates
+            else:
+                for next_match_index, next_token in enumerate(next_tokens.index):
+                    candidates = {}
+                    if (current_token, next_token) in self._graph.edges:
+                        full_next_candidates = self._graph.edges[current_token, next_token]['paths']
+
+                        if len(path_candidates) > 0:
+                            candidates = path_candidates.intersection(full_next_candidates)
+                        else:
+                            candidates = full_next_candidates
 
                     if len(candidates) == 0:
                         results[text_index, match_index] = path_candidates
@@ -91,7 +98,7 @@ class PathWalker(AutoPipe):
 
     def _sort_values(self, df:pd.DataFrame):
         n = self.top_k or len(df)
-        return df.sort_values(['score', 'matched_len'], ascending=False).iloc[:n]
+        return df.sort_values(['score', 'coverage_score'], ascending=False).iloc[:n]
 
 
 def _score_1st_match(start_token, end_token, start_query_index, matched_len, candidate, token_frame):

@@ -20,7 +20,6 @@ class GraphMatcher(AutoPipe):
 
         tokenized_data, graph = self._build_graph(data)
         self._data = tokenized_data
-        self._graph = self._build_graph(data)
         self.token_matcher = TokenMatcher(graph, token_threshold)
         self.walker = PathWalker(graph, path_threshold, top_k)
     
@@ -64,21 +63,22 @@ class GraphMatcher(AutoPipe):
         else:
             colums = ['query_start_index', 'query_end_index', 'data_index', 'original', 'substring_matching_score', 'matched_len', 'coverage_score']
             candidates = pd.DataFrame([], columns=colums)
-        
-        sorting_criteria = ['substring_matching_score', 'matched_len']
-        candidates = candidates.groupby(['query_start_index', 'query_end_index']).apply(lambda df: df.sort_values(sorting_criteria, ascending=False),
-                                                                                        include_groups=False)
+       
         try:
             candidates = candidates.droplevel(level=None)
-        finally:
-            return candidates
+        except:
+            pass
+
+        sorting_criteria = ['substring_matching_score', 'coverage_score']
+        candidates = candidates.groupby(['query_start_index', 'query_end_index']).apply(lambda df: df.sort_values(sorting_criteria, ascending=False),
+                                                                                        include_groups=False)
+        return candidates
     
     def _run_text(self, start_idx:int, text:str):
         token_frame = self.token_splitter.run(text)
         token_frame['matches'] = self.token_matcher.run(token_frame['token'])
         candidates = self.walker.run(token_frame)
         
-        candidates['coverage_score'] = candidates['matched_len'] / candidates['candidate'].map(len)
         candidates['query_start_index'] = token_frame.iloc[candidates['query_start_index']]['start_idx'].values + start_idx
         candidates['query_end_index'] = token_frame.iloc[candidates['query_end_index'] - 1]['end_idx'].values + start_idx
         candidates = candidates.merge(self._data, left_on='candidate', right_on='tokenized')
