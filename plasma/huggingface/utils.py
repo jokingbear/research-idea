@@ -66,5 +66,5 @@ def download_folder(repo_id_folder, local_dir=None, repo_type='dataset'):
     
     path = snapshot_download(repo_id, revision=revision, repo_type=repo_type, 
                              allow_patterns=[folder_name], local_dir=local_dir)
-    path = path + '/' + folder_name
+    path = path + '/' + re.sub(r'\*.*', '', folder_name)
     return path
