@@ -4,6 +4,7 @@ import multiprocessing as mp
 from ...functional import State
 from tqdm.auto import tqdm
 from multiprocessing.managers import SyncManager, ValueProxy
+from warnings import warn
 
 
 class Aggregator(State):
@@ -11,7 +12,7 @@ class Aggregator(State):
     def __init__(self, total:int, sleep=1e-2, manager:SyncManager=None, process_base=False, ignore_none=True, count_none=True):
         super().__init__()
         if manager is not None:
-            print('manager is deprecated, use proces_base instead')
+            warn('manager is deprecated, use proces_base instead')
         self._results = []
 
         process_base = process_base or manager is not None
