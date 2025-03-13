@@ -64,15 +64,13 @@ class GraphMatcher(AutoPipe):
             colums = ['query_start_index', 'query_end_index', 'data_index', 'original', 'substring_matching_score', 'matched_len', 'coverage_score']
             candidates = pd.DataFrame([], columns=colums)
        
-        try:
-            candidates = candidates.droplevel(level=None)
-        except:
-            pass
-
         sorting_criteria = ['substring_matching_score', 'coverage_score']
         candidates = candidates.groupby(['query_start_index', 'query_end_index']).apply(lambda df: df.sort_values(sorting_criteria, ascending=False),
                                                                                         include_groups=False)
-        return candidates
+        try:
+            candidates = candidates.droplevel(level=None)
+        finally:
+            return candidates
     
     def _run_text(self, start_idx:int, text:str):
         token_frame = self.token_splitter.run(text)
