@@ -8,10 +8,12 @@ def automap(func):
     is_instance_method = signature.args[0] == 'self'
 
     def alt_func(*inputs):
-        instance = []
         if is_instance_method:
             instance = [inputs[0]]
             inputs = inputs[1]
+        else:
+            instance = []
+            inputs = inputs[0]
 
         if isinstance(inputs, (tuple, list)):
             return func(*instance, *inputs)
