@@ -1,2 +1,2 @@
 from . import wrappers
-from .bases import *
+from .bases import Trainer

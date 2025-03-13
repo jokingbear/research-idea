@@ -1,9 +1,9 @@
 import torch
 
-from ..bases.trainer_wrapper import TrainerWrapper
+from ..bases import BackwardWrapper
 
 
-class GradientClipping(TrainerWrapper):
+class GradientClipping(BackwardWrapper):
 
     def __init__(self, max_norm=1, norm_type=2):
         super().__init__()
@@ -11,8 +11,8 @@ class GradientClipping(TrainerWrapper):
         self.max_norm = max_norm
         self.norm_type = norm_type
     
-    def backward(self, trainer, i, inputs, obj_val):
-        if obj_val is None:
+    def append(self, trainer, i, inputs, objective_val):
+        if objective_val is None:
             return
 
         if trainer.scaler is not None:

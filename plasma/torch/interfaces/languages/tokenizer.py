@@ -1,3 +1,5 @@
+import numpy as np
+
 from abc import abstractmethod
 
 
@@ -19,3 +21,13 @@ class Tokenizer:
     @abstractmethod
     def __len__(self):
         pass
+    
+    def encode_batch(self, texts:list[str], add_start_end=True):
+        tokens = [self.encode(txt, add_start_end) for txt in texts]
+        max_len = max(len(tks) for tks in tokens)
+
+        for tks in tokens:
+            diff = max_len - len(tks)
+            tks.extend([self.eos_token_id] * diff)
+        
+        return np.array(tokens)
