@@ -51,6 +51,12 @@ class DependencyInjector(AutoPipe):
             
             return attributes['initiator']
 
+    def merge(self, injector):
+        assert isinstance(injector, DependencyInjector), 'injector must be an DependencyInjector instance'
+        self._dep_graph = nx.compose(self._dep_graph, injector._dep_graph)
+
+        return self
+
     def _recursive_init(self, key, object_dict:dict, init_args:dict):
         if key not in object_dict and key in self._dep_graph:
             arg_maps = {}
