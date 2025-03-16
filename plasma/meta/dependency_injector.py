@@ -28,7 +28,7 @@ class DependencyInjector(AutoPipe):
     def add_dependency(self, name, value):
         assert name[0] != '_', 'dependency cannot start with _'
         assert callable(value), 'depdency should be callable'
-        setattr(name, value)
+        setattr(self, name, value)
 
     def decorate_dependency(self, name):
 
@@ -50,6 +50,12 @@ class DependencyInjector(AutoPipe):
                 return attributes['value']
             
             return attributes['initiator']
+
+    def merge(self, injector):
+        assert isinstance(injector, DependencyInjector), 'injector must be an DependencyInjector instance'
+        self._dep_graph = nx.compose(self._dep_graph, injector._dep_graph)
+
+        return self
 
     def _recursive_init(self, key, object_dict:dict, init_args:dict):
         if key not in object_dict and key in self._dep_graph:
