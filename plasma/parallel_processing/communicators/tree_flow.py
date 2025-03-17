@@ -52,6 +52,8 @@ class TreeFlow(State):
             elif 'block' in data_graph.nodes[q]:
                 block = data_graph.nodes[q]['block']
                 q.register_callback(block).run()
+        
+        return self
 
     def _build_data_graph(self):
         graph = nx.DiGraph()
@@ -77,6 +79,18 @@ class TreeFlow(State):
             flows.append(_render(self._module_graph, n))
         flows = ('\n' + '=' * 100 + '\n').join(flows)
         return flows
+
+    def __enter__(self):
+        return self.run()
+    
+    def release(self):
+        for edge_attrs in self._module_graph.edges.values():
+            queue:Queue = edge_attrs['queue']
+            queue.release()
+    
+    def __exit__(self, *_):
+        self.release()
+
 
 def _propagate(queues:list[Queue], x):
     for q in queues:

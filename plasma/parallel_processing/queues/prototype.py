@@ -1,4 +1,5 @@
 from .base import Queue
+from warnings import warn
 
 
 class QueuePrototype[T](Queue[T]):
@@ -6,4 +7,4 @@ class QueuePrototype[T](Queue[T]):
     def __init__(self, block):
         super().__init__(block)
 
-        print('this class is deprecated, please use Queue')
+        warn('this class is deprecated, please use Queue')

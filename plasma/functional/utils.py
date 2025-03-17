@@ -74,4 +74,3 @@ class chain(SequentialPipe):
 
         self.func1 = func1
         self.func2 = func2
-
