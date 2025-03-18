@@ -87,7 +87,11 @@ class DependencyInjector(AutoPipe):
             
             arg_len = self._dep_graph.out_degree(key)
             if len(arg_maps) == arg_len:
-                object_dict[key] = self._dep_graph.nodes[key]['initiator'](**arg_maps)
+                try:
+                    object_dict[key] = self._dep_graph.nodes[key]['initiator'](**arg_maps)
+                except:
+                    print(f'error at {key}')
+                    raise
 
     def __setattr__(self, key, value):
         if callable(value):
