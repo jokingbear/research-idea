@@ -22,23 +22,23 @@ class TreeFlow(State):
                 and block2 is not None \
                 and len([*self._module_graph.predecessors(block2)]) == 0, 'block2 already has a predecessor'
 
-            block1 = block1 or _ProxyIO
-            block2 = block2 or _ProxyIO
+            block1 = block1 or ProxyIO
+            block2 = block2 or ProxyIO
             self._module_graph.add_edge(block1, block2, queue=queue)
 
     @property
     def inputs(self)->dict[str, Queue]:
         results = {}
-        for n in self._module_graph.successors(_ProxyIO):
-            q = self._module_graph.edges[_ProxyIO, n]['queue']
+        for n in self._module_graph.successors(ProxyIO):
+            q = self._module_graph.edges[ProxyIO, n]['queue']
             results[n] = q
         return results
 
     @property
     def outputs(self)->dict[str, Queue]:
         results = {}
-        for n in self._module_graph.predecessors(_ProxyIO):
-            q = self._module_graph.edges[n, _ProxyIO]['queue']
+        for n in self._module_graph.predecessors(ProxyIO):
+            q = self._module_graph.edges[n, ProxyIO]['queue']
             results[n] = q
         return results
     
@@ -66,7 +66,7 @@ class TreeFlow(State):
         graph = nx.DiGraph()
 
         for b in self._module_graph:
-            if b is not _ProxyIO:
+            if b is not ProxyIO:
                 b0 = [*self._module_graph.predecessors(b)][0]
                 q0 = self._module_graph.edges[b0, b]['queue']
 
@@ -89,10 +89,10 @@ class TreeFlow(State):
 
     def __repr__(self):
         flows = []
-        for n in self._module_graph.successors(_ProxyIO):
+        for n in self._module_graph.successors(ProxyIO):
             lines = self._render_lines(n)
             lines[0] = '|-' + lines[0]
-            q:Queue = self._module_graph.edges[_ProxyIO, n]['queue']
+            q:Queue = self._module_graph.edges[ProxyIO, n]['queue']
             queue_text = _render_queue(q)
             indent = ' ' * 2
             lines = [indent + l for l in lines]
@@ -114,7 +114,7 @@ class TreeFlow(State):
         self.release()
     
     def _render_lines(self, key):
-        if key is not _ProxyIO:
+        if key is not ProxyIO:
             processor = block = getattr(self, key)
             if isinstance(processor, Processor):
                 block = processor.block
@@ -145,7 +145,7 @@ class TreeFlow(State):
         return []
 
 
-class _ProxyIO:
+class ProxyIO:
     pass
 
 
