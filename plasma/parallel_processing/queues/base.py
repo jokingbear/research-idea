@@ -45,9 +45,6 @@ class Queue[T](State):
     def release(self):
         self.__clean_state()
 
-    def join(self):
-        return self
-
     def __clean_state(self):
         self._state = None
         self._running = False
@@ -55,3 +52,8 @@ class Queue[T](State):
     @property
     def running(self):
         return self._running
+
+    def _num_runner(self):
+        return 1
+    
+    num_runner = property(fget=_num_runner)
