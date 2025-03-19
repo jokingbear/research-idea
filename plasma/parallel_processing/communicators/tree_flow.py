@@ -1,7 +1,7 @@
 import pandas as pd
 import networkx as nx
 
-from ...functional import State, partials
+from ...functional import State, partials, proxy_func
 from ..queues import Queue
 from .processor import Processor, Propagator
 
@@ -27,7 +27,7 @@ class TreeFlow(State):
             self._module_graph.add_edge(block1, block2, queue=queue)
 
     @property
-    def inputs(self):
+    def inputs(self)->dict[str, Queue]:
         results = {}
         for n in self._module_graph.successors(_ProxyIO):
             q = self._module_graph.edges[_ProxyIO, n]['queue']
@@ -35,12 +35,12 @@ class TreeFlow(State):
         return results
 
     @property
-    def outputs(self):
+    def outputs(self)->dict[str, Queue]:
         results = {}
         for n in self._module_graph.predecessors(_ProxyIO):
-            q = self._module_graph.edges[n, None]
-            if q is not None:
-                results[n] = q
+            q = self._module_graph.edges[n, _ProxyIO]['queue']
+            results[n] = q
+        return results
     
     def run(self):
         data_graph = self._build_data_graph()
@@ -90,11 +90,15 @@ class TreeFlow(State):
     def __repr__(self):
         flows = []
         for n in self._module_graph.successors(_ProxyIO):
-            rendered = self._render(n)
+            lines = self._render_lines(n)
+            lines[0] = '|-' + lines[0]
             q:Queue = self._module_graph.edges[_ProxyIO, n]['queue']
-            num_runner = f'(runner={q.num_runner})'
-            rendered = f'[{type(q).__name__}{num_runner}]\n\t|-{rendered}'
-            flows.append(rendered)
+            queue_text = _render_queue(q)
+            indent = ' ' * 2
+            lines = [indent + l for l in lines]
+            lines.insert(0, queue_text)
+            flows.append('\n\n'.join(lines))
+
         flows = ('\n' + '=' * 100 + '\n').join(flows)
         return flows
 
@@ -109,30 +113,40 @@ class TreeFlow(State):
     def __exit__(self, *_):
         self.release()
     
-    def _render(self, key, indent='\t'):
+    def _render_lines(self, key):
         if key is not _ProxyIO:
-            obj = getattr(self, key).block
-            try:
-                name = type(obj).name
-            except:
+            processor:Processor = getattr(self, key)
+            obj = processor.block
+            if type(obj).__name__ == 'function' or isinstance(obj, proxy_func):
                 name = repr(obj)
-            lines = [f'({key}:{name})']
+            else:
+                name = type(obj).__name__
+
+            process_txt = ''
+            if not isinstance(processor, Propagator):
+                process_txt = f'-{type(processor).__name__}'
+
+            lines = [f'({key}:{name}){process_txt}']
+            indent = ' ' * 2
             for n in self._module_graph.successors(key):
-                rendered_lines = self._render(n, indent)
-                rendered_lines = rendered_lines.split('\n')
-                rendered_lines[0] = '|-' + rendered_lines[0]
-                rendered_lines = [indent * 2 + l for l in rendered_lines]
-
                 q:Queue = self._module_graph.edges[key, n]['queue']
-                num_runner = f'(runner={q.num_runner})'
-                rendered_lines.insert(0, indent + f'|-[{type(q).__name__}{num_runner}]')
+                qtext = _render_queue(q)
+                lines.append(indent + f'|-{qtext}')
+                indent += ' ' * 2
 
-                rendered_lines = [indent + l for l in rendered_lines]
-                lines.extend(rendered_lines)
-            lines = '\n'.join(lines)
+                rendered_lines = self._render_lines(n)
+                if len(rendered_lines) > 0:
+                    rendered_lines[0] = '|-' + rendered_lines[0]
+                    rendered_lines = [indent + l for l in rendered_lines]
+                    lines.extend(rendered_lines)
             return lines
-        return ''
+        return []
 
 
 class _ProxyIO:
     pass
+
+
+def _render_queue(queue:Queue):
+    num_runner = f'(runner={queue.num_runner})'
+    return f'[{type(queue).__name__}{num_runner}]'
