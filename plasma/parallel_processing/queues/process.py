@@ -38,3 +38,6 @@ class ProcessQueue(Queue[list[mp.Process]]):
 
     def join(self):
         self._queue.join()
+
+    def _num_runner(self):
+        return self.n

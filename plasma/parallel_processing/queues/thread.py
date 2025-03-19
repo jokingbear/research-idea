@@ -39,3 +39,6 @@ class ThreadQueue(Queue[list[threading.Thread]]):
 
     def join(self):
         self._queue.join()
+
+    def _num_runner(self):
+        return self.n

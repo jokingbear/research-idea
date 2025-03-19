@@ -26,6 +26,7 @@ class TreeFlow(State):
             block2 = block2 or _ProxyIO
             self._module_graph.add_edge(block1, block2, queue=queue)
 
+    @property
     def inputs(self):
         results = {}
         for n in self._module_graph.successors(_ProxyIO):
@@ -33,6 +34,7 @@ class TreeFlow(State):
             results[n] = q
         return results
 
+    @property
     def outputs(self):
         results = {}
         for n in self._module_graph.predecessors(_ProxyIO):
@@ -88,7 +90,11 @@ class TreeFlow(State):
     def __repr__(self):
         flows = []
         for n in self._module_graph.successors(_ProxyIO):
-            flows.append(self._render(n))
+            rendered = self._render(n)
+            q:Queue = self._module_graph.edges[_ProxyIO, n]['queue']
+            num_runner = f'(runner={q.num_runner})'
+            rendered = f'[{type(q).__name__}{num_runner}]\n\t|-{rendered}'
+            flows.append(rendered)
         flows = ('\n' + '=' * 100 + '\n').join(flows)
         return flows
 
@@ -105,11 +111,22 @@ class TreeFlow(State):
     
     def _render(self, key, indent='\t'):
         if key is not _ProxyIO:
-            lines = [f'{key}']
+            obj = getattr(self, key).block
+            try:
+                name = type(obj).name
+            except:
+                name = repr(obj)
+            lines = [f'({key}:{name})']
             for n in self._module_graph.successors(key):
                 rendered_lines = self._render(n, indent)
                 rendered_lines = rendered_lines.split('\n')
-                rendered_lines[0] = '|--' + rendered_lines[0]
+                rendered_lines[0] = '|-' + rendered_lines[0]
+                rendered_lines = [indent * 2 + l for l in rendered_lines]
+
+                q:Queue = self._module_graph.edges[key, n]['queue']
+                num_runner = f'(runner={q.num_runner})'
+                rendered_lines.insert(0, indent + f'|-[{type(q).__name__}{num_runner}]')
+
                 rendered_lines = [indent + l for l in rendered_lines]
                 lines.extend(rendered_lines)
             lines = '\n'.join(lines)
