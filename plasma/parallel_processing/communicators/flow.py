@@ -1,5 +1,5 @@
 from ..queues import Queue
-from .tree_flow import TreeFlow
+from .tree_flow import TreeFlow, ProxyIO
 
 
 class Flow(TreeFlow):
@@ -10,6 +10,10 @@ class Flow(TreeFlow):
             if key == 'outputs':
                 prev_block = self._marked_attributes[-1]
                 triplets = value, prev_block, None
+
+                predecessors = [*self._module_graph.predecessors(ProxyIO)]
+                for n in predecessors:
+                    self._module_graph.remove_edge(n, ProxyIO)
             else:
                 attr_idx = [i for i, attr in enumerate(self._marked_attributes) if attr == key][0]
                 if attr_idx == 0:
@@ -25,3 +29,7 @@ class Flow(TreeFlow):
     def put(self, x):
         for q in self.inputs.values():
             q.put(x)
+
+    def __setattr__(self, key, value):
+        assert key not in {'outputs'}, 'outputs is reserved'
+        return super().__setattr__(key, value)

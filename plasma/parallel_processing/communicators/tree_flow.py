@@ -4,6 +4,7 @@ import networkx as nx
 from ...functional import State, partials, proxy_func
 from ..queues import Queue
 from .processor import Processor, Propagator
+from ._proxy import ProxyIO
 
 
 class TreeFlow(State):
@@ -22,23 +23,23 @@ class TreeFlow(State):
                 and block2 is not None \
                 and len([*self._module_graph.predecessors(block2)]) == 0, 'block2 already has a predecessor'
 
-            block1 = block1 or _ProxyIO
-            block2 = block2 or _ProxyIO
+            block1 = block1 or ProxyIO
+            block2 = block2 or ProxyIO
             self._module_graph.add_edge(block1, block2, queue=queue)
 
     @property
     def inputs(self)->dict[str, Queue]:
         results = {}
-        for n in self._module_graph.successors(_ProxyIO):
-            q = self._module_graph.edges[_ProxyIO, n]['queue']
+        for n in self._module_graph.successors(ProxyIO):
+            q = self._module_graph.edges[ProxyIO, n]['queue']
             results[n] = q
         return results
 
     @property
     def outputs(self)->dict[str, Queue]:
         results = {}
-        for n in self._module_graph.predecessors(_ProxyIO):
-            q = self._module_graph.edges[n, _ProxyIO]['queue']
+        for n in self._module_graph.predecessors(ProxyIO):
+            q = self._module_graph.edges[n, ProxyIO]['queue']
             results[n] = q
         return results
     
@@ -66,7 +67,7 @@ class TreeFlow(State):
         graph = nx.DiGraph()
 
         for b in self._module_graph:
-            if b is not _ProxyIO:
+            if b is not ProxyIO:
                 b0 = [*self._module_graph.predecessors(b)][0]
                 q0 = self._module_graph.edges[b0, b]['queue']
 
@@ -89,15 +90,14 @@ class TreeFlow(State):
 
     def __repr__(self):
         flows = []
-        for n in self._module_graph.successors(_ProxyIO):
+        for n in self._module_graph.successors(ProxyIO):
+            flow_lines = [_render_queue(self._module_graph.edges[ProxyIO, n]['queue'])]
             lines = self._render_lines(n)
             lines[0] = '|-' + lines[0]
-            q:Queue = self._module_graph.edges[_ProxyIO, n]['queue']
-            queue_text = _render_queue(q)
             indent = ' ' * 2
             lines = [indent + l for l in lines]
-            lines.insert(0, queue_text)
-            flows.append('\n\n'.join(lines))
+            flow_lines.extend(lines)
+            flows.append('\n\n'.join(flow_lines))
 
         flows = ('\n' + '=' * 100 + '\n').join(flows)
         return flows
@@ -106,15 +106,16 @@ class TreeFlow(State):
         return self.run()
     
     def release(self):
-        for edge_attrs in self._module_graph.edges.values():
-            queue:Queue = edge_attrs['queue']
-            queue.release()
+        for (s, e), edge_attrs in self._module_graph.edges.items():
+            if e is not ProxyIO:
+                queue:Queue = edge_attrs['queue']
+                queue.release()
     
     def __exit__(self, *_):
         self.release()
     
     def _render_lines(self, key):
-        if key is not _ProxyIO:
+        if key is not ProxyIO:
             processor = block = getattr(self, key)
             if isinstance(processor, Processor):
                 block = processor.block
@@ -129,12 +130,12 @@ class TreeFlow(State):
                 process_txt = f'-{type(processor).__name__}'
 
             lines = [f'({key}:{name}){process_txt}']
-            indent = ' ' * 2
             for n in self._module_graph.successors(key):
+                indent = ' ' * 2
                 q:Queue = self._module_graph.edges[key, n]['queue']
                 qtext = _render_queue(q)
-                lines.append(indent + f'|-{qtext}')
-                indent += ' ' * 2
+                lines.append(f'{indent}|-{qtext}')
+                indent += indent
 
                 rendered_lines = self._render_lines(n)
                 if len(rendered_lines) > 0:
@@ -143,10 +144,6 @@ class TreeFlow(State):
                     lines.extend(rendered_lines)
             return lines
         return []
-
-
-class _ProxyIO:
-    pass
 
 
 def _render_queue(queue:Queue):

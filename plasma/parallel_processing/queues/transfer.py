@@ -1,6 +1,6 @@
 from .base import Queue
 from multiprocessing import JoinableQueue
-from ...functional import partials
+from ...functional import partials, decorators
 from .utils import internal_run
 from threading import Thread
 from .signals import Signal
@@ -13,6 +13,7 @@ class TransferQueue(Queue[Thread]):
 
         self._receiver = JoinableQueue()
 
+    @decorators.propagate(Signal.IGNORE)
     def put(self, x):
         self._receiver.put(x)
 
