@@ -91,14 +91,13 @@ class TreeFlow(State):
     def __repr__(self):
         flows = []
         for n in self._module_graph.successors(ProxyIO):
+            flow_lines = [_render_queue(self._module_graph.edges[ProxyIO, n]['queue'])]
             lines = self._render_lines(n)
             lines[0] = '|-' + lines[0]
-            q:Queue = self._module_graph.edges[ProxyIO, n]['queue']
-            queue_text = _render_queue(q)
             indent = ' ' * 2
             lines = [indent + l for l in lines]
-            lines.insert(0, queue_text)
-            flows.append('\n\n'.join(lines))
+            flow_lines.extend(lines)
+            flows.append('\n\n'.join(flow_lines))
 
         flows = ('\n' + '=' * 100 + '\n').join(flows)
         return flows
@@ -131,12 +130,12 @@ class TreeFlow(State):
                 process_txt = f'-{type(processor).__name__}'
 
             lines = [f'({key}:{name}){process_txt}']
-            indent = ' ' * 2
             for n in self._module_graph.successors(key):
+                indent = ' ' * 2
                 q:Queue = self._module_graph.edges[key, n]['queue']
                 qtext = _render_queue(q)
-                lines.append(indent + f'|-{qtext}')
-                indent += ' ' * 2
+                lines.append(f'{indent}|-{qtext}')
+                indent += indent
 
                 rendered_lines = self._render_lines(n)
                 if len(rendered_lines) > 0:
