@@ -39,7 +39,7 @@ class Queue[T](State):
         return self
 
     def chain(self, callback):
-        assert self._running, \
+        assert not self._running, \
             'queue is already running, please release it to chain new function'
         self._callback = chain(self._callback, callback)
         return self

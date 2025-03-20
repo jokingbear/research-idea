@@ -21,7 +21,7 @@ class ProcessQueue(Queue[list[mp.Process]]):
         [p.start() for p in processes]
         return processes
 
-    @propagate(Signal.CANCEL)
+    @propagate(Signal.IGNORE)
     def put(self, x):
         self._queue.put(x)
     
@@ -37,9 +37,6 @@ class ProcessQueue(Queue[list[mp.Process]]):
                 p.terminate()
         
         super().release()
-
-    def join(self):
-        self._queue.join()
 
     def _num_runner(self):
         return self.n
