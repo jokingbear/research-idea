@@ -3,6 +3,7 @@ import multiprocessing as mp
 from .signals import Signal
 from .utils import internal_run
 from .base import Queue
+from ...functional.decorators import propagate
 
 
 class ProcessQueue(Queue[list[mp.Process]]):
@@ -20,6 +21,7 @@ class ProcessQueue(Queue[list[mp.Process]]):
         [p.start() for p in processes]
         return processes
 
+    @propagate(Signal.CANCEL)
     def put(self, x):
         self._queue.put(x)
     
