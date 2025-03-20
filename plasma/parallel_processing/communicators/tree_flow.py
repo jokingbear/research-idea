@@ -19,9 +19,8 @@ class TreeFlow(State):
             assert block1 is None or hasattr(self, block1), 'block1 must be an attribute of the flow or None'
             assert block2 is None or hasattr(self, block2), 'block2 must be an attribute of the flow or None '
             assert block1 is not None or block2 is not None, 'one of the two block must not be empty'
-            assert block2 not in self._module_graph or block2 in self._module_graph \
-                and block2 is not None \
-                and len([*self._module_graph.predecessors(block2)]) == 0, 'block2 already has a predecessor'
+            assert block2 is None or block2 not in self._module_graph or (block1, block2) in self._module_graph.edges, \
+                'block2 already has a predecessor'
 
             block1 = block1 or ProxyIO
             block2 = block2 or ProxyIO
