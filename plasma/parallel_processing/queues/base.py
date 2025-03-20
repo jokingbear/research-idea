@@ -33,12 +33,14 @@ class Queue[T](State):
         pass
 
     def register_callback(self, callback):
+        assert not self._running,\
+            'queue is already running, please release it to register new function'
         self._callback = callback
         return self
 
     def chain(self, callback):
-        if self._running:
-            raise RuntimeError('queue is already running, please release it to chain new function')
+        assert self._running, \
+            'queue is already running, please release it to chain new function'
         self._callback = chain(self._callback, callback)
         return self
 

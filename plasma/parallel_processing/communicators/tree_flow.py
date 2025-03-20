@@ -4,6 +4,7 @@ import networkx as nx
 from ...functional import State, partials, proxy_func
 from ..queues import Queue
 from .processor import Processor, Propagator
+from ._proxy import ProxyIO
 
 
 class TreeFlow(State):
@@ -106,9 +107,10 @@ class TreeFlow(State):
         return self.run()
     
     def release(self):
-        for edge_attrs in self._module_graph.edges.values():
-            queue:Queue = edge_attrs['queue']
-            queue.release()
+        for (s, e), edge_attrs in self._module_graph.edges.items():
+            if e is not ProxyIO:
+                queue:Queue = edge_attrs['queue']
+                queue.release()
     
     def __exit__(self, *_):
         self.release()
@@ -143,10 +145,6 @@ class TreeFlow(State):
                     lines.extend(rendered_lines)
             return lines
         return []
-
-
-class ProxyIO:
-    pass
 
 
 def _render_queue(queue:Queue):
