@@ -3,7 +3,7 @@ from ...queues import Queue
 from abc import abstractmethod
 
 
-class Processor(AutoPipe):
+class Distributor(AutoPipe):
 
     def __init__(self, block):
         super().__init__()

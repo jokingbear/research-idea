@@ -1,7 +1,7 @@
-from .processor import Processor
+from .base import Distributor
 
 
-class Yield(Processor):
+class IteratorDistributor(Distributor):
     
     def resolve_outputs(self, data, *queues):        
         for r in data:

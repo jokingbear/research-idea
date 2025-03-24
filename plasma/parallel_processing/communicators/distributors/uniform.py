@@ -1,7 +1,7 @@
-from .processor import Processor
+from .base import Distributor
 
 
-class Propagator(Processor):
+class UniformDistributor(Distributor):
 
     def resolve_outputs(self, data, *queues):
         for q in queues:

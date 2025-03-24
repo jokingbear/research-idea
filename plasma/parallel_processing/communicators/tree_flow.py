@@ -3,7 +3,7 @@ import networkx as nx
 
 from ...functional import State, partials, proxy_func
 from ..queues import Queue
-from .processor import Processor, Propagator
+from .distributors import Distributor, UniformDistributor
 from ._proxy import ProxyIO
 
 
@@ -55,8 +55,8 @@ class TreeFlow(State):
             if len(successors) > 0:
                 attr_name = data_graph.edges[q, successors[0]]['block']
                 block = getattr(self, attr_name)
-                if not isinstance(block, Processor):
-                    block = Propagator(block)
+                if not isinstance(block, Distributor):
+                    block = UniformDistributor(block)
                 runner = partials(block, *successors, pre_apply_before=False)
                 q.register_callback(runner).run()
             elif 'block' in data_graph.nodes[q]:
@@ -119,9 +119,9 @@ class TreeFlow(State):
     
     def _render_lines(self, key):
         if key is not ProxyIO:
-            processor = block = getattr(self, key)
-            if isinstance(processor, Processor):
-                block = processor.block
+            distributor = block = getattr(self, key)
+            if isinstance(distributor, Distributor):
+                block = distributor.block
 
             if type(block).__name__ == 'function' or isinstance(block, proxy_func):
                 name = repr(block)
@@ -129,8 +129,8 @@ class TreeFlow(State):
                 name = type(block).__name__
 
             process_txt = ''
-            if isinstance(processor, Propagator):
-                process_txt = f'-{type(processor).__name__}'
+            if isinstance(distributor, Distributor):
+                process_txt = f'-{type(distributor).__name__}'
 
             lines = [f'({key}:{name}){process_txt}']
             for n in self._module_graph.successors(key):
