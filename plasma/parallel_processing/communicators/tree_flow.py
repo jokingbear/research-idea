@@ -21,6 +21,10 @@ class TreeFlow(State):
             assert block1 is not None or block2 is not None, 'one of the two block must not be empty'
             assert block2 is None or block2 not in self._module_graph or (block1, block2) in self._module_graph.edges, \
                 'block2 already has a predecessor'
+            
+            assert block1 is not None or (block1 is None and \
+                                          (ProxyIO not in self._module_graph or self._module_graph.out_degree(ProxyIO) < 1)), \
+                    'TreeFlow only allows one input block'
 
             block1 = block1 or ProxyIO
             block2 = block2 or ProxyIO
@@ -82,7 +86,7 @@ class TreeFlow(State):
 
     def __setattr__(self, key: str, value):
         if key[0] != '_':
-            assert not isinstance(value, (Queue, TreeFlow)), 'cannot assign a queue/Flow as a block'
+            assert not isinstance(value, (Queue,)), 'cannot assign a queue as a block'
             assert callable(value), 'public attribute must be callable'
 
         return super().__setattr__(key, value)
