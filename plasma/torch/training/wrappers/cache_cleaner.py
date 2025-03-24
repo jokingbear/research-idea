@@ -9,7 +9,10 @@ class CacheCleaner(ForwardWrapper):
         super().__init__()
 
         self.clean_step = clean_step
+        self._counter = 0
 
     def prepend(self, trainer, i, inputs):
-        if i % self.clean_step == 0:
+        if self._counter % self.clean_step == 0:
             torch.cuda.empty_cache()
+        
+        self._counter += 1
