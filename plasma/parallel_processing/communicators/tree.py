@@ -65,6 +65,8 @@ class TreeFlow(State):
         return results
 
     def run(self):
+        assert ProxyIO in self._module_graph or self._module_graph.out_degree(ProxyIO) > 0, 'flow does not have an input'
+
         for b in self._module_graph:
             if b is not ProxyIO:
                 block = getattr(self, b)
@@ -89,15 +91,12 @@ class TreeFlow(State):
 
         return super().__setattr__(key, value)
 
-    def __repr__(self):
-        flows = []
-        rendered = set()
+    def __repr__(self):     
         for n in self._module_graph.successors(ProxyIO):
+            rendered = set()
             flow_lines = self._render_lines(n, rendered)
-            flows.append('\n\n'.join(flow_lines))
-
-        flows = ('\n' + '=' * 100 + '\n').join(flows)
-        return flows
+            flow_lines[0] = '*-' + flow_lines[0]
+            return '\n\n'.join(flow_lines)
 
     def __enter__(self):
         return self.run()
