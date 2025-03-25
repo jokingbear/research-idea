@@ -1,26 +1,31 @@
 from ..queues import Queue
-from .tree_flow import TreeFlow, ProxyIO
+from .tree import TreeFlow, ProxyIO, Distributor
+from warnings import warn
 
 
-class Flow(TreeFlow):
+class Sequential(TreeFlow):
 
-    def registerIOs(self, **pipeIOs:Queue|dict[str, Queue]):
+    def registerIOs(self, **blocks:Queue|tuple[Queue, Distributor]):
         chains = []
-        for key, value in pipeIOs.items():  
+        for key, value in blocks.items():  
+            if not isinstance(value, tuple):
+                value = (value,)
+
             if key == 'outputs':
                 prev_block = self._marked_attributes[-1]
-                triplets = prev_block, value, None
+                triplets = prev_block, None, *value
             else:
                 attr_idx = [i for i, attr in enumerate(self._marked_attributes) if attr == key][0]
                 if attr_idx == 0:
                     prev_block = None
                 else:
                     prev_block = self._marked_attributes[attr_idx - 1]
-                triplets = prev_block, value, key
+                triplets = prev_block, key, *value 
             
             chains.append(triplets)
 
-        self.register_chains(*chains)
+        self.chain(*chains)
+        return self
 
     def put(self, x):
         for q in self.inputs.values():
@@ -37,3 +42,11 @@ class Flow(TreeFlow):
                 self._module_graph.remove_edge(n, ProxyIO)
 
         return super().__setattr__(key, value)
+
+
+class Flow(Sequential):
+
+    def __init__(self):
+        super().__init__()
+
+        warn('this class is deprecated, use Sequential instead')

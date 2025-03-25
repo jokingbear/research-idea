@@ -15,29 +15,38 @@ class TreeFlow(State):
 
         self._module_graph = nx.DiGraph()
 
-    def register_chains(self, *chains:tuple[str, Queue, str]):
-        for block1, queue, block2 in chains:
+    def chain(self, *blocks:tuple[str, str]|tuple[str, str, Queue]|tuple[str, str, Queue, Distributor]):
+        for block1, block2, *block2_params in blocks:                
             assert block1 is None or hasattr(self, block1), 'block1 must be an attribute of the flow or None'
             assert block2 is None or hasattr(self, block2), 'block2 must be an attribute of the flow or None'
-            assert isinstance(queue, Queue), f'queue must be an instance of {Queue}'
             assert block1 is not None or block2 is not None, 'one of the two block must not be empty'
             
             assert block1 is not None or (block1 is None and \
                                           (ProxyIO not in self._module_graph or self._module_graph.out_degree(ProxyIO) < 1)), \
                     'TreeFlow only allows one input block'
+            assert block2 is not None or len(block2_params) == 1, 'chain outputs must be of the form str, None, queue'
 
             block1 = block1 or ProxyIO
             block2 = block2 or ProxyIO
+            
+            if len(block2_params) == 1:
+                block2_params.append(UniformDistributor())
+
+            params = {}
+            for i, p in enumerate(block2_params):
+                if i == 0:
+                    params['queue'] = p
+                else:
+                    params['dist'] = p
+
             self._module_graph.add_node(block1)
             if block2 is ProxyIO:
-                self._module_graph.add_edge(block1, block2, queue=queue)
+                self._module_graph.add_edge(block1, block2, **params)
             else:
-                self._module_graph.add_node(block2, queue=queue, dist=UniformDistributor())
+                self._module_graph.add_node(block2, **params)
                 self._module_graph.add_edge(block1, block2)
 
-    def register_distributors(self, *block:tuple[str, Distributor]):
-        for b, dist in block:
-            self._module_graph.add_node(b, dist=dist)
+        return self
 
     @property
     def inputs(self)->dict[str, Queue]:
@@ -54,7 +63,7 @@ class TreeFlow(State):
             q = self._module_graph.edges[n, ProxyIO]['queue']
             results[n] = q
         return results
-    
+
     def run(self):
         for b in self._module_graph:
             if b is not ProxyIO:
@@ -102,7 +111,6 @@ class TreeFlow(State):
     def __exit__(self, *_):
         self.release()
     
-    @ExceptionLogger(log_func=lambda exio: print(f'{exio.args[1]}\n{exio.exception}'))
     def _render_lines(self, key, rendered:set):
         lines = []
         if key is not ProxyIO:
@@ -129,13 +137,14 @@ class TreeFlow(State):
                     indent = initial_indent * 2
                     if n is ProxyIO:
                         queue = self._module_graph.edges[key, n]['queue']
-                        lines.append(f'{indent}|-[{type(queue).__name__}(runner={queue.num_runner})]')
+                        lines.append(f'{indent}|-[{type(queue).__name__}(runner={queue.num_runner})]-*')
                     else:
                         rendered_lines = self._render_lines(n, rendered)
                         if len(rendered_lines) > 0:
                             rendered_lines[0] = '|-' + rendered_lines[0]
                             rendered_lines = [indent + l for l in rendered_lines]
                             lines.extend(rendered_lines)
-                    
+            else:
+                lines[-1] += '...'
         rendered.add(key)
         return lines 
