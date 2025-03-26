@@ -1,6 +1,6 @@
 from functools import wraps
-from collections import namedtuple
 from dataclasses import dataclass
+from warnings import warn
 
 
 @dataclass
@@ -14,7 +14,6 @@ class ExceptionIO:
 class ExceptionLogger:
 
     IO = ExceptionIO
-    ExceptionIO = ExceptionIO
     
     def __init__(self, name=None, log_func=print, raise_on_exception=True, on_exception_return=None) -> None:
         self.name = name
@@ -42,3 +41,10 @@ class ExceptionLogger:
                 return self.on_exception_value
 
         return run
+
+    @classmethod
+    def _deprecated(*_):
+        warn('this property is deprecated, please use IO instead')
+        return ExceptionIO
+
+    ExceptionIO = property(fget=_deprecated)

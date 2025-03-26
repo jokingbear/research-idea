@@ -3,6 +3,7 @@ import datetime
 
 from functools import wraps
 from dataclasses import dataclass
+from warnings import warn
 
 
 @dataclass
@@ -24,12 +25,13 @@ class Timer:
 
     IO = TimeIO
 
-    def __init__(self, log_func=print, log_inputs=False) -> None:
+    def __init__(self, log_func=print, log_inputs=None) -> None:
         self.log_func = log_func
-        self.log_inputs = log_inputs
         self._start = None
         self._end = None
-        self.io = TimeIO
+
+        if log_inputs is not None:
+            warn('log_inputs is deprecated, please leave it as None')
 
     def __enter__(self):
         self._end = None
@@ -75,8 +77,7 @@ class Timer:
         def run_timer(*args, **kwargs):
             with self:
                 results = func(*args, **kwargs)
-            timeio = TimeIO(name, Counter(self.start, self.end, self.duration), 
-                            args if self.log_inputs else [], kwargs if self.log_inputs else {})
+            timeio = TimeIO(name, Counter(self.start, self.end, self.duration), args, kwargs)
             self.log_func(timeio)
             return results
 
