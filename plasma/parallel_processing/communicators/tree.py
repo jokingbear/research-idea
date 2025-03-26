@@ -5,7 +5,6 @@ from ...functional import State, partials, proxy_func
 from ..queues import Queue
 from .distributors import Distributor, UniformDistributor
 from ._proxy import ProxyIO
-from ...logging import ExceptionLogger
 
 
 class TreeFlow(State):
