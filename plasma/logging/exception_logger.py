@@ -1,10 +1,21 @@
 from functools import wraps
 from collections import namedtuple
+from dataclasses import dataclass
+
+
+@dataclass
+class ExceptionIO:
+    name:str
+    args:list
+    kwargs:dict
+    exception:Exception
 
 
 class ExceptionLogger:
-    ExceptionIO = namedtuple('ExIO', ['name', 'args', 'kwargs', 'exception'])
 
+    IO = ExceptionIO
+    ExceptionIO = ExceptionIO
+    
     def __init__(self, name=None, log_func=print, raise_on_exception=True, on_exception_return=None) -> None:
         self.name = name
         self.log_func = log_func
@@ -20,7 +31,7 @@ class ExceptionLogger:
                 results = function(*args, **kwargs)
                 return results
             except Exception as e:
-                exio = self.ExceptionIO(name, args, kwargs, e)
+                exio = ExceptionIO(name, args, kwargs, e)
                 self.log_func(exio)
                 
                 if self.raise_on_exception:
