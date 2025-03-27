@@ -41,6 +41,7 @@ class TreeFlow(State):
 
             self._module_graph.add_node(block1)
             if block2 is ProxyIO:
+                del params['dist']
                 self._module_graph.add_edge(block1, block2, **params)
             else:
                 self._module_graph.add_node(block2, **params)
