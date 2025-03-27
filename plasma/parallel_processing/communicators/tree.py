@@ -20,9 +20,10 @@ class TreeFlow(State):
             assert block2 is None or hasattr(self, block2), 'block2 must be an attribute of the flow or None'
             assert block1 is not None or block2 is not None, 'one of the two block must not be empty'
             
-            assert block1 is not None or (block1 is None and \
-                                          (ProxyIO not in self._module_graph or self._module_graph.out_degree(ProxyIO) < 1)), \
+            assert block1 is not None or ProxyIO not in self._module_graph \
+                or (ProxyIO, block2) in self._module_graph.edges, \
                     'TreeFlow only allows one input block'
+
             assert block2 is not None or len(block2_params) == 1, 'chain outputs must be of the form str, None, queue'
 
             block1 = block1 or ProxyIO
@@ -64,7 +65,7 @@ class TreeFlow(State):
         return results
 
     def run(self):
-        assert ProxyIO in self._module_graph or self._module_graph.out_degree(ProxyIO) > 0, 'flow does not have an input'
+        assert ProxyIO in self._module_graph and self._module_graph.out_degree(ProxyIO) > 0, 'flow does not have an input'
 
         for b in self._module_graph:
             if b is not ProxyIO:
