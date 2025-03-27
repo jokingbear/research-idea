@@ -5,7 +5,7 @@ from pathlib import Path
 
 packages = [re.sub(r'\\|\/', '.', str(p.parent)) for p in Path('plasma').rglob('__init__.py')]
 
-with open('requirements.text', 'r') as handler:
+with open('requirements.txt', 'r') as handler:
     requirements = handler.readlines()
 
 setup(
