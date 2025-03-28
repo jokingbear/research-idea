@@ -25,9 +25,13 @@ class DependencyInjector(AutoPipe):
                 
         return {n: object_dict.get(n, _NotInitialized) for n in names}
     
-    def add_dependency(self, name, value):
+    def add_dependency(self, name, value, as_singleton=False):
         assert name[0] != '_', 'dependency cannot start with _'
-        assert callable(value), 'depdency should be callable'
+        assert as_singleton or callable(value), 'depdency should be callable'
+        
+        if as_singleton:
+            value = _Singleton(value)
+
         setattr(self, name, value)
 
     def decorate_dependency(self, name):
@@ -84,24 +88,30 @@ class DependencyInjector(AutoPipe):
 
                 arg_maps[arg] = arg_object
 
-            
             arg_len = self._dep_graph.out_degree(key)
             if len(arg_maps) == arg_len:
-                object_dict[key] = self._dep_graph.nodes[key]['initiator'](**arg_maps)
+                try:
+                    object_dict[key] = self._dep_graph.nodes[key]['initiator'](**arg_maps)
+                except:
+                    print(f'error at {key}')
+                    raise
 
     def __setattr__(self, key, value):
-        if callable(value):
-            self._dep_graph.add_node(key, initiator=value)
-            
-            argspecs = inspect.getfullargspec(value)
-            for a in argspecs.args:
-                if a != 'self':
-                    self._dep_graph.add_node(a)
-                    self._dep_graph.add_edge(key, a)
+        if key[0] != '_':
+            if callable(value):
+                self._dep_graph.add_node(key, initiator=value)
+                
+                argspecs = inspect.getfullargspec(value)
+                for a in argspecs.args:
+                    if a != 'self':
+                        self._dep_graph.add_node(a)
+                        self._dep_graph.add_edge(key, a)
 
-            defaults = argspecs.defaults or []
-            for name, value in zip(argspecs.args[::-1], defaults[::-1]):
-                self._dep_graph.add_node(name, value=value)
+                defaults = argspecs.defaults or []
+                for name, value in zip(argspecs.args[::-1], defaults[::-1]):
+                    self._dep_graph.add_node(name, value=value)
+            elif isinstance(value, _Singleton):
+                self._dep_graph.add_node(key, value=value.obj)
 
         return super().__setattr__(key, value)
 
@@ -121,6 +131,12 @@ class DependencyInjector(AutoPipe):
 
 class _NotInitialized:
     pass
+
+
+class _Singleton:
+
+    def __init__(self, obj):
+        self.obj = obj
 
 
 def _render_node(graph:nx.DiGraph, key, prefix='|', indent=' ' * 2):

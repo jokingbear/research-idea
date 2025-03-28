@@ -1,5 +1,6 @@
 from functools import wraps
 from collections import namedtuple
+from warnings import warn
 
 
 class FunctionLogger:
@@ -8,6 +9,7 @@ class FunctionLogger:
     def __init__(self, name=None, log_func=print) -> None:
         self.name = name
         self.log_func = log_func
+        warn('this class is deprecated, use PrePostLogger')
     
     def __call__(self, function):
         name = self.name or function.__qualname__

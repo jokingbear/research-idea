@@ -4,35 +4,28 @@ from functools import wraps
 
 
 def automap(func):
-    signature = inspect.getfullargspec(func)
-    is_instance_method = signature.args[0] == 'self'
+    signature = inspect.signature(func)
+    is_instance_method = 'self' in signature.parameters
 
     @wraps(func)
-    def instance_alt_func(self, inputs):
-        if isinstance(inputs, (tuple, list)):
-            return func(self, *inputs)
-        elif isinstance(inputs, dict):
-            return func(self, **inputs)
-        elif inputs is None:
-            return func(self)
+    def alt_func(*args, **kwargs):
+        if is_instance_method:
+            instance = args[:1]
+            inputs = args[1]
         else:
-            return func(self, inputs)
+            inputs = args[0]
+            instance = []
 
-    @wraps(func)
-    def alt_func(inputs):
         if isinstance(inputs, (tuple, list)):
-            return func(*inputs)
+            return func(*instance, *inputs, **kwargs)
         elif isinstance(inputs, dict):
-            return func(**inputs)
+            return func(**inputs, **kwargs)
         elif inputs is None:
-            return func()
+            return func(*instance)
         else:
-            return func(inputs)
+            return func(*instance, inputs)
 
-    if is_instance_method:
-        return instance_alt_func
-    else:
-        return alt_func
+    return alt_func
 
 
 class propagate:
@@ -41,29 +34,21 @@ class propagate:
         self.value = value
     
     def __call__(self, func):
-        signature = inspect.getfullargspec(func)
-        is_instance_method = signature.args[0] == 'self'
-        offset = 1 if is_instance_method else 0
-        args = signature.args[offset:]
-        defaults = len(signature.defaults or [])
-        total_mandatory = len(args) - defaults
+        signature = inspect.signature(func)
 
-        assert total_mandatory == 1, \
-            f'this decorator only applies to instance one arg or one arg method, current signature {args}'
-
+        is_instance_method = 'self' in signature.parameters
         propagator = self
+
         @wraps(func)    
-        def alt_func(inputs):
+        def alt_func(*args, **kwargs):
+            if is_instance_method:
+                inputs = args[1]
+            else:
+                inputs = args[0]
+
             if inputs is propagator.value:
                 return propagator.value
             else:
-                return func(inputs)
-        
-        @wraps(func)    
-        def instance_alt_func(self, inputs):
-            if inputs is propagator.value:
-                return None
-            else:
-                return func(self, inputs)
+                return func(*args, **kwargs)
 
-        return instance_alt_func if is_instance_method else alt_func
+        return alt_func

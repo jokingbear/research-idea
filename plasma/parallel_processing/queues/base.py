@@ -33,20 +33,19 @@ class Queue[T](State):
         pass
 
     def register_callback(self, callback):
+        assert not self._running,\
+            'queue is already running, please release it to register new function'
         self._callback = callback
         return self
 
     def chain(self, callback):
-        if self._running:
-            raise RuntimeError('queue is already running, please release it to chain new function')
+        assert not self._running, \
+            'queue is already running, please release it to chain new function'
         self._callback = chain(self._callback, callback)
         return self
 
     def release(self):
         self.__clean_state()
-
-    def join(self):
-        return self
 
     def __clean_state(self):
         self._state = None
@@ -55,3 +54,8 @@ class Queue[T](State):
     @property
     def running(self):
         return self._running
+
+    def _num_runner(self):
+        return 1
+    
+    num_runner = property(fget=_num_runner)

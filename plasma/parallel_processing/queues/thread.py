@@ -4,6 +4,7 @@ import queue
 from .signals import Signal
 from .utils import internal_run
 from .base import Queue
+from ...functional.decorators import propagate
 
 
 class ThreadQueue(Queue[list[threading.Thread]]):
@@ -23,6 +24,7 @@ class ThreadQueue(Queue[list[threading.Thread]]):
         [t.start() for t in threads]
         return threads
 
+    @propagate(Signal.IGNORE)
     def put(self, x):
         self._queue.put(x)
     
@@ -37,5 +39,5 @@ class ThreadQueue(Queue[list[threading.Thread]]):
                 t.join()
         super().release()
 
-    def join(self):
-        self._queue.join()
+    def _num_runner(self):
+        return self.n
