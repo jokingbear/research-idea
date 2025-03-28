@@ -7,3 +7,4 @@ pyyaml
 setuptools
 huggingface_hub
 tensorboard
+torch
