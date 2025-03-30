@@ -58,4 +58,6 @@ class Queue[T](State):
     def _num_runner(self):
         return 1
     
-    num_runner = property(fget=_num_runner)
+    @property
+    def num_runner(self):
+        return self._num_runner()
