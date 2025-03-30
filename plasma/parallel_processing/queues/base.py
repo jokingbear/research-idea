@@ -5,13 +5,15 @@ from warnings import warn
 
 class Queue[T](State):
 
-    def __init__(self, block=None):
+    def __init__(self, name=None, n=1, block=None):
         super().__init__()
 
         if block is not None:
             warn('block is deprecated')
             self._block = block
 
+        self.name = name
+        self.num_runner = n
         self._running = False
         self.__clean_state()
 
@@ -36,6 +38,9 @@ class Queue[T](State):
         assert not self._running,\
             'queue is already running, please release it to register new function'
         self._callback = callback
+        if self.name is None:
+            self.name = callback.__name__
+
         return self
 
     def chain(self, callback):
@@ -54,8 +59,3 @@ class Queue[T](State):
     @property
     def running(self):
         return self._running
-
-    def _num_runner(self):
-        return 1
-    
-    num_runner = property(fget=_num_runner)
