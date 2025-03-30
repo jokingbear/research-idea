@@ -39,7 +39,10 @@ class Queue[T](State):
             'queue is already running, please release it to register new function'
         self._callback = callback
         if self.name is None:
-            self.name = callback.__name__
+            if hasattr(callback, '__name__'):
+                self.name = callback.__name__
+            else:
+                self.name = type(callback).__name__
 
         return self
 
