@@ -3,6 +3,7 @@ import sys
 
 from importlib import import_module
 from .entry_factory import get_module_entry
+from ..functional import partials
 
 
 class ModuleHub:
@@ -73,3 +74,7 @@ class ModuleHub:
 
     def __repr__(self):
         return f'module={self.module}'
+
+    def __getattr__(self, name):
+        if name in self.list():
+            return partials(self.load, name)

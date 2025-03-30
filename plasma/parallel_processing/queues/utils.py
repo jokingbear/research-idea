@@ -2,7 +2,7 @@ from queue import Queue
 from .signals import Signal
 
 
-def internal_run(queue:Queue, persistent, callback):
+def internal_run(queue:Queue, callback):
     is_not_cancelled = True
     while is_not_cancelled:
         data = queue.get()

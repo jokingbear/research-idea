@@ -8,8 +8,8 @@ from .signals import Signal
 
 class TransferQueue(Queue[Thread]):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, name=None):
+        super().__init__(name)
 
         self._receiver = JoinableQueue()
 
@@ -18,7 +18,7 @@ class TransferQueue(Queue[Thread]):
         self._receiver.put(x)
 
     def _init_state(self):
-        runner = partials(internal_run, self._receiver, False, self._callback)
+        runner = partials(internal_run, self._receiver, self._callback)
         thread = Thread(target=runner) 
         thread.start()
         return thread

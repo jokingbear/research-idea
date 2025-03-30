@@ -9,18 +9,17 @@ from ...functional.decorators import propagate
 
 class ThreadQueue(Queue[list[threading.Thread]]):
 
-    def __init__(self, n=1, persistent=False, qsize=0):
-        super().__init__()
+    def __init__(self, n=1, name=None, qsize=0):
+        super().__init__(name, n)
 
-        self.persistent = persistent
-        self.n = n
         self._queue = queue.Queue(qsize)
 
     def _init_state(self):
         if self._callback is None:
             raise AttributeError('there is no registered callback for this queue.')
         
-        threads = [threading.Thread(target=internal_run, args=(self._queue, self.persistent, self._callback)) for i in range(self.n)]
+        threads = [threading.Thread(target=internal_run, args=(self._queue, self._callback)) 
+                   for i in range(self.num_runner)]
         [t.start() for t in threads]
         return threads
 
@@ -38,6 +37,3 @@ class ThreadQueue(Queue[list[threading.Thread]]):
             for t in self._state:
                 t.join()
         super().release()
-
-    def _num_runner(self):
-        return self.n

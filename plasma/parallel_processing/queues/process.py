@@ -8,16 +8,14 @@ from ...functional.decorators import propagate
 
 class ProcessQueue(Queue[list[mp.Process]]):
 
-    def __init__(self, n=1, persistent=False, qsize=0):
-        super().__init__()
+    def __init__(self, n=1, name=None, qsize=0):
+        super().__init__(name, n)
 
-        self.persistent = persistent
-        self.n = n
-        
         self._queue = mp.JoinableQueue(qsize)
 
     def _init_state(self):
-        processes = [mp.Process(target=internal_run, args=(self._queue, self.persistent, self._callback)) for _ in range(self.n)]
+        processes = [mp.Process(target=internal_run, args=(self._queue, self._callback)) 
+                     for _ in range(self.num_runner)]
         [p.start() for p in processes]
         return processes
 
@@ -38,5 +36,3 @@ class ProcessQueue(Queue[list[mp.Process]]):
         
         super().release()
 
-    def _num_runner(self):
-        return self.n
