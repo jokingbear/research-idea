@@ -5,7 +5,7 @@ from warnings import warn
 
 class Queue[T](State):
 
-    def __init__(self, name=None, n=1, block=None):
+    def __init__(self, name=None, num_runner=1, block=None):
         super().__init__()
 
         if block is not None:
@@ -13,7 +13,7 @@ class Queue[T](State):
             self._block = block
 
         self.name = name
-        self.num_runner = n
+        self.num_runner = num_runner
         self._running = False
         self.__clean_state()
 
