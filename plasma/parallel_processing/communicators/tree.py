@@ -83,7 +83,7 @@ class TreeFlow(State):
                         next_qs.append(self._module_graph.edges[b, next_b]['queue'])
                     else:
                         next_qs.append(self._module_graph.nodes[next_b]['queue'])
-                q.register_callback(block)\
+                q.register_callback(block, b)\
                     .chain(partials(distributor, *next_qs, pre_apply_before=False))\
                         .run()
         
