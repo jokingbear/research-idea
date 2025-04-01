@@ -11,6 +11,8 @@ from torch.optim.lr_scheduler import LRScheduler
 
 
 class Trainer(AutoPipe):
+    rank = 0
+    world_size = 1
     current_epoch = -1
     max_epoch:int
     model:nn.Module

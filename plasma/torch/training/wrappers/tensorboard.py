@@ -12,14 +12,15 @@ class Tensorboard(ForwardWrapper):
         self._counter = 0
 
     def append(self, trainer, i, inputs, outputs):
-        writer = self._writer
-        loss_val = outputs
-        step = self._counter
+        if trainer.rank == 0:
+            writer = self._writer
+            loss_val = outputs
+            step = self._counter
 
-        if loss_val is not None:
-            writer.add_scalar('loss', loss_val.float(), step)
-            if trainer.scheduler is not None:
-                for i, lr in enumerate(trainer.scheduler.get_last_lr()):
-                    writer.add_scalar(f'lr-{i}', lr, step)
+            if loss_val is not None:
+                writer.add_scalar('loss', loss_val.float(), step)
+                if trainer.scheduler is not None:
+                    for i, lr in enumerate(trainer.scheduler.get_last_lr()):
+                        writer.add_scalar(f'lr-{i}', lr, step)
 
-        self._counter += 1
+            self._counter += 1
