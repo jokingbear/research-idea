@@ -5,7 +5,7 @@ from warnings import warn
 
 class Queue[T](State):
 
-    def __init__(self, name=None, n=1, block=None):
+    def __init__(self, name=None, num_runner=1, block=None):
         super().__init__()
 
         if block is not None:
@@ -13,7 +13,7 @@ class Queue[T](State):
             self._block = block
 
         self.name = name
-        self.num_runner = n
+        self.num_runner = num_runner
         self._running = False
         self.__clean_state()
 
@@ -34,15 +34,14 @@ class Queue[T](State):
     def put(self, x):
         pass
 
-    def register_callback(self, callback):
+    def register_callback(self, callback, name=None):
         assert not self._running,\
             'queue is already running, please release it to register new function'
         self._callback = callback
-        if self.name is None:
-            if hasattr(callback, '__name__'):
-                self.name = callback.__name__
-            else:
-                self.name = type(callback).__name__
+        if name is not None:
+            if self.name is not None:
+                warn(f'queue {self.name} already has a name, overriding to {name}')
+            self.name = name
 
         return self
 
