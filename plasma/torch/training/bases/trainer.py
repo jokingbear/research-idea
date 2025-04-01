@@ -45,7 +45,7 @@ class Trainer(AutoPipe):
     def run(self):
         loader = self.init_train_loader()
         current_epoch = self.current_epoch + 1
-        for e in tqdm(range(current_epoch, self.max_epoch), desc='epoch'):
+        for e in tqdm(range(current_epoch, self.max_epoch), desc='epoch', disable=self.rank != 0):
             self.current_epoch = e
             for i, inputs in enumerate(tqdm(loader, total=len(loader))):
                 obj_val = self.forward(i, inputs)
@@ -53,17 +53,6 @@ class Trainer(AutoPipe):
                 self.optimize(i, inputs, obj_val)
 
             self.finalize_epoch()
-
-    @property
-    def state(self):
-        return {
-            'current_epoch': self.current_epoch,
-            'current_iteration': self.current_iteration,
-            'max_epoch': self.max_epoch,
-            'model_state': self.model.state_dict(),
-            'optimizer_state': self.optimizer.state_dict(),
-            'scheduler_state': self.scheduler.state_dict() if self.scheduler is not None else None,
-        }
     
     def load_state(self, state:dict):
         self.current_epoch = state['current_epoch']
