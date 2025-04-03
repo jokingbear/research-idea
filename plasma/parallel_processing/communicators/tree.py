@@ -1,7 +1,6 @@
-import pandas as pd
 import networkx as nx
 
-from ...functional import State, partials, proxy_func
+from ...functional import State, partials, proxy_func, Identity
 from ..queues import Queue
 from .distributors import Distributor, UniformDistributor
 from ._proxy import ProxyIO
@@ -71,7 +70,12 @@ class TreeFlow(State):
         for b in self._module_graph:
             if b is not ProxyIO:
                 block = getattr(self, b)
-                distributor:Distributor = self._module_graph.nodes[b]['dist']
+                if isinstance(block, Distributor):
+                    distributor = block
+                    block = Identity()
+                else:
+                    distributor:Distributor = self._module_graph.nodes[b]['dist']
+            
                 q:Queue = self._module_graph.nodes[b]['queue']
                 next_qs = []
                 for next_b in self._module_graph.successors(b):
@@ -79,7 +83,7 @@ class TreeFlow(State):
                         next_qs.append(self._module_graph.edges[b, next_b]['queue'])
                     else:
                         next_qs.append(self._module_graph.nodes[next_b]['queue'])
-                q.register_callback(block)\
+                q.register_callback(block, b)\
                     .chain(partials(distributor, *next_qs, pre_apply_before=False))\
                         .run()
         
@@ -129,7 +133,7 @@ class TreeFlow(State):
             
             initial_indent = ' ' * 2
             lines = [
-                f'[{type(queue).__name__}(runner={queue.num_runner})]',
+                f'[{type(queue).__name__}(name={queue.name}, runner={queue.num_runner})]',
                 f'{initial_indent}|-({key}:{name}){process_txt}'
             ]
             if key not in rendered:
@@ -137,7 +141,7 @@ class TreeFlow(State):
                     indent = initial_indent * 2
                     if n is ProxyIO:
                         queue = self._module_graph.edges[key, n]['queue']
-                        lines.append(f'{indent}|-[{type(queue).__name__}(runner={queue.num_runner})]-*')
+                        lines.append(f'{indent}|-[{type(queue).__name__}((name={queue.name}, runner={queue.num_runner})]-*')
                     else:
                         rendered_lines = self._render_lines(n, rendered)
                         if len(rendered_lines) > 0:
