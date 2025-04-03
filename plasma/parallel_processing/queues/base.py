@@ -61,10 +61,3 @@ class Queue[T](State):
     @property
     def running(self):
         return self._running
-
-    def _num_runner(self):
-        return 1
-    
-    @property
-    def num_runner(self):
-        return self._num_runner()
