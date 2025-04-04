@@ -92,9 +92,8 @@ class DependencyInjector(AutoPipe):
             if len(arg_maps) == arg_len:
                 try:
                     object_dict[key] = self._dep_graph.nodes[key]['initiator'](**arg_maps)
-                except:
-                    print(f'error at {key}')
-                    raise
+                except Exception as e:
+                    raise RuntimeError(f'error at {key}') from e
 
     def __setattr__(self, key, value):
         if key[0] != '_':
