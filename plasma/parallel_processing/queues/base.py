@@ -34,14 +34,10 @@ class Queue[T](State):
     def put(self, x):
         pass
 
-    def register_callback(self, callback, name=None):
+    def register_callback(self, callback):
         assert not self._running,\
             'queue is already running, please release it to register new function'
         self._callback = callback
-        if name is not None:
-            if self.name is not None:
-                warn(f'queue {self.name} already has a name, overriding to {name}')
-            self.name = name
 
         return self
 
