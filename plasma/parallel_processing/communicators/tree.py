@@ -131,21 +131,22 @@ class TreeFlow(State):
             if not isinstance(distributor, UniformDistributor):
                 process_txt = f'-{type(distributor).__name__}'
             
-            initial_indent = ' ' * 2
+            initial_indent = ' ' * 3
+            factor = '|--'
             lines = [
                 f'[{type(queue).__name__}(name={queue.name}, runner={queue.num_runner})]',
-                f'{initial_indent}|-({key}:{name}){process_txt}'
+                f'{initial_indent}{factor}({key}:{name}){process_txt}'
             ]
             if key not in rendered:
                 for n in self._module_graph.successors(key):
                     indent = initial_indent * 2
                     if n is ProxyIO:
                         queue = self._module_graph.edges[key, n]['queue']
-                        lines.append(f'{indent}|-[{type(queue).__name__}((name={queue.name}, runner={queue.num_runner})]-*')
+                        lines.append(f'{indent}{factor}[{type(queue).__name__}((name={queue.name}, runner={queue.num_runner})]-*')
                     else:
                         rendered_lines = self._render_lines(n, rendered)
                         if len(rendered_lines) > 0:
-                            rendered_lines[0] = '|-' + rendered_lines[0]
+                            rendered_lines[0] = factor + rendered_lines[0]
                             rendered_lines = [indent + l for l in rendered_lines]
                             lines.extend(rendered_lines)
             else:
