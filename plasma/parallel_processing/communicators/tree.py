@@ -12,6 +12,7 @@ class TreeFlow(State):
         super().__init__()
 
         self._module_graph = nx.DiGraph()
+        self._running = False
 
     def chain(self, *blocks:tuple[str, str]|tuple[str, str, Queue]|tuple[str, str, Queue, Distributor]):
         for block1, block2, *block2_params in blocks:                
@@ -48,13 +49,13 @@ class TreeFlow(State):
 
         return self
 
-    @property
-    def inputs(self)->dict[str, Queue]:
-        results = {}
-        for n in self._module_graph.successors(ProxyIO):
-            q = self._module_graph.nodes[n]['queue']
-            results[n] = q
-        return results
+    def put(self, x):
+        assert self.running, 'engine needed to be run first, please call run method'
+
+        for n in self._module_graph.neighbors(ProxyIO):
+            node = self._module_graph.nodes[n]
+            input_q:Queue = node['queue']
+            input_q.put(x)
 
     @property
     def outputs(self)->dict[str, Queue]:
@@ -94,7 +95,12 @@ class TreeFlow(State):
                     .chain(partials(distributor, *unnamed_qs, **named_qs, pre_apply_before=False))\
                         .run()
         
+        self._running = True
         return self
+
+    @property
+    def running(self):
+        return self._running
 
     def __setattr__(self, key: str, value):
         if key[0] != '_':

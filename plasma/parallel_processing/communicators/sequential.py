@@ -27,9 +27,6 @@ class Sequential(TreeFlow):
         self.chain(*chains)
         return self
 
-    def put(self, x):
-        for q in self.inputs.values():
-            q.put(x)
 
     def __setattr__(self, key, value):
         assert key not in {'outputs'}, 'outputs is reserved'
