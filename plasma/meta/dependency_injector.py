@@ -3,14 +3,14 @@ import networkx as nx
 import re
 
 from ..functional import AutoPipe
+from warnings import warn
 
 
 class DependencyInjector(AutoPipe):
 
-    def __init__(self, strict=False):
+    def __init__(self):
         super().__init__()
 
-        self.strict = strict
         self._dep_graph = nx.DiGraph()
 
     def run(self, *names, **init_args) -> dict:
@@ -31,8 +31,12 @@ class DependencyInjector(AutoPipe):
         
         if as_singleton:
             value = _Singleton(value)
+        
+        if hasattr(self, name):
+            delete_subgraph(self._dep_graph, name, delete_root=False)
 
         setattr(self, name, value)
+        return self
 
     def decorate_dependency(self, name):
 
@@ -41,19 +45,6 @@ class DependencyInjector(AutoPipe):
             return func_or_class
 
         return decorator
-
-    @property
-    def injection_points(self):
-        return {k: attrs.get('value', _NotInitialized) for k, attrs in self._dep_graph.nodes.items() 
-                if self._dep_graph.out_degree(k) == 0}
-
-    def inspect(self, name):
-        if name in self._dep_graph:
-            attributes = self._dep_graph.nodes[name]
-            if 'value' in attributes:
-                return attributes['value']
-            
-            return attributes['initiator']
 
     def merge(self, injector):
         assert isinstance(injector, DependencyInjector), 'injector must be an DependencyInjector instance'
@@ -92,24 +83,23 @@ class DependencyInjector(AutoPipe):
             if len(arg_maps) == arg_len:
                 try:
                     object_dict[key] = self._dep_graph.nodes[key]['initiator'](**arg_maps)
-                except:
-                    print(f'error at {key}')
-                    raise
+                except Exception as e:
+                    raise RuntimeError(f'error at {key}') from e
 
     def __setattr__(self, key, value):
         if key[0] != '_':
             if callable(value):
                 self._dep_graph.add_node(key, initiator=value)
                 
-                argspecs = inspect.getfullargspec(value)
-                for a in argspecs.args:
-                    if a != 'self':
-                        self._dep_graph.add_node(a)
-                        self._dep_graph.add_edge(key, a)
+                parameters = inspect.signature(value).parameters
+                for name, p in parameters.items():
+                    if name != 'self':
+                        self._dep_graph.add_node(name)
+                        self._dep_graph.add_edge(key, name)
+                        
+                        if p.default is not inspect.Parameter.empty:
+                            self._dep_graph.add_node(name, value=p.default)
 
-                defaults = argspecs.defaults or []
-                for name, value in zip(argspecs.args[::-1], defaults[::-1]):
-                    self._dep_graph.add_node(name, value=value)
             elif isinstance(value, _Singleton):
                 self._dep_graph.add_node(key, value=value.obj)
 
@@ -152,3 +142,15 @@ def _render_node(graph:nx.DiGraph, key, prefix='|', indent=' ' * 2):
             lines.extend(rendered_lines)
     
     return '\n'.join(lines)
+
+
+def delete_subgraph(graph:nx.DiGraph, key, delete_root=True):
+    neighbors = [*graph.neighbors(key)]
+    graph.remove_edges_from([(key, n) for n in neighbors])
+    
+    if delete_root:
+        graph.remove_node(key)
+
+    for n in neighbors:
+        if graph.in_degree(n) == 0:
+            delete_subgraph(graph, n, delete_root=True)
