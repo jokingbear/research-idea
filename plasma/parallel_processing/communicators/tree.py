@@ -76,15 +76,22 @@ class TreeFlow(State):
                 else:
                     distributor:Distributor = self._module_graph.nodes[b]['dist']
             
-                q:Queue = self._module_graph.nodes[b]['queue']
-                next_qs = []
+                current_q:Queue = self._module_graph.nodes[b]['queue']
+                unnamed_qs = []
+                named_qs = {}
                 for next_b in self._module_graph.successors(b):
                     if next_b is ProxyIO:
-                        next_qs.append(self._module_graph.edges[b, next_b]['queue'])
+                        next_q:Queue = self._module_graph.edges[b, next_b]['queue']
                     else:
-                        next_qs.append(self._module_graph.nodes[next_b]['queue'])
-                q.register_callback(block)\
-                    .chain(partials(distributor, *next_qs, pre_apply_before=False))\
+                        next_q:Queue = self._module_graph.nodes[next_b]['queue']
+
+                    if next_q.name is not None:
+                        named_qs[next_q.name] = next_q
+                    else:
+                        unnamed_qs.append(next_q)
+
+                current_q.register_callback(block)\
+                    .chain(partials(distributor, *unnamed_qs, **named_qs, pre_apply_before=False))\
                         .run()
         
         return self
