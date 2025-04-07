@@ -41,10 +41,3 @@ class ExceptionLogger:
                 return self.on_exception_value
 
         return run
-
-    @classmethod
-    def _deprecated(*_):
-        warn('this property is deprecated, please use IO instead')
-        return ExceptionIO
-
-    ExceptionIO = property(fget=_deprecated)
