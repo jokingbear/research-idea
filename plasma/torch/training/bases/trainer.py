@@ -48,9 +48,12 @@ class Trainer(AutoPipe):
         for e in tqdm(range(current_epoch, self.max_epoch), desc='epoch', disable=self.rank != 0):
             self.current_epoch = e
             for i, inputs in enumerate(tqdm(loader, total=len(loader))):
-                obj_val = self.forward(i, inputs)
-                self.backward(i, inputs, obj_val)
-                self.optimize(i, inputs, obj_val)
+                try:
+                    obj_val = self.forward(i, inputs)
+                    self.backward(i, inputs, obj_val)
+                    self.optimize(i, inputs, obj_val)
+                except Exception as e:
+                    self.on_exception(i, inputs, e)
 
             self.finalize_epoch()
     
@@ -63,3 +66,6 @@ class Trainer(AutoPipe):
 
         if self.scheduler is not None:
             print(self.scheduler.load_state_dict(state['scheduler_state']))
+
+    def on_exception(self, i, inputs, exception:Exception):
+        raise RuntimeError(f'error at iteration {i} - epoch {self.current_epoch}') from exception
