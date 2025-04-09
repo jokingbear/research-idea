@@ -32,8 +32,8 @@ class DependencyInjector(AutoPipe):
         if as_singleton:
             value = _Singleton(value)
         
-        if hasattr(self, name):
-            delete_subgraph(self._dep_graph, name, delete_root=False)
+        #if hasattr(self, name):
+        #    delete_subgraph(self._dep_graph, name, delete_root=False)
 
         setattr(self, name, value)
         return self
