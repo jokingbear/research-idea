@@ -32,8 +32,8 @@ class DependencyInjector(AutoPipe):
         if as_singleton:
             value = _Singleton(value)
         
-        #if hasattr(self, name):
-        #    delete_subgraph(self._dep_graph, name, delete_root=False)
+        if hasattr(self, name):
+            delete_subgraph(self._dep_graph, name)
 
         setattr(self, name, value)
         return self
@@ -144,13 +144,10 @@ def _render_node(graph:nx.DiGraph, key, prefix='|', indent=' ' * 2):
     return '\n'.join(lines)
 
 
-def delete_subgraph(graph:nx.DiGraph, key, delete_root=True):
+def delete_subgraph(graph:nx.DiGraph, key):
     neighbors = [*graph.neighbors(key)]
     graph.remove_edges_from([(key, n) for n in neighbors])
     
-    if delete_root:
-        graph.remove_node(key)
-
-    for n in neighbors:
-        if graph.in_degree(n) == 0:
-            delete_subgraph(graph, n, delete_root=True)
+    leaves = [n for n in neighbors if graph.out_degree(n) == 0 
+              and graph.in_degree(n) == 0]
+    graph.remove_nodes_from(leaves)
