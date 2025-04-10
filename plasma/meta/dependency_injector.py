@@ -1,9 +1,9 @@
 import inspect
 import networkx as nx
 import re
+import pandas as pd
 
 from ..functional import AutoPipe
-from warnings import warn
 
 
 class DependencyInjector(AutoPipe):
@@ -23,7 +23,7 @@ class DependencyInjector(AutoPipe):
         for n in names:
             self._recursive_init(n, object_dict, init_args)
                 
-        return {n: object_dict.get(n, _NotInitialized) for n in names}
+        return pd.Series({n: object_dict.get(n, _NotInitialized) for n in names})
     
     def add_dependency(self, name, value, as_singleton=False):
         assert name[0] != '_', 'dependency cannot start with _'
