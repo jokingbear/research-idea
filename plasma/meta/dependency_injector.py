@@ -147,7 +147,3 @@ def _render_node(graph:nx.DiGraph, key, prefix='|', indent=' ' * 2):
 def delete_subgraph(graph:nx.DiGraph, key):
     neighbors = [*graph.neighbors(key)]
     graph.remove_edges_from([(key, n) for n in neighbors])
-    
-    leaves = [n for n in neighbors if graph.out_degree(n) == 0 
-              and graph.in_degree(n) == 0]
-    graph.remove_nodes_from(leaves)
