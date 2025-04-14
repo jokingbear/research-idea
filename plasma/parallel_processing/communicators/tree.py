@@ -12,6 +12,7 @@ class TreeFlow(State):
         super().__init__()
 
         self._module_graph = nx.DiGraph()
+        self._running = False
 
     def chain(self, *blocks:tuple[str, str]|tuple[str, str, Queue]|tuple[str, str, Queue, Distributor]):
         for block1, block2, *block2_params in blocks:                
@@ -48,13 +49,13 @@ class TreeFlow(State):
 
         return self
 
-    @property
-    def inputs(self)->dict[str, Queue]:
-        results = {}
-        for n in self._module_graph.successors(ProxyIO):
-            q = self._module_graph.nodes[n]['queue']
-            results[n] = q
-        return results
+    def put(self, x):
+        assert self.running, 'engine needed to be run first, please call run method'
+
+        for n in self._module_graph.neighbors(ProxyIO):
+            node = self._module_graph.nodes[n]
+            input_q:Queue = node['queue']
+            input_q.put(x)
 
     @property
     def outputs(self)->dict[str, Queue]:
@@ -76,18 +77,30 @@ class TreeFlow(State):
                 else:
                     distributor:Distributor = self._module_graph.nodes[b]['dist']
             
-                q:Queue = self._module_graph.nodes[b]['queue']
-                next_qs = []
+                current_q:Queue = self._module_graph.nodes[b]['queue']
+                unnamed_qs = []
+                named_qs = {}
                 for next_b in self._module_graph.successors(b):
                     if next_b is ProxyIO:
-                        next_qs.append(self._module_graph.edges[b, next_b]['queue'])
+                        next_q:Queue = self._module_graph.edges[b, next_b]['queue']
                     else:
-                        next_qs.append(self._module_graph.nodes[next_b]['queue'])
-                q.register_callback(block)\
-                    .chain(partials(distributor, *next_qs, pre_apply_before=False))\
+                        next_q:Queue = self._module_graph.nodes[next_b]['queue']
+
+                    if next_q.name is not None:
+                        named_qs[next_q.name] = next_q
+                    else:
+                        unnamed_qs.append(next_q)
+
+                current_q.register_callback(block)\
+                    .chain(partials(distributor, *unnamed_qs, **named_qs, pre_apply_before=False))\
                         .run()
         
+        self._running = True
         return self
+
+    @property
+    def running(self):
+        return self._running
 
     def __setattr__(self, key: str, value):
         if key[0] != '_':
@@ -131,21 +144,22 @@ class TreeFlow(State):
             if not isinstance(distributor, UniformDistributor):
                 process_txt = f'-{type(distributor).__name__}'
             
-            initial_indent = ' ' * 2
+            initial_indent = ' ' * 3
+            factor = '|--'
             lines = [
                 f'[{type(queue).__name__}(name={queue.name}, runner={queue.num_runner})]',
-                f'{initial_indent}|-({key}:{name}){process_txt}'
+                f'{initial_indent}{factor}({key}:{name}){process_txt}'
             ]
             if key not in rendered:
                 for n in self._module_graph.successors(key):
                     indent = initial_indent * 2
                     if n is ProxyIO:
                         queue = self._module_graph.edges[key, n]['queue']
-                        lines.append(f'{indent}|-[{type(queue).__name__}((name={queue.name}, runner={queue.num_runner})]-*')
+                        lines.append(f'{indent}{factor}[{type(queue).__name__}((name={queue.name}, runner={queue.num_runner})]-*')
                     else:
                         rendered_lines = self._render_lines(n, rendered)
                         if len(rendered_lines) > 0:
-                            rendered_lines[0] = '|-' + rendered_lines[0]
+                            rendered_lines[0] = factor + rendered_lines[0]
                             rendered_lines = [indent + l for l in rendered_lines]
                             lines.extend(rendered_lines)
             else:

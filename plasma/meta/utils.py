@@ -1,5 +1,6 @@
 import importlib
 import inspect
+import os
 
 from .module_hub import ModuleHub
 from pathlib import Path
@@ -82,9 +83,10 @@ def mass_import(pattern):
     caller = inspect.getmodule(caller)
 
     path = Path(caller.__file__)
-    if '__init__' not in path.name:
-        raise RuntimeError('mass_import can only be used in module __init__ file')
-
-    for p in path.parent.glob(pattern):
+    parent_path = path.parent
+    if not os.path.exists(f'{parent_path}/__init__.py'):
+        raise RuntimeError('mass_import can only be used in packaged folder with __init__ file')
+    
+    for p in parent_path.glob(pattern):
         module_name = p.name.replace('.py', '')
-        importlib.import_module(f'.{module_name}', caller.__name__)
+        importlib.import_module(f'.{module_name}', caller.__package__)

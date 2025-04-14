@@ -8,10 +8,10 @@ from .signals import Signal
 
 class TransferQueue(Queue[Thread]):
 
-    def __init__(self, name=None):
+    def __init__(self, name=None, qsize=0):
         super().__init__(name)
 
-        self._receiver = JoinableQueue()
+        self._receiver = JoinableQueue(qsize)
 
     @decorators.propagate(Signal.IGNORE)
     def put(self, x):
