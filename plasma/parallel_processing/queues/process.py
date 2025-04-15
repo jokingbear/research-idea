@@ -8,10 +8,11 @@ from ...functional.decorators import propagate
 
 class ProcessQueue(Queue[list[mp.Process]]):
 
-    def __init__(self, n=1, name=None, qsize=0):
+    def __init__(self, n=1, name=None, qsize=0, timeout=None):
         super().__init__(name, n)
 
         self._queue = mp.JoinableQueue(qsize)
+        self.timeout = timeout
 
     def _init_state(self):
         processes = [mp.Process(target=internal_run, args=(self._queue, self._callback)) 
@@ -21,7 +22,7 @@ class ProcessQueue(Queue[list[mp.Process]]):
 
     @propagate(Signal.IGNORE)
     def put(self, x):
-        self._queue.put(x)
+        self._queue.put(x, self.timeout)
     
     def release(self):
         self._queue.join()
@@ -35,4 +36,3 @@ class ProcessQueue(Queue[list[mp.Process]]):
                 p.terminate()
         
         super().release()
-
