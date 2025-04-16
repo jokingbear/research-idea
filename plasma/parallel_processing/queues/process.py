@@ -15,7 +15,7 @@ class ProcessQueue(Queue[list[mp.Process]]):
         self.timeout = timeout
 
     def _init_state(self):
-        processes = [mp.Process(target=internal_run, args=(self._queue, self._callback)) 
+        processes = [mp.Process(target=internal_run, args=(self._queue, self._callback, self._exception_handler)) 
                      for _ in range(self.num_runner)]
         [p.start() for p in processes]
         return processes

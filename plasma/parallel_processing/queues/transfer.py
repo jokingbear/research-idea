@@ -18,7 +18,7 @@ class TransferQueue(Queue[Thread]):
         self._receiver.put(x)
 
     def _init_state(self):
-        runner = partials(internal_run, self._receiver, self._callback)
+        runner = partials(internal_run, self._receiver, self._callback, self._exception_handler)
         thread = Thread(target=runner) 
         thread.start()
         return thread

@@ -5,3 +5,4 @@ from .base import Queue
 from .transfer import TransferQueue
 from .prototype import QueuePrototype
 from queue import Full, Empty
+from .handler import ExceptionHandler
