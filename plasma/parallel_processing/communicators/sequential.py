@@ -1,9 +1,11 @@
 from ..queues import Queue
-from .tree import TreeFlow, ProxyIO, Distributor
+from .tree2 import StableTree
 from warnings import warn
+from .distributors import Distributor
+from ._proxy import ProxyIO
 
 
-class Sequential(TreeFlow):
+class Sequential(StableTree):
 
     def registerIOs(self, **blocks:Queue|tuple[Queue, Distributor]):
         chains = []
