@@ -22,7 +22,7 @@ class ProcessQueue(Queue[list[mp.Process]]):
 
     @propagate(Signal.IGNORE)
     def put(self, x):
-        self._queue.put(x, self.timeout)
+        self._queue.put(x, block=True, timeout=self.timeout)
     
     def release(self):
         self._queue.join()

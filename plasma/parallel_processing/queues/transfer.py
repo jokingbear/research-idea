@@ -15,7 +15,7 @@ class TransferQueue(Queue[Thread]):
 
     @decorators.propagate(Signal.IGNORE)
     def put(self, x):
-        self._receiver.put(x)
+        self._receiver.put(x, block=True)
 
     def _init_state(self):
         runner = partials(internal_run, self._receiver, self._callback, self._exception_handler)
