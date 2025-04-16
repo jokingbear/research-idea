@@ -19,7 +19,7 @@ class ThreadQueue(Queue[list[threading.Thread]]):
         if self._callback is None:
             raise AttributeError('there is no registered callback for this queue.')
         
-        threads = [threading.Thread(target=internal_run, args=(self._queue, self._callback)) 
+        threads = [threading.Thread(target=internal_run, args=(self._queue, self._callback, self._exception_handler)) 
                    for i in range(self.num_runner)]
         [t.start() for t in threads]
         return threads

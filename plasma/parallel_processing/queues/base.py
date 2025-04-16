@@ -16,6 +16,8 @@ class Queue[T](State):
         self.num_runner = num_runner
         self._running = False
         self.__clean_state()
+        self._callback = None
+        self._exception_handler = None
 
     def run(self):
         if self._callback is None:
@@ -47,6 +49,12 @@ class Queue[T](State):
         self._callback = chain(self._callback, callback)
         return self
 
+    def on_exception(self, handler):
+        assert not self._running, \
+            'queue is already running, please release it to register new exception handler'
+        self._exception_handler = handler
+        
+    
     def release(self):
         self.__clean_state()
 
