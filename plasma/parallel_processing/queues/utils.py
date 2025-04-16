@@ -9,15 +9,12 @@ def internal_run(queue:Queue, processor, exception_handler):
 
     while is_not_cancelled:
         data = queue.get()
-        exception = None
 
         is_not_cancelled = data is not Signal.CANCEL
-        if is_not_cancelled:
-            try:
+        try:
+            if is_not_cancelled:
                 processor(data)
-            except Exception as e:
-                exception_handler(data, e)
-
-        queue.task_done()
-        if exception is not None:
-            raise exception
+        except Exception as e:
+            exception_handler(data, e)
+        finally:
+            queue.task_done()

@@ -5,12 +5,6 @@ from ._proxy import ProxyIO
 from .handler import FlowExceptionHandler
 
 
-class handler:
-    
-    def __call__(self, block:str, data, e:Exception):
-        pass
-
-
 class StableTree(TreeFlow):
     
     def __init__(self):
