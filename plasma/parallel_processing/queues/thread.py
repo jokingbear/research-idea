@@ -9,23 +9,24 @@ from ...functional.decorators import propagate
 
 class ThreadQueue(Queue[list[threading.Thread]]):
 
-    def __init__(self, n=1, name=None, qsize=0):
+    def __init__(self, n=1, name=None, qsize=0, timeout=None):
         super().__init__(name, n)
 
         self._queue = queue.Queue(qsize)
+        self.timeout = timeout
 
     def _init_state(self):
         if self._callback is None:
             raise AttributeError('there is no registered callback for this queue.')
         
-        threads = [threading.Thread(target=internal_run, args=(self._queue, self._callback)) 
+        threads = [threading.Thread(target=internal_run, args=(self._queue, self._callback, self._exception_handler)) 
                    for i in range(self.num_runner)]
         [t.start() for t in threads]
         return threads
 
     @propagate(Signal.IGNORE)
     def put(self, x):
-        self._queue.put(x)
+        self._queue.put(x, block=True, timeout=self.timeout)
     
     def release(self):
         self._queue.join()
