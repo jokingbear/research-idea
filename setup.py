@@ -15,5 +15,5 @@ setup(
     url='https://github.com/jokingbear/research-idea',
     license='MIT',
     author='jokingbear',
-    requires=requirements
+    install_requires=requirements
 )
