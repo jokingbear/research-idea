@@ -1,5 +1,4 @@
 import torch
-import torch.utils
 import torch.nn as nn
 
 from ....functional import AutoPipe
@@ -49,13 +48,20 @@ class Trainer(AutoPipe):
             self.current_epoch = e
             for i, inputs in enumerate(tqdm(loader, total=len(loader))):
                 try:
-                    obj_val = self.forward(i, inputs)
-                    self.backward(i, inputs, obj_val)
-                    self.optimize(i, inputs, obj_val)
+                    processed_inputs = self.process_inputs(i, inputs)
+                    self._run_iteration(i, processed_inputs)
                 except Exception as e:
                     self.on_exception(i, inputs, e)
 
             self.finalize_epoch()
+    
+    def process_inputs(self, i, inputs):
+        return inputs
+    
+    def _run_iteration(self, i, inputs):
+        forward_val = self.forward(i, inputs)
+        self.backward(i, inputs, forward_val)
+        self.optimize(i, inputs, forward_val)
     
     def load_state(self, state:dict):
         self.current_epoch = state['current_epoch']
