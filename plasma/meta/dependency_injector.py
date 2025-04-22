@@ -29,13 +29,24 @@ class DependencyInjector(AutoPipe):
         assert name[0] != '_', 'dependency cannot start with _'
         assert as_singleton or callable(value), 'depdency should be callable'
         
-        if as_singleton:
-            value = _Singleton(value)
+        if name in self._dep_graph:
+            neighbors = [*self._dep_graph.neighbors(name)]
+            self._dep_graph.remove_edges_from([(name, n) for n in neighbors])
         
-        if hasattr(self, name):
-            delete_subgraph(self._dep_graph, name)
+        if as_singleton:
+            self._dep_graph.add_node(name, value=value)    
+        else:
+            self._dep_graph.add_node(name, initiator=value)
+            
+            parameters = inspect.signature(value).parameters
+            for arg_name, p in parameters.items():
+                if arg_name != 'self':
+                    self._dep_graph.add_node(arg_name)
+                    self._dep_graph.add_edge(name, arg_name)
+                    
+                    if p.default is not inspect.Parameter.empty:
+                        self._dep_graph.add_node(name, value=p.default)
 
-        setattr(self, name, value)
         return self
 
     def decorate_dependency(self, name):
@@ -55,10 +66,7 @@ class DependencyInjector(AutoPipe):
     def _recursive_init(self, key, object_dict:dict, init_args:dict):
         if key not in object_dict and key in self._dep_graph:
             arg_maps = {}
-            
             for arg in self._dep_graph.neighbors(key):
-                arg_object = _NotInitialized
-
                 if arg in init_args:
                     arg_object = init_args[arg]
                 else:
@@ -71,39 +79,15 @@ class DependencyInjector(AutoPipe):
 
                 if arg_object is _NotInitialized:
                     error_message = f'{arg} is not in init_args or dependency graph at key: {key}'
-                    if not self.strict:
-                        print(error_message)
-                        break
-                    else:
-                        raise KeyError(error_message)
+                    raise KeyError(error_message)
 
                 arg_maps[arg] = arg_object
 
-            arg_len = self._dep_graph.out_degree(key)
-            if len(arg_maps) == arg_len:
+            if len(arg_maps) == self._dep_graph.out_degree(key):
                 try:
                     object_dict[key] = self._dep_graph.nodes[key]['initiator'](**arg_maps)
                 except Exception as e:
                     raise RuntimeError(f'error at {key}') from e
-
-    def __setattr__(self, key, value):
-        if key[0] != '_':
-            if callable(value):
-                self._dep_graph.add_node(key, initiator=value)
-                
-                parameters = inspect.signature(value).parameters
-                for name, p in parameters.items():
-                    if name != 'self':
-                        self._dep_graph.add_node(name)
-                        self._dep_graph.add_edge(key, name)
-                        
-                        if p.default is not inspect.Parameter.empty:
-                            self._dep_graph.add_node(name, value=p.default)
-
-            elif isinstance(value, _Singleton):
-                self._dep_graph.add_node(key, value=value.obj)
-
-        return super().__setattr__(key, value)
 
     def __repr__(self):
         lines = []
@@ -123,12 +107,6 @@ class _NotInitialized:
     pass
 
 
-class _Singleton:
-
-    def __init__(self, obj):
-        self.obj = obj
-
-
 def _render_node(graph:nx.DiGraph, key, prefix='|', indent=' ' * 2):
     node = graph.nodes[key]
     if 'value' in node:
@@ -142,8 +120,3 @@ def _render_node(graph:nx.DiGraph, key, prefix='|', indent=' ' * 2):
             lines.extend(rendered_lines)
     
     return '\n'.join(lines)
-
-
-def delete_subgraph(graph:nx.DiGraph, key):
-    neighbors = [*graph.neighbors(key)]
-    graph.remove_edges_from([(key, n) for n in neighbors])
