@@ -25,7 +25,7 @@ def download_module(repo_id: str, patterns=('*.py', '*.json', '*.yaml', '*.yml')
 def download_checkpoint(repo_id_filename, device=None, local_dir=None):
     device = device or 'cpu'
     path = download_file(repo_id_filename, local_dir)
-    return torch.load(path, map_location=device)
+    return torch.load(path, map_location=device, weights_only=True)
 
 
 def download_file(repo_id_filename, local_dir=None):
