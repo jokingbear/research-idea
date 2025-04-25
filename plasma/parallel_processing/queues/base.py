@@ -54,6 +54,8 @@ class Queue[T](State):
         assert not self._running, \
             'queue is already running, please release it to register new exception handler'
         self._exception_handler = handler
+        
+        return self
     
     def release(self):
         self.__clean_state()
