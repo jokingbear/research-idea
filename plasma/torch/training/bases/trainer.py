@@ -23,13 +23,19 @@ class Trainer(AutoPipe):
     def init_train_loader(self) -> DataLoader:
         pass
 
+    def process_inputs(self, i, inputs):
+        return inputs
+    
     @abstractmethod
     def forward(self, i:int, inputs) -> torch.Tensor:
         pass
     
-    @abstractmethod
     def backward(self, i:int, inputs, objective_val:torch.Tensor):
-        pass
+        if objective_val is not None:
+            if self.scaler is not None:
+                self.scaler.scale(objective_val).backward()
+            else:
+                objective_val.backward()
 
     def optimize(self, i:int, inputs, objective_val:torch.Tensor):
         if self.scaler is not None:
@@ -54,9 +60,6 @@ class Trainer(AutoPipe):
                     self.on_exception(i, inputs, e)
 
             self.finalize_epoch()
-    
-    def process_inputs(self, i, inputs):
-        return inputs
     
     def _run_iteration(self, i, inputs):
         forward_val = self.forward(i, inputs)
