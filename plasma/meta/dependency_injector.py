@@ -45,7 +45,7 @@ class DependencyInjector(AutoPipe):
                     self._dep_graph.add_edge(name, arg_name)
                     
                     if p.default is not inspect.Parameter.empty:
-                        self._dep_graph.add_node(name, value=p.default)
+                        self._dep_graph.add_node(arg_name, value=p.default)
 
         return self
 
