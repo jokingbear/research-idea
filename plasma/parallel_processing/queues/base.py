@@ -18,12 +18,12 @@ class Queue[T](State):
         self._running = False
         self.__clean_state()
         self._callback = None
-        self._exception_handler = None
+        self._exception_handler = ExceptionHandler()
 
     def run(self):
         if self._callback is None:
             raise AttributeError('register_callback has not been called on this queue')
-        
+
         if not self._running:
             self._running = True
             self._state = self._init_state()
