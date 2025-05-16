@@ -24,8 +24,9 @@ class StableTree(TreeFlow):
             if n is not ProxyIO:
                 assert q is not None, f'no queue registered for block {n}'
                 exception_handler = self._exception_handler
-                exception_handler = partials(exception_handler, n)
-                q.on_exception(exception_handler)
+                if exception_handler is not None:
+                    exception_handler = partials(exception_handler, n)
+                    q.on_exception(exception_handler)
 
         return super().run()
     
