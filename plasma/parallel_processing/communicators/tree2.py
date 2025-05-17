@@ -35,4 +35,4 @@ class StableTree(TreeFlow):
         return {n: attrs.get('queue', None) for n, attrs in self._module_graph.nodes.items()}
 
     def is_alive(self):
-        return self.running and all(q.is_alive() for q in self.queues.values())
+        return self.running and all(q.is_alive() for q in self.queues.values() if q is not None)
