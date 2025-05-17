@@ -38,3 +38,6 @@ class ThreadQueue(Queue[list[threading.Thread]]):
             for t in self._state:
                 t.join()
         super().release()
+
+    def is_alive(self):
+        return self.running and any(t.is_alive() for t in self._state)
