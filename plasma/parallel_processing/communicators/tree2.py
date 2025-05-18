@@ -18,6 +18,8 @@ class StableTree(TreeFlow):
         assert handler is not None, 'handler can not be None'
 
         self._exception_handler = handler
+        
+        return self
 
     def run(self):
         for n, q in self.queues.items():
