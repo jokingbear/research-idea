@@ -36,3 +36,6 @@ class ProcessQueue(Queue[list[mp.Process]]):
                 p.terminate()
         
         super().release()
+
+    def is_alive(self):        
+        return self.running and any(p.is_alive() for p in self._state)

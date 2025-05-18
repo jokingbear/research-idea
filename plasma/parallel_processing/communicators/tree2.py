@@ -18,6 +18,8 @@ class StableTree(TreeFlow):
         assert handler is not None, 'handler can not be None'
 
         self._exception_handler = handler
+        
+        return self
 
     def run(self):
         for n, q in self.queues.items():
@@ -33,3 +35,6 @@ class StableTree(TreeFlow):
     @property
     def queues(self) -> dict[str, Queue]:
         return {n: attrs.get('queue', None) for n, attrs in self._module_graph.nodes.items()}
+
+    def is_alive(self):
+        return self.running and all(q.is_alive() for q in self.queues.values() if q is not None)

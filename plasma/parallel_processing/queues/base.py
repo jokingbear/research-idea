@@ -70,3 +70,6 @@ class Queue[T](State):
     @property
     def running(self):
         return self._running
+
+    def is_alive(self):
+        return False
