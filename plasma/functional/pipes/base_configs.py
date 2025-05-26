@@ -30,6 +30,9 @@ class BaseConfigs(TuplePipe):
                         if update_attr in obj:
                             obj[update_attr] = update_val
 
+    def as_dict(self)->dict[str, typing.Any]:
+        return {k:getattr(self, k) for k in self._marked_attributes}
+        
 
 def _is_configs(t: type):
     walk = True
