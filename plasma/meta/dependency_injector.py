@@ -19,11 +19,12 @@ class DependencyInjector(AutoPipe):
         else:
             names = {*names}
 
+        names = list(names)
         object_dict = {}
         for n in names:
             self._recursive_init(n, object_dict, init_args)
                 
-        return pd.Series({n: object_dict.get(n, _NotInitialized) for n in names})
+        return pd.Series({n: object_dict.get(n, _NotInitialized) for n in names}).loc[names]
     
     def add_dependency(self, name, value, as_singleton=False):
         assert name[0] != '_', 'dependency cannot start with _'
