@@ -4,16 +4,18 @@ import datetime
 from functools import wraps
 from dataclasses import dataclass
 from warnings import warn
+from ..functional import State, AutoPipe
+from typing import Callable
 
 
-@dataclass
+@dataclass(frozen=True)
 class Counter:
     start: datetime.datetime
     end: datetime.datetime
     duration: datetime.timedelta
 
 
-@dataclass
+@dataclass(frozen=True)
 class TimeIO:
     name:str
     timer: Counter
@@ -73,15 +75,30 @@ class Timer:
     def __call__(self, func):
         name = func.__qualname__
         
-        @wraps(func)
-        def run_timer(*args, **kwargs):
-            with self:
-                results = func(*args, **kwargs)
-            timeio = TimeIO(name, Counter(self.start, self.end, self.duration), args, kwargs)
-            self.log_func(timeio)
-            return results
-
+        run_timer = wraps(func)(TimedPipe(func, name))
         return run_timer
 
     def __repr__(self):
         return f'(start={self.start}, end={self.end}, duration={self.duration})'
+
+    @classmethod
+    def create(cls, log_func):
+        return cls(log_func)
+
+
+class TimedPipe(AutoPipe):
+    
+    def __init__(self, block, name, log_func:Callable[[TimeIO], None]=print):
+        super().__init__()
+        
+        self.block = block
+        self.name = name
+        self.log_func = log_func
+    
+    def run(self, *inputs, **kwargs):
+        with Timer(self.log_func) as timer:
+            results = self.block(*inputs, **kwargs)
+        
+        timeio = TimeIO(self.name, Counter(timer.start, timer.end, timer.duration), inputs, kwargs)
+        self.log_func(timeio)
+        return results
