@@ -15,10 +15,8 @@ class DependencyInjector(AutoPipe):
 
     def run(self, *names, **init_args) -> dict:
         if len(names) == 0:
-            names = {*self._dep_graph.nodes}
-        else:
-            names = {*names}
-
+            names = self._dep_graph.nodes
+        
         names = list(names)
         object_dict = {}
         for n in names:
