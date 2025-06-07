@@ -15,15 +15,14 @@ class DependencyInjector(AutoPipe):
 
     def run(self, *names, **init_args) -> dict:
         if len(names) == 0:
-            names = {*self._dep_graph.nodes}
-        else:
-            names = {*names}
-
+            names = self._dep_graph.nodes
+        
+        names = list(names)
         object_dict = {}
         for n in names:
             self._recursive_init(n, object_dict, init_args)
                 
-        return pd.Series({n: object_dict.get(n, _NotInitialized) for n in names})
+        return pd.Series({n: object_dict.get(n, _NotInitialized) for n in names}).loc[names]
     
     def add_dependency(self, name, value, as_singleton=False):
         assert name[0] != '_', 'dependency cannot start with _'
@@ -63,6 +62,18 @@ class DependencyInjector(AutoPipe):
 
         return self
 
+    def duplicate(self, current_name:str, new_name:str):
+        assert current_name in self._dep_graph, 'current name must be in dep graph'
+        assert new_name not in self._dep_graph, 'new name must not be in dep graph'
+        
+        node = self._dep_graph.nodes[current_name]
+        neighbors = [*self._dep_graph.successors(current_name)]
+        self._dep_graph.add_node(new_name, **node)
+        for n in neighbors:
+            self._dep_graph.add_edge(new_name, n)
+        
+        return self
+    
     def _recursive_init(self, key, object_dict:dict, init_args:dict):
         if key not in object_dict and key in self._dep_graph:
             arg_maps = {}
