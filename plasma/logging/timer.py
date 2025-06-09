@@ -43,7 +43,7 @@ class Timer:
     def __exit__(self, *_):
         self._end = time.time()
         if self.log_func is None:
-            print(f'{self.duration:.2f}s')
+            print(self.duration)
 
     @property
     def duration(self):
