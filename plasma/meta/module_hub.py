@@ -76,4 +76,4 @@ class ModuleHub:
         return f'module={self.module}'
 
     def __getattr__(self, name):
-        return self.module.__getattr__(name)
+        return getattr(self.module, name)
