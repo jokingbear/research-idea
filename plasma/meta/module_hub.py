@@ -76,5 +76,4 @@ class ModuleHub:
         return f'module={self.module}'
 
     def __getattr__(self, name):
-        if name in self.list():
-            return partials(self.load, name)
+        return self.module.__getattr__(name)
