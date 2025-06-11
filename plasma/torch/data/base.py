@@ -2,7 +2,6 @@ from abc import abstractmethod
 
 from torch.utils import data
 from torch.utils.data import RandomSampler, SequentialSampler, DistributedSampler
-from warnings import warn
 
 
 class BaseDataset(data.Dataset):

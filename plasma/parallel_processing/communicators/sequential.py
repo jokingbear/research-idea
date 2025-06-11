@@ -41,11 +41,3 @@ class Sequential(StableTree):
                 self._module_graph.remove_edge(n, ProxyIO)
 
         return super().__setattr__(key, value)
-
-
-class Flow(Sequential):
-
-    def __init__(self):
-        super().__init__()
-
-        warn('this class is deprecated, use Sequential instead')

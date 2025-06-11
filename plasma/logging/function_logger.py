@@ -1,15 +1,15 @@
 from functools import wraps
 from collections import namedtuple
-from warnings import warn
+from warnings import deprecated
 
 
+@deprecated('this class is deprecated, use PrePostLogger')
 class FunctionLogger:
     FuncIO = namedtuple('FuncIO', ['name', 'args', 'kwargs', 'outputs'])
 
     def __init__(self, name=None, log_func=print) -> None:
         self.name = name
         self.log_func = log_func
-        warn('this class is deprecated, use PrePostLogger')
     
     def __call__(self, function):
         name = self.name or function.__qualname__
