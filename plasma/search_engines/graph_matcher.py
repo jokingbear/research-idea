@@ -5,16 +5,17 @@ from ..functional import AutoPipe
 from .regex_splitter import RegexTokenizer
 from .token_matcher import TokenMatcher
 from .path_set_walker import PathWalker
-from warnings import warn
+from warnings import deprecated
 
 
+
+@deprecated('this class is deprecated, please use graph indexer')
 class GraphMatcher(AutoPipe):
 
     def __init__(self, data:list[str], group_splitter=r'([^\.\n]+)', 
                  tokenizer=r'(\w+)', token_threshold=0.7, path_threshold=0.8, top_k=5):
         super().__init__()
         assert len(data) == len(set(data)), 'data is not unique'
-        warn('this class is deprecated, please use graph indexer')
         
         self.sentence_splitter = RegexTokenizer(group_splitter)
         self.token_splitter = RegexTokenizer(tokenizer)

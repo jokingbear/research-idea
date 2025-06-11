@@ -6,12 +6,8 @@ from .handler import ExceptionHandler
 
 class Queue[T](State):
 
-    def __init__(self, name=None, num_runner=1, block=None):
+    def __init__(self, name=None, num_runner=1):
         super().__init__()
-
-        if block is not None:
-            warn('block is deprecated')
-            self._block = block
 
         self.name = name
         self.num_runner = num_runner

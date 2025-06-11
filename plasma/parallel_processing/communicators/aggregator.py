@@ -9,13 +9,11 @@ from warnings import warn
 
 class Aggregator(State):
 
-    def __init__(self, total:int, sleep=1e-2, manager:SyncManager=None, process_base=False, ignore_none=True, count_none=True):
+    def __init__(self, total:int, sleep=1e-2, process_base=False, ignore_none=True, count_none=True):
         super().__init__()
-        if manager is not None:
-            warn('manager is deprecated, use proces_base instead')
         self._results = []
 
-        process_base = process_base or manager is not None
+        process_base = process_base
         process_queue = None if not process_base else mp.JoinableQueue()
         self._process_queue = process_queue
         self._finished:int|ValueProxy[int] = 0 if not process_base else mp.Value('i', 0)

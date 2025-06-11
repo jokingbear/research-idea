@@ -29,6 +29,7 @@ class BaseConfigs(TuplePipe):
                     elif isinstance(obj, dict):
                         if update_attr in obj:
                             obj[update_attr] = update_val
+        return self
 
     def as_dict(self)->dict[str, typing.Any]:
         return {k:getattr(self, k) for k in self._marked_attributes}

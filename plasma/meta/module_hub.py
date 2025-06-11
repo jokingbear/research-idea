@@ -3,7 +3,6 @@ import sys
 
 from importlib import import_module
 from .entry_factory import get_module_entry
-from ..functional import partials
 
 
 class ModuleHub:
@@ -76,5 +75,4 @@ class ModuleHub:
         return f'module={self.module}'
 
     def __getattr__(self, name):
-        if name in self.list():
-            return partials(self.load, name)
+        return getattr(self.module, name)
