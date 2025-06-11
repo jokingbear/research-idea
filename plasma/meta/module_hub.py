@@ -3,7 +3,6 @@ import sys
 
 from importlib import import_module
 from .entry_factory import get_module_entry
-from ..functional import partials
 
 
 class ModuleHub:

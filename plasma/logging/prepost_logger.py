@@ -4,7 +4,7 @@ from ..functional import Identity
 from dataclasses import dataclass
 
 
-@dataclass
+@dataclass(frozen=True)
 class FuncIO:
     name:str
     args:list
