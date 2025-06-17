@@ -8,10 +8,11 @@ from ..functional import AutoPipe
 
 class DependencyInjector(AutoPipe):
 
-    def __init__(self):
+    def __init__(self, stateful=False):
         super().__init__()
 
         self._dep_graph = nx.DiGraph()
+        self.stateful = stateful
 
     def run(self, *names, **init_args) -> dict:
         if len(names) == 0:
@@ -97,6 +98,8 @@ class DependencyInjector(AutoPipe):
             if len(arg_maps) == self._dep_graph.out_degree(key):
                 try:
                     object_dict[key] = self._dep_graph.nodes[key]['initiator'](**arg_maps)
+                    if self.stateful:
+                        self._dep_graph.add_node(key, value=object_dict[key])
                 except Exception as e:
                     raise RuntimeError(f'error at {key}') from e
 
