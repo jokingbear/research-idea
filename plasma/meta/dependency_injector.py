@@ -3,10 +3,10 @@ import networkx as nx
 import re
 import pandas as pd
 
-from ..functional import AutoPipe
+from ..functional import State
 
 
-class DependencyInjector(AutoPipe):
+class DependencyInjector(State):
 
     def __init__(self, stateful=False):
         super().__init__()
@@ -115,6 +115,11 @@ class DependencyInjector(AutoPipe):
         pattern = f'{prefix}{indent}'.replace('|', r'\|')
         text = re.sub(rf'({pattern}){{1,}}', lambda m: m.group(0).replace(prefix + indent, ' ' * (len(indent) + 1)) + prefix + indent, text)
         return text
+
+    def release(self):
+        for n, attr in self._dep_graph.nodes.items():
+            if 'value' in attr and self._dep_graph.out_degree(n) > 0:
+                del attr['value']
 
 
 class _NotInitialized:
