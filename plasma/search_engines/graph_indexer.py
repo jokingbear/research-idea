@@ -59,9 +59,12 @@ class GraphIndexer(F.SimplePipe[str, pd.DataFrame]):
             
         path_frames = path_frames[columns]\
             .groupby(['query_start_idx', 'query_end_idx'])\
-                .apply(_post_process, self.path_walker.top_k, include_groups=False)\
-                    .droplevel(None)
-        path_frames = _find_largest_intervals(path_frames)
+                .apply(_post_process, self.path_walker.top_k, include_groups=False)
+        
+        if len(path_frames) > 0:
+            path_frames = path_frames.droplevel(None)
+            path_frames = _find_largest_intervals(path_frames)
+
         return path_frames
     
     def _run_sentence(self, sentence:str):
