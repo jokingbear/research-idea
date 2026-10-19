@@ -11,9 +11,7 @@ class Statement(ReadableClass):
             keyword_params:dict, 
             execute_many:bool
         ):
-        super().__init__()
-        assert len(params) > 0 
-        
+        super().__init__()        
         assert len(params) == 0 or len(keyword_params) == 0, 'params and keyword params are mutually exclusive'
         
         self.text = text

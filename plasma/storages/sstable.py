@@ -63,7 +63,7 @@ class SSTable[K, V]:
             self._deleted = set()
 
         if len(data) > 0:
-            self.storage.put(self._data.items())
+            self.storage.put(data.items())
         
         if len(deleted) > 0:
             self.storage.delete(deleted)

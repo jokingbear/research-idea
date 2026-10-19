@@ -1,6 +1,6 @@
 import numpy as np
 
-from typing import Any, cast
+from typing import Any, cast, overload
 from collections.abc import Callable, Iterable, Sequence
 
 from .base import BaseStream
@@ -40,8 +40,20 @@ class GenericStream[T](BaseStream[T]):
 
         yield from data.items()
 
+    @overload
+    def max(self, key:Callable[[T], Any], default:None=None) -> T|None:...
+    
+    @overload
+    def max(self, key:Callable[[T], Any], default:Any) -> Any:...
+    
     def max(self, key:Callable[[T], Any], default:T|None=None):
         return max(self, key=key, default=default)
+    
+    @overload
+    def min(self, key:Callable[[T], Any], default:None=None) -> T|None:...
+    
+    @overload
+    def min(self, key:Callable[[T], Any], default:Any) -> Any:...
     
     def min(self, key:Callable[[T], Any], default:T|None=None):
         return min(self, key=key, default=default)
