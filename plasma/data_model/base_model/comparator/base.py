@@ -1,7 +1,9 @@
 import itertools
 
+from collections.abc import Callable, Sequence
 from scipy.stats import hmean
-from typing import Any, Callable, Sequence
+from typing import Any
+
 from .traces import StandardTrace, SummaryTrace, Summary, KeyTrace, BatchSummary
 from .scorers import score_generic, score_str
 from ..utils import is_data_model
@@ -38,11 +40,19 @@ class Comparator:
         schema = schema_getter(target)
         target_realization = schema.realize(target, expand_none=True)
         target_endpoints = [*target_realization.endpoints]
-        num_targets = len({schema.real_to_rep(e) for e in target_endpoints})
+        num_targets = len(set(
+            Stream(target_endpoints)
+            .select(schema.real_to_rep)
+            .filter(lambda r: schema.rep.out_degree(r) == 0)
+        ))
         
         ref_realization = schema.realize(ref, expand_none=True)
         ref_endpoints = [*ref_realization.endpoints]
-        num_refs = len({schema.real_to_rep(e) for e in ref_endpoints})
+        num_refs = len(set(
+            Stream(ref_endpoints)
+            .select(schema.real_to_rep)
+            .filter(lambda r: schema.rep.out_degree(r) == 0)
+        ))
         shared_fields = set(target_endpoints).union(ref_endpoints)
         
         traces = dict(
