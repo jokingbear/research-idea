@@ -60,17 +60,18 @@ class SSTable[K, V]:
     
     def _sync(self):
         with self._lock:
-            data = self._data
-            self._data = {}
-            
-            deleted = self._deleted
-            self._deleted = set()
+            data = self._data.copy()
+            deleted = self._deleted.copy()
 
-            if len(data) > 0:
-                self.storage.put(data.items())
-            
-            if len(deleted) > 0:
-                self.storage.delete(deleted)
+        if len(data) > 0:
+            self.storage.put(data.items())
+        
+        if len(deleted) > 0:
+            self.storage.delete(deleted)
+        
+        with self._lock:
+            self._data = {k: v for k, v in self._data.items() if k not in data}
+            self._deleted = self._deleted.difference(deleted)
 
 
 class Storage[K, V](Protocol):
