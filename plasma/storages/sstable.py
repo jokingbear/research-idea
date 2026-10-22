@@ -23,10 +23,12 @@ class SSTable[K, V]:
         self._scheduler = scheduler
     
     def get(self, k:K):
-        if k in self._deleted:
-            return 
+        with self._lock:
+            if k in self._deleted:
+                return 
 
-        data = self._data
+            data = self._data
+
         if k not in data:
             (_, value), = self.storage.get([k])
         else:
@@ -35,7 +37,9 @@ class SSTable[K, V]:
         return value
         
     def multi_get(self, *keys:K):
-        data = self._data
+        with self._lock:
+            data = self._data
+
         inmem_values = {k: data[k] for k in keys if k in data}
         stored_values = dict(self.storage.get(k for k in keys if k not in data))
         
@@ -56,17 +60,18 @@ class SSTable[K, V]:
     
     def _sync(self):
         with self._lock:
-            data = self._data
-            self._data = {}
-            
-            deleted = self._deleted
-            self._deleted = set()
+            data = self._data.copy()
+            deleted = self._deleted.copy()
 
         if len(data) > 0:
             self.storage.put(data.items())
         
         if len(deleted) > 0:
             self.storage.delete(deleted)
+        
+        with self._lock:
+            self._data = {k: v for k, v in self._data.items() if k not in data}
+            self._deleted = self._deleted.difference(deleted)
 
 
 class Storage[K, V](Protocol):
