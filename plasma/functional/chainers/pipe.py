@@ -1,4 +1,5 @@
-from typing import Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 
 def identity(x):
@@ -90,6 +91,9 @@ class auto_map[O]:
     def partial_right[O1](self, func:Callable[..., O1], *args, **kwargs):
         return auto_map(self.pipe.partial_right(func, *args, **kwargs))
     
+    def automap[T](self, other:Callable[..., T]):
+        return self.chain(auto_map(other))
+
 
 class none_propagator[I, O]:
     
